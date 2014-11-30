@@ -1,38 +1,24 @@
 (in-package #:matlisp)
+;;
+(definline idxv (&rest contents) (make-index-store contents))
 
-;;This must match the type used in LAPACK
-;;(unsigned-byte 32)
-
-(deftype pindex-type ()
-  'fixnum)
-
-(deftype pindex-store-vector (&optional (size '*))
-  `(simple-array pindex-type (,size)))
-
-(make-array-allocator allocate-pindex-store 'pindex-type 0
-  "
-  Syntax
+(definline idxn (n)
+ "Syntax
   ======
-  (ALLOCATE-PINDEX-STORE SIZE [INITIAL-ELEMENT 0])
+  (IDXN n)
 
   Purpose
   =======
-  Allocates integer4 (32-bits) storage.")
-;;
-(definline pindex-id (n)
-  (declare (type fixnum n))
-  (let-typed ((ret (allocate-pindex-store n) :type pindex-store-vector))
-	     (very-quickly
-	       (loop :for i :of-type pindex-type :from 0 :below n
-		  :do (setf (aref ret i) i)))
-	     ret))
-
-(definline pidxv (&rest contents)
-  (make-array (length contents) :element-type 'pindex-type :initial-contents contents))
+  Create an array with length @arg{n} with values 0,..,@arg{n}-1."
+  (let-typed ((ret (allocate-index-store n) :type index-store-vector))
+    (very-quickly
+      (loop :for i :of-type index-type :from 0 :below n
+	 :do (setf (aref ret i) i)))
+    ret))
 
 (defun pick-random (k n)
   (let ((ret nil)
-	(perm (allocate-pindex-store k)))
+	(perm (allocate-index-store k)))
     (loop :for i :from 0 :below k
        :do (let ((sd (random (- n i))))
 	     (loop :for ele :in ret
@@ -62,15 +48,15 @@
 (defclass permutation-index-stored (permutation) ())
 ;;
 (defclass permutation-action (permutation-index-stored)
-  ((store :type pindex-store-vector)))
+  ((store :type index-store-vector)))
 
 (defmethod initialize-instance :after ((perm permutation-action) &rest initargs)
   (declare (ignore initargs))
   (when *check-after-initializing?*
-    (let-typed ((repr (store perm) :type pindex-store-vector))
+    (let-typed ((repr (store perm) :type index-store-vector))
 	       (very-quickly
 		 (loop :for i :of-type index-type :from 0 :below (length repr)
-		    :with srepr :of-type pindex-store-vector := (sort (copy-seq repr) #'<)
+		    :with srepr :of-type index-store-vector := (sort (copy-seq repr) #'<)
 		    :do (assert (= (aref srepr i) i) nil 'permutation-invalid-error)))
 	       (setf (slot-value perm 'permutation-size) (length repr)))))
 
@@ -84,24 +70,24 @@
     (if (null (store per))
 	(setf (slot-value per 'permutation-size) 0)
 	(loop
-	   :for cyc :of-type pindex-store-vector :in (store per)
-	   :with ss :of-type pindex-type := 0
+	   :for cyc :of-type index-store-vector :in (store per)
+	   :with ss :of-type index-type := 0
 	   :do (very-quickly
 		 (loop
 		    :for i :of-type index-type :from 1 :below (length cyc)
-		    :with scyc :of-type pindex-store-vector := (sort (copy-seq cyc) #'<)
+		    :with scyc :of-type index-store-vector := (sort (copy-seq cyc) #'<)
 		    :do (assert (/= (aref scyc (1- i)) (aref scyc i)) nil 'permutation-invalid-error)
 		    :finally (setf ss (max ss (aref scyc (1- (length scyc)))))))
 	   :finally (setf (slot-value per 'permutation-size) (1+ ss))))))
 
 ;;
 (defclass permutation-pivot-flip (permutation-index-stored)
-  ((store :type pindex-store-vector)))
+  ((store :type index-store-vector)))
 
 (defmethod initialize-instance :after ((per permutation-pivot-flip) &rest initargs)
   (declare (ignore initargs))
   (when *check-after-initializing?*
-    (let*-typed ((repr (store per) :type pindex-store-vector)
+    (let*-typed ((repr (store per) :type index-store-vector)
 		 (len (length repr) :type index-type))
 	       (very-quickly
 		 (loop :for i :of-type index-type :from 0 :below len
@@ -131,7 +117,7 @@
 ;;Action
 (definline apply-action! (seq perm)
   (declare (type vector seq)
-	   (type pindex-store-vector perm))
+	   (type index-store-vector perm))
   (let* ((size (length perm))
 	 (cseq (vectorify seq size)))
     (loop :for i :from 0 :below size
@@ -150,14 +136,14 @@
 
 (defmethod permute! ((seq vector) (perm permutation-action) &optional arg)
   (declare (ignore arg))
-  (apply-action! seq (the pindex-store-vector (store perm))))
+  (apply-action! seq (the index-store-vector (store perm))))
 
 (defmethod permute! ((ten standard-tensor) (perm permutation-action) &optional (arg 0))
   (permute! ten (copy perm 'permutation-pivot-flip) arg))
 
 ;;Cycle
 (definline apply-cycle! (seq pcyc)
-  (declare (type pindex-store-vector pcyc)
+  (declare (type index-store-vector pcyc)
 	   (type vector seq))
   (loop :for i :of-type index-type :downfrom (1- (length pcyc)) :to 1
      :with xl := (aref seq (aref pcyc (1- (length pcyc))))
@@ -171,7 +157,7 @@
   (unless (= (permutation-size perm) 1)
     (let* ((size (permutation-size perm))
 	   (cseq (vectorify seq size)))
-      (loop :for cyc :of-type pindex-store-vector :in (store perm)
+      (loop :for cyc :of-type index-store-vector :in (store perm)
 	 :do (apply-cycle! cseq cyc))
       (copy-n cseq seq size)))
   seq)
@@ -179,7 +165,7 @@
 (defmethod permute! ((seq vector) (perm permutation-cycle) &optional arg)
   (declare (ignore arg))
   (unless (= (permutation-size perm) 1)
-    (loop :for cyc :of-type pindex-store-vector :in (store perm)
+    (loop :for cyc :of-type index-store-vector :in (store perm)
        :do (apply-cycle! seq cyc)))
   seq)
 
@@ -188,7 +174,7 @@
 
 ;Pivot idx
 (definline apply-flips! (seq pflip)
-  (declare (type pindex-store-vector pflip)
+  (declare (type index-store-vector pflip)
 	   (type vector seq))
   (loop :for i :of-type index-type :from 0 :below (length pflip)
      :unless (= i (aref pflip i))
@@ -211,7 +197,7 @@
   (let ((t1 (slice~ A arg)) (t2 (slice~ A arg)))
     (let-typed ((argstd (strides A arg) :type index-type)
 		(hd-sl (head t2) :type index-type)
-		(idiv (store perm) :type pindex-store-vector))
+		(idiv (store perm) :type index-store-vector))
 	       (very-quickly
 		 (loop :for i :from 0 :below (length idiv)
 		    :do (progn
@@ -228,15 +214,15 @@
       (copy! (store (copy from (type-of to))) (store to))))
 
 (defmethod copy-generic ((act permutation-action) (type (eql 'permutation-cycle)))
-  (let-typed ((arr (store act) :type pindex-store-vector)
-	      (midx 0 :type pindex-type))
+  (let-typed ((arr (store act) :type index-store-vector)
+	      (midx 0 :type index-type))
 	     (labels ((find-cycle (x0)
 			;; This function obtains the cycle starting from x_0.
-			(declare (type pindex-type x0))
+			(declare (type index-type x0))
 			(if (= (aref arr x0) x0) (values 0 nil)
 			    (very-quickly
 			      (loop
-				 :for x :of-type pindex-type := (aref arr x0) :then (aref arr x)
+				 :for x :of-type index-type := (aref arr x0) :then (aref arr x)
 				 :and ret :of-type cons := (list x0) :then (cons x ret)
 				 :maximizing x :into m.x
 				 :counting t :into i :of-type index-type
@@ -254,16 +240,16 @@
 					 (type list clst))
 				(cycle-walk
 				 (if (= clen 0) cyc
-				     (cons (make-array clen :element-type 'pindex-type :initial-contents clst) cyc))
+				     (cons (make-array clen :element-type 'index-type :initial-contents clst) cyc))
 				 (nconc ignore (if (= clen 0) (list x0) clst))))))))
 	       (with-no-init-checks (make-instance 'permutation-cycle :store (cycle-walk nil nil) :size (1+ midx))))))
 
 (defmethod copy-generic ((act permutation-action) (type (eql 'permutation-pivot-flip)))
   (let*-typed ((size (permutation-size act) :type index-type)
-	       (actr (store act) :type pindex-store-vector)
-	       (ret (pindex-id size) :type pindex-store-vector)
-	       (inv (pindex-id size) :type pindex-store-vector)
-	       (for (pindex-id size) :type pindex-store-vector))
+	       (actr (store act) :type index-store-vector)
+	       (ret (idxn size) :type index-store-vector)
+	       (inv (idxn size) :type index-store-vector)
+	       (for (idxn size) :type index-store-vector))
      (very-quickly
        (loop :for i :of-type index-type :from 0 :below size
 	  :do (let ((flip (aref inv (aref actr i))))
@@ -277,10 +263,10 @@
       (make-instance 'permutation-action :store (copy-seq (store act)) :size (permutation-size act))))
 ;;
 (defmethod copy-generic ((cyc permutation-cycle) (type (eql 'permutation-action)))
-  (let-typed ((act-repr (pindex-id (permutation-size cyc)) :type pindex-store-vector)
+  (let-typed ((act-repr (idxn (permutation-size cyc)) :type index-store-vector)
 	      (cycs (store cyc)))
 	     (very-quickly
-	       (loop :for cyc :of-type pindex-store-vector :in cycs
+	       (loop :for cyc :of-type index-store-vector :in cycs
 		  :do (apply-cycle! act-repr cyc)))
     (with-no-init-checks (make-instance 'permutation-action :store act-repr :size (length act-repr)))))
 
@@ -291,9 +277,9 @@
   (with-no-init-checks (make-instance 'permutation-cycle :store (mapcar #'copy-seq (store cyc)) :size (permutation-size cyc))))
 ;;
 (defmethod copy-generic ((pflip permutation-pivot-flip) (type (eql 'permutation-action)))
-  (let*-typed ((idiv (store pflip) :type pindex-store-vector)
+  (let*-typed ((idiv (store pflip) :type index-store-vector)
 	       (len (permutation-size pflip) :type index-type)
-	       (ret (pindex-id len) :type pindex-store-vector))
+	       (ret (idxn len) :type index-store-vector))
     (with-no-init-checks (make-instance 'permutation-action :store (very-quickly (apply-flips! ret idiv)) :size len))))
 
 (defmethod copy-generic ((pflip permutation-pivot-flip) (type (eql 'permutation-cycle)))
@@ -306,10 +292,10 @@
   (:method ((obj number)) (/ obj)))
 
 (defmethod inv ((obj permutation-action))
-  (let*-typed ((sto (store obj) :type pindex-store-vector)
-	       (rsto (allocate-pindex-store (length sto)) :type pindex-store-vector))
+  (let*-typed ((sto (store obj) :type index-store-vector)
+	       (rsto (allocate-index-store (length sto)) :type index-store-vector))
     (loop :for i :from 0 :below (length rsto)
-       :for ele of-type pindex-type :across sto
+       :for ele of-type index-type :across sto
        :do (setf (aref rsto ele) i))
     (with-no-init-checks (make-instance 'permutation-action :store rsto :size (length rsto)))))
 
@@ -317,7 +303,7 @@
   (let ((sto (store obj)))
     (with-no-init-checks
 	(make-instance 'permutation-cycle
-		       :store (loop :for cyc :of-type pindex-store-vector :in sto
+		       :store (loop :for cyc :of-type index-store-vector :in sto
 				 :collect (reverse cyc))
 		       :size (permutation-size obj)))))
 
@@ -327,7 +313,7 @@
 ;;Move this to t* or something of the sort.
 (defgeneric compose (a b)
   (:method ((a permutation) (b permutation))
-    (let ((ret (pindex-id (max (permutation-size a) (permutation-size b)))))
+    (let ((ret (idxn (max (permutation-size a) (permutation-size b)))))
       (permute! ret b)
       (permute! ret a)
       (loop :for i :from (1- (length ret)) :downto 0
@@ -392,7 +378,7 @@
   "
   (declare (type vector seq))
   (let*-typed ((len (length seq) :type fixnum)
-	       (perm (pindex-id len) :type pindex-store-vector)
+	       (perm (idxn len) :type index-store-vector)
 	       (jobs (make-array len :adjustable t :fill-pointer 0)))
 	      (loop
 		 :for bounds := (cons 0 len) :then (unless (zerop (length jobs))

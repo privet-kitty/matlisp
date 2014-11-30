@@ -1,36 +1,15 @@
 (in-package #:matlisp)
 
 ;;Alias for fixnum.
-(deftype index-type ()
-  'fixnum)
+(deftype index-type () 'fixnum)
+(deftype index-store-vector (&optional (size '*)) `(simple-array index-type (,size)))
 
-(deftype index-store-vector (&optional (size '*))
-  `(simple-array index-type (,size)))
-
-(make-array-allocator allocate-index-store 'index-type 0
-"
-  Syntax
-  ======
-  (ALLOCATE-INDEX-STORE SIZE [INITIAL-ELEMENT 0])
-
-  Purpose
-  ======
-  Allocates index storage.")
-
+(declaim (ftype (function (sequence) index-store-vector) make-index-store)
+	 (ftype (function (index-type) index-store-vector) allocate-index-store))
 (definline make-index-store (contents)
-  "
-  Syntax
-  ======
-  (MAKE-INDEX-STORE &rest CONTENTS)
-
-  Purpose
-  =======
-  Allocates index storage with initial elements from the list CONTENTS."
-  (the index-store-vector (make-array (length contents) :element-type 'index-type
-				      :initial-contents contents)))
-
-(definline idxv (&rest contents)
-  (make-index-store contents))
+  (the index-store-vector (make-array (length contents) :element-type 'index-type :initial-contents contents)))
+(definline allocate-index-store (n)
+  (the index-store-vector (make-array n :element-type 'index-type)))
 
 ;;This is a silly hack. The plan is to get rid of this part using MOP.
 (defvar *tensor-type-leaves* nil "

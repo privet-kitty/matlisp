@@ -409,14 +409,6 @@ Example:
        ,@(when types `((declare ,@types)))
        ,@code)))
 
-(defmacro make-array-allocator (allocator-name type init &optional doc)
-  `(eval-when (:compile-toplevel :load-toplevel :execute)
-     (definline ,allocator-name (size &optional (initial-element ,init))
-       ,@(unless (null doc)
-		 `(,doc))
-       (make-array size
-		   :element-type ,type :initial-element initial-element))))
-
 (defmacro nconsc (var &rest args)
   "
   Macro to do setf and nconc for destructive list updates. If @arg{var}

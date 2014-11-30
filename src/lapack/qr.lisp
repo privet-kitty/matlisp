@@ -104,7 +104,7 @@
     (t/lapack-orgqr! real-tensor (lvec-min (dimensions q)) q (or (blas-matrix-compatiblep q ) 0) tau)
     (values q (tricopy! r (zeros (dimensions r)) :u)
 	    #+nil(let* ((n (length jpvt))
-		    (sto (allocate-pindex-store n)))
+		    (sto (allocate-index-store n)))
 	       (loop :for i :from 0 :below n
 		  :do (setf (aref sto i) (1- (aref jpvt i))))
 	       (make-instance 'permutation-action :size (length jpvt) :store sto)))))
@@ -115,7 +115,7 @@
     (t/lapack-orgqr! real-tensor (lvec-min (dimensions q)) q (or (blas-matrix-compatiblep q ) 0) tau)
     (values q (tricopy! r (zeros (dimensions r)) :u)
 	    (let* ((n (length jpvt))
-		    (sto (allocate-pindex-store n)))
+		    (sto (allocate-index-store n)))
 	       (loop :for i :from 0 :below n
 		  :do (setf (aref sto i) (1- (aref jpvt i))))
 	       (make-instance 'permutation-action :size (length jpvt) :store sto)))))

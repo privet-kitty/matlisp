@@ -260,5 +260,29 @@
   an ANSI compatible way of ensuring method compilation."
   (funcall (compile nil `(lambda () ,source))))
 
+;;Modified from Femlisp.
+(defun find-programmatic-class (superclasses &optional name)
+  "Finds and, if necessary, generates a class from the given superclasses."
+  (let ((superclasses (mapcar #'(lambda (class) (if (symbolp class) (find-class class) class)) superclasses)))
+    (cond
+      ((null superclasses) T)
+      ((null (cdr superclasses)) (car superclasses))
+      (t (or (find-if #'(lambda (cl) (tree-equal superclasses (closer-mop:class-direct-superclasses cl))) (closer-mop:class-direct-subclasses (car superclasses)))
+	     (let ((superclass-names (mapcar #'class-name superclasses)))
+	       (compile-and-eval
+		`(defclass ,(or name (intern (format nil "~A" superclass-names)))
+		     ,superclass-names ()))))))))
+
+;;Modified from Femlisp.
+(defun make-programmatic-instance (superclasses &rest initargs)
+  "Makes an instance of a class denoted by a list of the names of its
+superclasses.  This class is generated automatically, if necessary."
+  (apply #'make-instance
+	 (cond ((symbolp superclasses) (find-class superclasses))
+	       ((typep superclasses 'cl:standard-class) superclasses)
+	       (t (find-programmatic-class superclasses)))
+         initargs))
+
 )
+
 

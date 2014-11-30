@@ -3,7 +3,7 @@
 (defun consecutive-storep (tensor)
   (declare (type standard-tensor tensor))
   (memoizing (tensor consecutive-storep)
-    (letv* ((sort-std std-perm (very-quickly (sort-permute-base (copy-seq (the index-store-vector (strides tensor))) #'<)) :type index-store-vector pindex-store-vector)
+    (letv* ((sort-std std-perm (very-quickly (sort-permute-base (copy-seq (the index-store-vector (strides tensor))) #'<)) :type index-store-vector index-store-vector)
 	    (perm-dims (very-quickly (apply-action! (copy-seq (the index-store-vector (dimensions tensor))) std-perm)) :type index-store-vector))
       (very-quickly
 	(loop
@@ -26,8 +26,8 @@
 (definline blas-copyablep (ten-a ten-b)
   (declare (type standard-tensor ten-a ten-b))
   (when (= (order ten-a) (order ten-b))
-    (letv* ((csto-a? pdims-a tmp perm-a (consecutive-storep ten-a) :type t index-store-vector nil pindex-store-vector)
-	    (csto-b? pdims-b tmp perm-b (consecutive-storep ten-b) :type t index-store-vector nil pindex-store-vector))
+    (letv* ((csto-a? pdims-a tmp perm-a (consecutive-storep ten-a) :type t index-store-vector nil index-store-vector)
+	    (csto-b? pdims-b tmp perm-b (consecutive-storep ten-b) :type t index-store-vector nil index-store-vector))
      (when (and csto-a? csto-b? (very-quickly (lvec-eq perm-a perm-b)) (very-quickly (lvec-eq pdims-a pdims-b)))
        (list csto-a? csto-b?)))))
 
@@ -91,15 +91,15 @@
 
 (definline pflip.f->l (uidiv)
   (declare (type (simple-array (signed-byte 32) (*)) uidiv))
-  (let ((ret (make-array (length uidiv) :element-type 'pindex-type)))
-    (declare (type pindex-store-vector ret))
+  (let ((ret (make-array (length uidiv) :element-type 'index-type)))
+    (declare (type index-store-vector ret))
     (very-quickly
       (loop :for i :from 0 :below (length uidiv)
 	 :do (setf (aref ret i) (1- (aref uidiv i)))))
     ret))
 
 (definline pflip.l->f (idiv)
-  (declare (type pindex-store-vector idiv))
+  (declare (type index-store-vector idiv))
   (let ((ret (make-array (length idiv) :element-type '(signed-byte 32))))
     (declare (type (simple-array (signed-byte 32) (*)) ret))
     (very-quickly

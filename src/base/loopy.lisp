@@ -5,7 +5,7 @@
   (mod-dotimes (idx {seq} &key loop-order uplo?) compound-form*)
 
   The argument LOOP-ORDER can either take the keywords {:ROW-MAJOR, :COL-MAJOR},
-  or the pindex-store-vector corresponding to a permutation action. In the latter
+  or the index-store-vector corresponding to a permutation action. In the latter
   case an array of the form [0,...,n] is permuted using APPLY-ACTION!, and parsed
   left-to-right order.
 
@@ -80,7 +80,7 @@
 			   `((,perm-sym ,loop-perm))))
 	       (declare (type index-type ,rank-sym)
 			,@(when loop-perm
-				`((type pindex-store-vector ,perm-sym))))
+				`((type index-store-vector ,perm-sym))))
 	       ,@(when loop-perm
 		       `((assert (<= (length ,perm-sym) ,rank-sym) nil 'permutation-permute-error)))
 	       (let ((,idx (allocate-index-store ,rank-sym))

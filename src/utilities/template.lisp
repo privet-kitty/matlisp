@@ -1,4 +1,4 @@
-(in-package :matlisp-template)
+(in-package #:matlisp-template)
 ;;Macro-management is the word.
 ;;Suck on that C++ :)
 

@@ -79,6 +79,8 @@
 	   #:maptree-if #:maptree #:flatten #:pair #:ziptree #:cart #:mapcart
 	   #:recursive-append #:unquote-args
 	   #:compile-and-eval
+	   ;;mop
+	   #:find-programmatic-class #:make-programmatic-class
 	   ;;string
 	   #:string+ #:string-join #:file->string #:split-seq #:splitlines
 	   ;;lvec

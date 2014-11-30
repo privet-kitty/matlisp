@@ -50,7 +50,7 @@
 ;;        (declare (type index-type ,dims))
 ;;        (with-no-init-checks
 ;; 	   (make-instance ',class
-;; 			  :store (pindex-id ,dims)
+;; 			  :store (index-id ,dims)
 ;; 			  :size ,dims)))))
 
 ;; (deft/method t/zeros (class permutation-pivot-flip) (dims &optional nz)
@@ -59,7 +59,7 @@
 ;;        (declare (type index-type ,dims))
 ;;        (with-no-init-checks
 ;; 	   (make-instance ',class
-;; 			  :store (pindex-id ,dims)
+;; 			  :store (index-id ,dims)
 ;; 			  :size ,dims)))))
 
 ;;

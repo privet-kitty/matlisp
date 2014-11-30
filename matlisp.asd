@@ -31,7 +31,7 @@
 (in-package #:matlisp-system)
 
 (asdf:defsystem :matlisp-basic
-  :depends-on (#:cffi #:iterate #:optima #:named-readtables #:lambda-reader #:yacc #:trivial-garbage)
+  :depends-on (#:cffi #:iterate #:optima #:named-readtables #:lambda-reader #:yacc #:trivial-garbage #:closer-mop)
   :pathname "src"
   :components
   ((:file "packages")
