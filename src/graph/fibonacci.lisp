@@ -39,7 +39,8 @@
   (funcall (slot-value fib 'heap-order) a b))
 
 (definline min-key (fib)
-  (when (root fib) (hnode-key (dcar (root fib)))))
+  (when (root fib)
+    (values (hnode-key (dcar (root fib))) (hnode-id (dcar (root fib))))))
 
 (defun insert-key (key fib)
   (let ((pmin (min-key fib))
@@ -53,7 +54,7 @@
     (hnode-id node)))
 
 (definline node-key (id fib)
-  (letv* ((node exists-p (gethash id fib)))
+  (letv* ((node exists-p (gethash id (node-table fib))))
     (when exists-p (hnode-key node))))
 
 (defun extract-min (fib)
@@ -106,7 +107,7 @@
 	      (finally (setf (root fib) fmin)))))
     ;;
     (when z
-      (values (hnode-id z) (hnode-key z)))))
+      (values (hnode-key z) (hnode-id z)))))
 
 ;;
 (definline cut (x y fib)
@@ -147,7 +148,8 @@
       (when y (cut node y fib) (ccut y fib)))
     ;;move to root
     (setf (root fib) (hnode-dcons node))
-    (extract-min fib)))
+    (extract-min fib))
+  id)
 ;;
 
 ;; (let ((fib (make-instance 'fib-heap)))
