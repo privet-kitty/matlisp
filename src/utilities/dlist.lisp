@@ -1,5 +1,4 @@
-(in-package #:matlisp-utilities )
-
+(in-package #:matlisp-dlist)
 ;; (setf *print-circle* t)
 (defun dcons (obj)
   (let ((lst (list* nil nil obj)))

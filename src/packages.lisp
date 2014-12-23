@@ -87,16 +87,21 @@
 	   #:lvec-foldl #:lvec-foldr #:lvec-max #:lvec-min #:lvec-eq
 	   #:lvec-map-foldl! #:lvec-map-foldr!
 	   #:lvec->list #:lvec->list!
-	   ;;dlist
-	   #:dcons #:dpush #:dpop #:dlist #:dappend! #:dcar #:dcdr #:drdc
 	   ;;Macros
-	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:binding-gensyms #:with-marking #:with-fslots #:values-n
+	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:binding-gensyms #:values-n
 	   #:letv* #:let-typed #:let*-typed #:make-array-allocator #:ziprm
-	   #:nconsc #:define-constant #:eval-every
-	   #:macrofy
+	   #:define-constant #:eval-every
 	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase 
 	   ;;
 	   #:definline #:with-optimization #:very-quickly))
+
+(defpackage "MATLISP-DLIST"
+  (:use #:common-lisp #:matlisp-utilities #:iterate)
+  (:export #:dpush #:dcons #:dpop #:dlist #:drdc #:dcdr #:dcar #:dappend!))
+
+(defpackage "MATLISP-FIBONACCI"
+  (:use #:common-lisp #:matlisp-utilities #:matlisp-dlist #:iterate)
+  (:export #:make-fib #:fib-insert #:fib-min #:fib-key #:fib-extract-min #:fib-decrease-key #:fib-delete))
 
 (defpackage "MATLISP-TEMPLATE"
   (:use #:common-lisp #:matlisp-utilities)
