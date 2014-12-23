@@ -116,7 +116,7 @@
          (DESTRUCTURING-BIND (A &OPTIONAL (C 2)) #:G1120
            (DECLARE (TYPE FIXNUM A)
                     (TYPE T C))
-           (PROGN T))))
+           (LOCALLY T))))
   @end lisp
   "
   (labels ((typedecl (syms alist)
@@ -154,7 +154,7 @@
 			      (car (typedecl (mapcar #'car vsyms) typa)))
 			     (remove-if #'null (mapcar #'cadr vsyms))))))
 		    bindings)
-	    `((progn ,@body))))))
+	    `((locally ,@body))))))
 
 (defmacro let-typed (bindings &rest body)
   "

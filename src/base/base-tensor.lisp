@@ -3,6 +3,7 @@
 ;;Alias for fixnum.
 (deftype index-type () 'fixnum)
 (deftype index-store-vector (&optional (size '*)) `(simple-array index-type (,size)))
+(deftype index-store-matrix (&optional (m '*) (n '*)) `(simple-array index-type (,m ,n)))
 
 (declaim (ftype (function (sequence) index-store-vector) make-index-store)
 	 (ftype (function (index-type) index-store-vector) allocate-index-store))

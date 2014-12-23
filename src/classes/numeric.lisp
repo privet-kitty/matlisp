@@ -17,9 +17,9 @@
 (deft/method t/field-type (sym rational-tensor) ()
   'rational)
 
-(defleaf fixnum-tensor (real-numeric-tensor) ())
-(deft/method t/field-type (sym fixnum-tensor) ()
-  'fixnum)
+(defleaf index-tensor (real-numeric-tensor) ())
+(deft/method t/field-type (sym index-tensor) ()
+  'index-type)
 
 (defleaf u8-tensor (real-numeric-tensor) ())
 (deft/method t/field-type (sym u8-tensor) ()
