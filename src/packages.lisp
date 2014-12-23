@@ -100,8 +100,9 @@
   (:export #:dpush #:dcons #:dpop #:dlist #:drdc #:dcdr #:dcar #:dappend!))
 
 (defpackage "MATLISP-FIBONACCI"
+  (:nicknames :fib)
   (:use #:common-lisp #:matlisp-utilities #:matlisp-dlist #:iterate)
-  (:export #:make-fib #:fib-insert #:fib-min #:fib-key #:fib-extract-min #:fib-decrease-key #:fib-delete))
+  (:export #:make-heap #:insert-key #:min-key #:node-key #:extract-min #:decrease-key #:delete-node))
 
 (defpackage "MATLISP-TEMPLATE"
   (:use #:common-lisp #:matlisp-utilities)

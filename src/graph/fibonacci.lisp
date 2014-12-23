@@ -32,31 +32,31 @@
   (print-unreadable-object (fib stream :type t)
     (format stream "size: ~A, trees: ~A" (number-of-elements fib) (number-of-trees fib))))
 
-(defun make-fib (&optional (func #'<))
+(defun make-heap (&optional (func #'<))
   (make-instance 'fib-heap :heap-order func))
 
 (definline fib-order (a b fib)
   (funcall (slot-value fib 'heap-order) a b))
 
-(defun fib-insert (obj fib)
-  (let ((pmin (fib-min fib))
-	(node (make-hnode :key obj :id (number-of-elements fib))))
+(definline min-key (fib)
+  (when (root fib) (hnode-key (dcar (root fib)))))
+
+(defun insert-key (key fib)
+  (let ((pmin (min-key fib))
+	(node (make-hnode :key key :id (number-of-elements fib))))
     (setf (hnode-dcons node) (dpush node (root fib)))
-    (unless (and pmin (fib-order obj pmin fib))
+    (unless (and pmin (fib-order key pmin fib))
       (setf (root fib) (dcdr (root fib))))
     (setf (gethash (hnode-id node) (node-table fib)) node)
     (incf (number-of-elements fib))
     (incf (number-of-trees fib))
     (hnode-id node)))
 
-(definline fib-min (fib)
-  (when (root fib) (hnode-key (dcar (root fib)))))
-
-(definline fib-key (id fib)
+(definline node-key (id fib)
   (letv* ((node exists-p (gethash id fib)))
     (when exists-p (hnode-key node))))
 
-(defun fib-extract-min (fib)
+(defun extract-min (fib)
   (let ((z (dpop (root fib))))
     ;;move the children of z into root
     (when z
@@ -122,10 +122,10 @@
   "cascading cut"
   (when-let (z (hnode-parent y))
     (if (hnode-mark? y)
-	(progn (cut y z fib) (ccut z))
+	(progn (cut y z fib) (ccut z fib))
 	(setf (hnode-mark? y) t))))
 
-(defun fib-decrease-key (id key fib)
+(defun decrease-key (id key fib)
   (let ((node (gethash id (node-table fib))))
     (declare (type hnode node))
     (assert (fib-order key (hnode-key node) fib) nil 'invalid-value :message "new key is greater than the current.")
@@ -133,21 +133,21 @@
     ;;cut node
     (let ((y (hnode-parent node)))
       (when (and y (fib-order key (hnode-key y) fib))
-	(cut node y) (ccut y)))
+	(cut node y fib) (ccut y fib)))
     ;;update min
-    (when (fib-order key (fib-min fib) fib)
+    (when (fib-order key (min-key fib) fib)
       (setf (root fib) (hnode-dcons node))))
   key)
 
-(defun fib-delete (id fib)
+(defun delete-node (id fib)
   (let ((node (gethash id (node-table fib))))
     (declare (type hnode node))
     ;;cut node
     (let ((y (hnode-parent node)))
-      (when y (cut node y fib) (ccut y)))
+      (when y (cut node y fib) (ccut y fib)))
     ;;move to root
     (setf (root fib) (hnode-dcons node))
-    (fib-extract-min fib)))
+    (extract-min fib)))
 ;;
 
 ;; (let ((fib (make-instance 'fib-heap)))
@@ -156,7 +156,6 @@
 
 
 ;; (let ((fib (make-instance 'fib-heap)))
-;;   (loop :for i from 0 :below 10000000 :do (fib-insert i fib))
-;;   (time (fib-delete 10 fib))
-;;   #+nil(loop :for i from 99 :downto 0 :do (let ((min (fib-extract-min fib)))
+;;   (loop :for i from 0 :below 100 :do (insert-key i fib))
+;;   (loop :for i from 0 :below 100 :do (let ((min (extract-min fib)))
 ;; 				       (unless (eql i min) (format t "noo! ~a" min)))))
