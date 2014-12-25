@@ -72,7 +72,8 @@
 	    (finally (incf (number-of-trees fib) i)))
       (setf (root fib) (dappend2 (hnode-children z) (root fib)))
       (setf (hnode-children z) nil
-	    (hnode-degree z) 0))
+	    (hnode-degree z) 0
+	    (hnode-dcons z) nil))
     ;;
     (when (> (number-of-trees fib) 1)
       ;;consolidate
@@ -116,7 +117,7 @@
 (definline cut (x y fib)
   "cut T_x from δ(y)"
   (decf (hnode-degree y))
-  (setf (hnode-children y) (let ((tmp (hnode-dcons x))) (dpop tmp))
+  (setf (hnode-children y) (let ((tmp (hnode-dcons x))) (dpop tmp) tmp)
 	(hnode-parent x) nil
 	(hnode-mark? x) nil)
   (incf (number-of-trees fib))
@@ -134,24 +135,26 @@
     (declare (type hnode node))
     (assert (fib-order key (hnode-key node) fib) nil 'invalid-value :message "new key is greater than the current.")
     (setf (hnode-key node) key)
-    ;;cut node
-    (let ((y (hnode-parent node)))
-      (when (and y (fib-order key (hnode-key y) fib))
-	(cut node y fib) (ccut y fib)))
-    ;;update min
-    (when (fib-order key (min-key fib) fib)
-      (setf (root fib) (hnode-dcons node))))
+    (when (hnode-dcons node)
+      ;;cut node
+      (let ((y (hnode-parent node)))
+	(when (and y (fib-order key (hnode-key y) fib))
+	  (cut node y fib) (ccut y fib)))
+      ;;update min
+      (when (fib-order key (min-key fib) fib)
+	(setf (root fib) (hnode-dcons node)))))
   key)
 
 (defun delete-node (id fib)
   (let ((node (gethash id (node-table fib))))
     (declare (type hnode node))
-    ;;cut node
-    (let ((y (hnode-parent node)))
-      (when y (cut node y fib) (ccut y fib)))
-    ;;move to root
-    (setf (root fib) (hnode-dcons node))
-    (extract-min fib))
+    (when (hnode-dcons node)
+      ;;cut node
+      (let ((y (hnode-parent node)))
+	(when y (cut node y fib) (ccut y fib)))
+      ;;move to root
+      (setf (root fib) (hnode-dcons node))
+      (extract-min fib)))
   id)
 ;;
 
