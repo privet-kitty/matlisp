@@ -44,6 +44,15 @@
       (remove-method func meth)
       meth)))
 
+(defun maprange (function start end &optional (h 1))
+  (declare (type real start end h))
+  (let ((quo (ceiling (if (> start end) (- start end) (- end start)) h)))
+    (if (= quo 0) nil
+	(let ((h (if (> start end) (- h) h)))
+	  (loop :for i :from 0 :below quo
+	     :for ori := start :then (+ ori h)
+	     :collect (funcall function ori))))))
+
 (defun maptree-if (predicate transformer tree)
   "
   Returns a new tree by recursively calling @arg{transformer} on sub-trees which satisfy the @arg{predicate}.

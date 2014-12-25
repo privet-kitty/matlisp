@@ -76,7 +76,7 @@
 	   #:zip #:zipsym
 	   #:slot-values #:remmeth
 	   #:list-dimensions
-	   #:maptree-if #:maptree #:flatten #:pair #:ziptree #:cart #:mapcart
+	   #:maprange #:maptree-if #:maptree #:flatten #:pair #:ziptree #:cart #:mapcart
 	   #:recursive-append #:unquote-args
 	   #:compile-and-eval
 	   ;;mop

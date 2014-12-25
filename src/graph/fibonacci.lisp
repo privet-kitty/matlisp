@@ -57,6 +57,9 @@
   (letv* ((node exists-p (gethash id (node-table fib))))
     (when exists-p (hnode-key node))))
 
+(definline (setf node-key) (value id fib)
+  (decrease-key id value fib))
+
 (defun extract-min (fib)
   (let ((z (dpop (root fib))))
     ;;move the children of z into root
