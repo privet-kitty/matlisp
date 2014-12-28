@@ -102,7 +102,7 @@
 (defpackage "MATLISP-FIBONACCI"
   (:nicknames :fib)
   (:use #:common-lisp #:matlisp-utilities #:matlisp-dlist #:iterate)
-  (:export #:make-heap #:insert-key #:min-key #:node-key #:extract-min #:decrease-key #:delete-node))
+  (:export #:make-heap #:insert-key #:min-key #:node-key #:node-existsp #:extract-min #:decrease-key #:delete-node))
 
 (defpackage "MATLISP-TEMPLATE"
   (:use #:common-lisp #:matlisp-utilities)

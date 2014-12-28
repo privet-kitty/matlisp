@@ -53,6 +53,10 @@
     (incf (number-of-trees fib))
     (hnode-id node)))
 
+(definline node-existsp (id fib)
+  (letv* ((node exists-p (gethash id (node-table fib))))
+    (when (and exists-p (hnode-dcons node)) t)))
+
 (definline node-key (id fib)
   (letv* ((node exists-p (gethash id (node-table fib))))
     (when exists-p (hnode-key node))))
