@@ -5,66 +5,96 @@
 (deftype index-store-vector (&optional (size '*)) `(simple-array index-type (,size)))
 (deftype index-store-matrix (&optional (m '*) (n '*)) `(simple-array index-type (,m ,n)))
 
-(declaim (ftype (function (sequence) index-store-vector) make-index-store)
-	 (ftype (function (index-type) index-store-vector) allocate-index-store))
-(definline make-index-store (contents)
-  (the index-store-vector (make-array (length contents) :element-type 'index-type :initial-contents contents)))
-(definline allocate-index-store (n)
-  (the index-store-vector (make-array n :element-type 'index-type)))
-
-;;This is a silly hack. The plan is to get rid of this part using MOP.
-(defvar *tensor-type-leaves* nil "
-  This is used to keep track of classes that are not meant to be
-  abstract classes. This prevents less specialized methods from
-  clobbering the generation of more sophisticated (read faster)
-  methods.")
-
-(declaim (inline simple-array-type))
-(defun simple-array-type (type-sym &optional (size 'cl:*))
-  "
-  Creates the list representing simple-array with type @arg{type-sym}.
-
-  Example:
-  @lisp
-  > (linear-array-type 'double-float 10)
-  => (simple-array double-float (10))
-  @end lisp
-  "
-  `(simple-array ,type-sym (,size)))
-
-(defmacro defleaf (name direct-superclasses direct-slots &rest options)
-  `(eval-every
-     (defclass ,name ,direct-superclasses ,direct-slots ,@options)
-     (setf *tensor-type-leaves* (union *tensor-type-leaves* (list ',name)))))
+(deft/generic (t/store-allocator #'subtypep) sym (size &optional init))
+(deft/method t/store-allocator (sym index-store-vector) (size &optional initial-contents)
+  `(the index-store-vector (make-array ,size :element-type 'index-type ,@(when initial-contents `(:initial-contents ,initial-contents)))))
+(deft/method t/store-allocator (sym index-store-matrix) (size &optional initial-contents)
+  `(the index-store-matrix (make-array ,size :element-type 'index-type ,@(when initial-contents `(:initial-contents ,initial-contents)))))
 ;;
-(defclass base-tensor ()
-  ((dimensions :initarg :dimensions :type index-store-vector
-   :documentation "Dimensions of the vector spaces in which the tensor's arguments reside.")
-   (parent-tensor :reader parent-tensor :initform nil :initarg :parent-tensor :type (or null base-tensor)
-    :documentation "If the tensor is a view of another tensor, then this slot is bound.")
-   (store :initarg :store :reader store
-    :documentation "The actual storage for the tensor.")
-   (attributes :initarg :attributes :initform nil
-    :documentation "Place for computable attributes of an object instance."))
+(defparameter *accessor-types* '(stride-accessor coordinate-accessor graph-accessor))
+
+(defclass base-accessor ()
+  ((dimensions :initarg :dimensions :type index-store-vector :documentation "Dimensions of the vector spaces in which the tensor's arguments reside.")))
+
+(declaim (ftype (function (base-accessor &optional index-type) (or index-store-vector index-type)) dimensions))
+(definline dimensions (x &optional idx)
+  (declare (type base-accessor x))
+  (typecase idx
+    (null (the index-store-vector (slot-value x 'dimensions)))
+    (index-type (the index-type (aref (the index-store-vector (slot-value x 'dimensions)) (modproj (or idx 0) (order x) nil 0))))
+    (t (lvec->list (the index-store-vector (slot-value x 'dimensions))))))
+
+(defmethod initialize-instance :after ((x base-accessor) &rest initargs)
+  (declare (ignore initargs))
+  (when *check-after-initializing?*
+    (very-quickly
+      (loop :for i :from 0 :below (length (dimensions x))
+	 :do (assert (> (dimensions x i) 0) nil 'tensor-invalid-dimension-value :argument i :dimension (dimensions x i) :tensor x)))))
+
+(defgeneric total-size (obj)
+  (:method ((x base-accessor))
+    (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (* x y))) (the index-store-vector (dimensions x))))
+  (:method ((obj sequence)) (length obj))
+  (:method ((arr array)) (array-total-size arr)))
+
+;;We use order (opposed to CL convention) so as not to cause confusion with matrix rank.
+(definline order (x)
+  (declare (type base-accessor x))
+  (length (the index-store-vector (slot-value x 'dimensions))))
+
+;;Vanilla accessor
+(defclass stride-accessor (base-accessor)
+  ((strides :initarg :strides :type index-store-vector :documentation "Strides for accesing elements of the tensor.")
+   (head :initarg :head :initform 0 :type index-type :documentation "Head for the store's accessor.")))
+
+(declaim (ftype (function (stride-accessor &optional index-type) (or index-type index-store-vector)) strides)
+	 (ftype (function (stride-accessor) index-type) head))
+(definline strides (x &optional idx)
+  (declare (type stride-accessor x))
+  (typecase idx
+    (null (the index-store-vector (slot-value x 'strides)))
+    (index-type (the index-type (aref (the index-store-vector (slot-value x 'strides)) (modproj (or idx 0) (order x) nil 0))))
+    (t (lvec->list (the index-store-vector (slot-value x 'strides))))))
+(definline head (x)
+  (declare (type stride-accessor x))
+  (slot-value x 'head))
+;;Bipartite/Factor/Co-ordinate store
+(defclass coordinate-accessor (base-accessor)
+  ((indices :initarg :indices :type index-store-matrix :documentation "Non-zero indices in the tensor.")))
+
+;;Graph store, only works for matrices.
+(defclass graph-accessor (base-accessor)
+  ((fence :initarg :fence :type index-store-vector :documentation "Start index for neighbourhood.")
+   (neighbours :initarg :neighbours :type index-store-vector :documentation "Neighbour ids.")))
+
+(definline fence (g &optional idx)
+  (declare (type graph-accessor g))
+  (typecase idx
+    (null (the index-store-vector (slot-value g 'fence)))
+    (index-type (let-typed ((f (slot-value g 'fence) :type index-store-vector)
+			    (idx (modproj (or idx 0) (order g) nil 0)))
+		  (values (aref f idx) (aref f (1+ idx)))))
+    (t (lvec->list (the index-store-vector (slot-value g 'fence))))))
+
+(definline neighbours (g &optional j)
+  (declare (type graph-accessor g))
+  (etypecase j
+    (null (the index-store-vector (slot-value g 'neighbours)))
+    (index-type (aref (the index-store-vector (slot-value g 'neighbours)) j))
+    (cons (letv* (((u &optional v) j :type (index-type))
+		  (l r (fence g u))
+		  (nn (slot-value g 'neighbours) :type index-store-vector))
+	    (if v
+	        (binary-search (the index-type v) l r nn)
+		(loop :for ii :from l :below r :collect (aref nn ii)))))))
+;;
+(defclass base-tensor (base-accessor)
+  ((store :initarg :store :documentation "Storage for the tensor.")
+   (parent :initform nil :initarg :parent :type (or null base-tensor) :documentation "This slot is bound if the tensor is the view of another.")
+   (memos :initform nil :documentation "Memoized attributes."))
   (:documentation "Basic tensor class."))
 
-(declaim (ftype (function (base-tensor &optional index-type) (or index-type index-store-vector)) dimensions)
-	 (ftype (function (base-tensor) hash-table) attributes))
-
-(definline orphanize (x)
-  (setf (slot-value x 'parent-tensor) nil)
-  x)
-
-(definline dimensions (x &optional idx)
-  (declare (type base-tensor x))
-  (if idx
-      (the index-type (aref (the index-store-vector (slot-value x 'dimensions)) (modproj (or idx 0) (order x) nil 0)))
-      (the index-store-vector (slot-value x 'dimensions))))
-
-(declaim (ftype (function (base-tensor &optional index-type) (or index-store-vector index-type)) dimensions))
-
-(defgeneric print-element (tensor
-			   element stream)
+(defgeneric print-element (x element stream)
   (:documentation "
   Syntax
   ======
@@ -75,269 +105,21 @@
   This generic function is specialized to TENSOR to
   print ELEMENT to STREAM.  Called by PRINT-TENSOR/MATRIX
   to format a tensor into the STREAM.")
-  (:method ((tensor base-tensor) element stream)
+  (:method ((x base-tensor) element stream)
     (format stream "~a" element)))
-
-;;Create hash-table only when necessary
-(definline attributes (x)
-  (declare (type base-tensor x))
-  (or (slot-value x 'attributes)
-      (setf (slot-value x 'attributes) (make-hash-table))))
-
-(definline delete-attributes (x)
-  (setf (slot-value x 'attributes) nil)
-  x)
-
-(defmacro memoizing ((tensor name) &rest body)
-  (declare (type symbol name))
-  (with-gensyms (tens)
-    `(let-typed ((,tens ,tensor :type base-tensor))
-       (multiple-value-bind (value present?) (gethash ',name (attributes ,tens))
-	 (values-list
-	  (if present?
-	      value
-	      (setf (gethash ',name (attributes ,tens))
-		    (multiple-value-list (progn ,@body)))))))))
-
 ;;I have no idea what this does, or why we want it (inherited from standard-matrix.lisp)
 (defmethod make-load-form ((tensor base-tensor) &optional env)
   "
   MAKE-LOAD-FORM allows us to determine a load time value for
   tensor, for example #.(make-tensors ...)"
   (make-load-form-saving-slots tensor :environment env))
-
-;;These should ideally be memoised (or not)
-;;We use order (against cl convention) so as not to cause confusion with matrix rank.
-(definline order (tensor)
-  (declare (type base-tensor tensor))
-  (length (the index-store-vector (slot-value tensor 'dimensions))))
-;; (definline tensor-rank (tensor) (order tensor))
-
 ;;
-(defgeneric size (obj)
-  (:method ((tensor base-tensor))
-    (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (* x y))) (the index-store-vector (dimensions tensor))))
-  (:method ((obj sequence))
-    (length obj))
-  (:method ((arr array))
-    (reduce #'* (array-dimensions arr))))
-
-(definline dims (tensor &optional idx)
-  (declare (type base-tensor tensor))
-  (if idx (aref (dimensions tensor) (modproj (or idx 0) (order tensor) nil 0))
-      (memoizing (tensor dims)
-		 (lvec->list (the index-store-vector (dimensions tensor))))))
-;;
-(defmethod initialize-instance :after ((tensor base-tensor) &rest initargs)
-  (declare (ignore initargs))
-  (when *check-after-initializing?*
-    (let-typed ((dims (dimensions tensor) :type index-store-vector))
-      (very-quickly (loop :for i :from 0 :below (length dims)
-		       :do (assert (> (aref dims i) 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i) :tensor tensor))))))
-
-;;
-(defclass sparse-tensor (base-tensor) ())
-(defclass dense-tensor (base-tensor) ())
-
-(defgeneric ref (tensor &rest subscripts)
-  (:documentation "
-  Syntax
-  ======
-  (ref store subscripts)
-
-  Purpose
-  =======
-  Return the element corresponding to subscripts.
-"))
-
-(defgeneric (setf ref) (value tensor &rest subscripts))
-
-(labels ((array-subs (obj subscripts)
-	   (let ((subs (etypecase (car subscripts)
-			 (number subscripts)
-			 (cons (car subscripts))
-			 (vector (lvec->list (car subscripts))))))
-	     (iter (for s on subs)
-		   (for i first 0 then (1+ i))
-		   (when (< (car s) 0)
-		     (rplaca s (modproj (car s) (array-dimension obj i) nil))))
-	     subs)))
-  (defmethod ref ((obj array) &rest subscripts)
-    (apply #'aref obj (array-subs obj subscripts)))
-  (defmethod (setf ref) (value (obj array) &rest subscripts)
-    (apply #'(setf aref) value obj (array-subs obj subscripts))))
-
-(labels ((list-subs (obj subscripts)
-	   (let ((subs (etypecase (car subscripts)
-			 (number subscripts)
-			 (cons (car subscripts))
-			 (vector (lvec->list (car subscripts))))))
-	     (assert (= (length subs) 1) nil 'invalid-arguments) (setf subs (car subs))
-	     (when (< subs 0) (setf subs (modproj subs (length obj))))
-	     subs)))
-  (defmethod ref ((obj cons) &rest subscripts)
-    (elt obj (list-subs obj subscripts)))
-  (defmethod (setf ref) (value (obj cons) &rest subscripts)
-    (setf (elt obj (list-subs obj subscripts)) value)))
-;;
-(defgeneric store-ref (tensor idx)
-  (:documentation  "Generic serial read access to the store.")
-  (:method ((tensor base-tensor) idx)
-    (let ((clname (class-name (class-of tensor))))
-      (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
-      (compile-and-eval
-       `(defmethod store-ref ((tensor ,clname) idx)
-	  (t/store-ref ,clname (store tensor) idx))))
-    (store-ref tensor idx)))
-
-(defgeneric (setf store-ref) (value tensor idx)
-  (:method (value (tensor base-tensor) idx)
-    (let ((clname (class-name (class-of tensor))))
-      (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
-      (compile-and-eval
-       `(defmethod (setf store-ref) (value (tensor ,clname) idx)
-	  (t/store-set ,clname value (store tensor) idx)
-	  (t/store-ref ,clname (store tensor) idx))))
-    (setf (store-ref tensor idx) value)))
-
-;;
-(defgeneric store-size (tensor)
-  (:documentation "
-  Syntax
-  ======
-  (store-size tensor)
-
-  Purpose
-  =======
-  Returns the number of elements the store of the tensor can hold
-  (which is not necessarily equal to its vector length).")
-  (:method ((tensor base-tensor))
-    (let ((clname (class-name (class-of tensor))))
-      (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
-      (compile-and-eval
-       `(defmethod store-size ((tensor ,clname))
-	  (t/store-size ,clname (store tensor))))
-      (store-size tensor))))
-;;
-(defgeneric subtensor~ (tensor subscripts)
-  (:documentation "
-  Syntax
-  ======
-  (SUBTENSOR~ TENSOR SUBSCRIPTS &optional PRESERVE-RANK REF-SINGLE-ELEMENT?)
-
-  Purpose
-  =======
-  Creates a new tensor data structure, sharing store with
-  TENSOR but with different strides and dimensions, as defined
-  in the subscript-list SUBSCRIPTS.
-
-  Examples
-  ========
-  > (defvar X (make-real-tensor 10 10 10))
-  X
-
-  ;; Get (:, 0, 0)
-  > (subtensor~ X '((nil nil . nil) (0 1 . nil) (0 1 . nil)))
-
-  ;; Get (:, 2:5, :)
-  > (subtensor~ X '((nil nil . nil) (2 5 . nil)))
-
-  ;; Get (:, :, 0:2:10) (0:10:2 = [i : 0 <= i < 10, i % 2 = 0])
-  > (subtensor~ X '((nil nil . nil) (nil nil . nil) (0 10 . 2)))
-
-  Commentary
-  ==========
-  Sadly in our parentheses filled world, this function has to be necessarily
-  verbose (unlike MATLAB, Python). However, this function has been designed with the
-  express purpose of using it with a Lisp reader macro. The slicing semantics is
-  essentially the same as MATLAB except for the zero-based indexing.
-")
-  (:method :before ((tensor base-tensor) (subscripts list))
-	   (assert (or (null subscripts) (= (length subscripts) (order tensor))) nil 'tensor-index-rank-mismatch)))
-
-(defun (setf subtensor~) (value tensor subscripts)
-  (copy! value (subtensor~ tensor subscripts)))
-
-;;Helper functions
-(definline modproj (i d &optional open? def)
-  (cond
-    ((not i) def)
-    ((not d) i)
-    (t (assert (if open? (<= (- (1+ d)) i d) (< (- (1+ d)) i d)) nil 'invalid-value)
-       (if (< i 0) (if (and open? (= i (- (1+ d)))) -1 (mod i d)) i))))
-
-(definline parse-slice (subs dimensions)
-  (declare (type index-store-vector dimensions))
-  (iter (for sub.i in subs)
-	(for d in-vector dimensions) (declare (type index-type d))
-	(if (not (consp sub.i))
-	    (let ((idx (modproj (the (or index-type null) sub.i) d nil 0)))
-	      (collect 1 into dims)
-	      (collect idx into psubs))
-	    (destructuring-bind (start end . inc) sub.i
-	      (declare ((or index-type null) start end inc))
-	      (let* ((inc (modproj inc nil nil 1))
-		     (start (modproj start d nil (if (> inc 0) 0 (1- d))))
-		     (end (modproj end d t (if (> inc 0) d -1)))
-		     (nd (ceiling (- end start) inc)))
-		(declare (type index-type start end inc nd))
-		(when (<= nd 0) (return nil))
-		(collect nd into dims)
-		(collect (list* start end inc) into psubs))))
-	(finally (return (values psubs dims)))))
-
-(definline parse-slice-for-strides (subscripts dimensions strides)
-  (declare (type index-store-vector dimensions strides)
-	   (type list subscripts))
-  (iter (for sub.i in subscripts)
-	(for d in-vector dimensions)
-	(for s in-vector strides)
-	(with (the index-type hd) = 0)
-	(if (not (consp sub.i))
-	    (let ((idx (modproj (the (or index-type null) sub.i) d nil 0)))
-	      (incf hd (* s idx)))
-	    (destructuring-bind (start end . inc) sub.i
-	      (declare ((or index-type null) start end inc))
-	      (let* ((inc (modproj inc nil nil 1))
-		     (start (modproj start d nil (if (> inc 0) 0 (1- d))))
-		     (end (modproj end d t (if (> inc 0) d -1)))
-		     (nd (ceiling (- end start) inc)))
-		(declare (type index-type start end inc nd))
-		(when (<= nd 0) (return nil))
-		(incf hd (* s start))
-		(collect nd into dims)
-		(collect (* inc s) into stds))))
-	(finally (return (values hd dims stds)))))
-
-(definline slice~ (x axis &optional (idx 0) (preserve-rank? (when (= (order x) 1) t)))
-  (let* ((axis (modproj axis (order x) nil 0))
-	 (subs (iter (for i from 0 below (order x)) (collect (cond ((/= i axis) '(nil nil))
-								   (preserve-rank? (list idx (1+ idx)))
-								   (t idx))))))
-    (subtensor~ x subs)))
-
-(definline row-slice~ (x idx)
-  (slice~ x 0 idx))
-
-(definline col-slice~ (x idx)
-  (slice~ x 1 idx))
-;;
-(defgeneric suptensor~ (tensor ord &optional start)
-  (:method :before ((tensor base-tensor) ord &optional (start 0))
-	   (declare (type index-type start))
-	   (let ((tord (order tensor)))
-	     (assert (and (< -1 start) (<= tord (order tensor)) (<= 0 start (- ord tord))) nil 'invalid-arguments))))
-
-(defgeneric reshape! (tensor dims)
-  (:documentation "
-  (RESHAPE! tensor dims)
-  Reshapes the @arg{tensor} to the shape in @arg{dims}.
-
-  This function expects all the strides to be of the same sign when
-  @arg{tensor} is subtype of standard-tensor."))
-
-(definline matrixify~ (vec &optional (col-vector? t))
-  (if (tensor-matrixp vec) vec (suptensor~ vec 2 (if col-vector? 0 1))))
+(declaim (ftype (function (base-tensor) hash-table) memos))
+(definline memos (x)
+  (declare (type base-tensor x))
+  ;;Create hash-table only when necessary
+  (or (slot-value x 'memos)
+      (setf (slot-value x 'memos) (make-hash-table :test 'equal))))
 ;;
 (defun tensor-typep (tensor subs)
   "
@@ -365,12 +147,12 @@
 	 (if subscripts
 	     (let-typed ((rank (order tensor) :type index-type)
 			 (dims (dimensions tensor) :type index-store-vector))
-			(very-quickly
-			  (loop :for val :in subscripts
-			     :for i :of-type index-type := 0 :then (1+ i)
-			     :do (unless (or (eq val '*) (eq val (aref dims i)))
-				   (return nil))
-			     :finally (return (when (= (1+ i) rank) t)))))
+	       (very-quickly
+		 (loop :for val :in subscripts
+		    :for i :of-type index-type := 0 :then (1+ i)
+		    :do (unless (or (eq val '*) (eq val (aref dims i)))
+			  (return nil))
+		    :finally (return (when (= (1+ i) rank) t)))))
 	     t))))
 
 (definline tensor-matrixp (ten)
@@ -381,35 +163,51 @@
   (declare (type base-tensor ten))
   (= (order ten) 1))
 
-(deftype base-square-matrix ()
-  `(and base-tensor (satisfies tensor-square-matrixp)))
-
-(deftype base-matrix ()
-  `(and base-tensor (satisfies tensor-matrixp)))
-
-(deftype base-vector ()
-  `(and base-tensor (satisfies tensor-vectorp)))
-
 (definline tensor-squarep (tensor)
   (declare (type base-tensor tensor))
   (let-typed ((dims (dimensions tensor) :type index-store-vector))
-	     (loop :for i :from 1 :below (length dims)
-		:do (unless (= (aref dims i) (aref dims 0))
-		      (return nil))
-		:finally (return t))))
+    (loop :for i :from 1 :below (length dims)
+       :do (unless (= (aref dims i) (aref dims 0)) (return nil))
+       :finally (return t))))
+
+(deftype base-vector () `(and base-tensor (satisfies tensor-vectorp)))
+(deftype base-matrix () `(and base-tensor (satisfies tensor-matrixp)))
+(deftype base-square-matrix () `(and base-tensor (satisfies tensor-matrixp) (satisfies tensor-squarep)))
 ;;
-(defun tensor-append (axis tensor &rest more-tensors)
-  (if (null tensor)
-      (when more-tensors
-	(apply #'tensor-append axis (car more-tensors) (cdr more-tensors)))
-      (let ((dims (copy-seq (dimensions tensor))))
-	(iter (for ele in more-tensors) (incf (aref dims axis) (aref (dimensions ele) axis)))
-	(let* ((ret (zeros dims (class-of tensor)))
-	       (view (slice~ ret axis 0 t)))
-	  (iter (for ele in (cons tensor more-tensors))
-		(with head = 0)
-		(setf (slot-value view 'head) head
-		      (aref (dimensions view) axis) (aref (dimensions ele) axis))
-		(copy! ele view)
-		(incf head (* (aref (strides ret) axis) (aref (dimensions ele) axis))))
-	  ret))))
+
+
+(with-memoization ()
+  (defmem tensor (field &optional (accessor 'stride-accessor) (store 'simple-array))
+    (assert (and (member accessor *accessor-types*) (or (not store) (and (eql accessor 'stride-accessor) (member store '(simple-array hash-table))))) nil 'invalid-arguments)
+    (or
+     (find-if #'(lambda (x)
+		  (and (eql (field-type x) field)
+		       (or (not (eql accessor 'stride-accessor)) (eql (first (ensure-list (store-type x))) store))
+		       (and (= (length (closer-mop:class-direct-subclasses (find-class x))) 2))))
+	      (mapcar #'class-name (intersection (closer-mop:class-direct-subclasses (find-class 'base-tensor)) (closer-mop:class-direct-subclasses (find-class 'stride-accessor)))))
+     (let ((cl (intern (format nil "~a" (list field accessor store)))))
+       (compile-and-eval `(defclass ,cl (base-tensor ,accessor) ()))
+       (compile-and-eval `(deft/method t/field-type (sym ,cl) () ',field))
+       (case store
+	 (simple-array (compile-and-eval `(deft/method t/store-type (sym ,cl) (&optional (size '*))
+					    `(simple-array ,(store-element-type sym) (,size)))))
+	 (hash-table (compile-and-eval `(deft/method t/store-type (sym ,cl) (&optional (size '*))
+					  'hash-table))))
+       cl))))
+
+(defun tensor-load-form (class)
+  (let ((supclass (mapcar #'class-name (closer-mop:class-direct-superclasses (find-class class)))))
+    (append
+     (list (field-type class))
+     (remove 'base-tensor supclass)
+     (when (member 'stride-accessor supclass) (list (first (ensure-list (store-type class))))))))
+
+#+nil
+(defmacro memoizing ((tensor name) &rest body)
+  (declare (type symbol name))
+  (using-gensyms (decl (tensor) (value exists-p))
+    `(let (,@decl)
+       (declare (type base-tensor ,tensor))
+       (letv* ((,value ,exists-p (gethash ',name (attributes ,tensor))))
+	 (values-list (if ,exists-p ,value
+			  (setf (gethash ',name (attributes ,tensor)) (multiple-value-list (progn ,@body)))))))))

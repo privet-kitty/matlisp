@@ -86,14 +86,17 @@
 	   ;;lvec
 	   #:lvec-foldl #:lvec-foldr #:lvec-max #:lvec-min #:lvec-eq
 	   #:lvec-map-foldl! #:lvec-map-foldr!
-	   #:lvec->list #:lvec->list!
+	   #:lvec->list #:lvec->list! #:binary-search
 	   ;;Macros
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:binding-gensyms #:values-n
 	   #:letv* #:let-typed #:let*-typed #:make-array-allocator #:ziprm
 	   #:define-constant #:eval-every
 	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase 
 	   ;;
-	   #:definline #:with-optimization #:very-quickly))
+	   #:definline #:with-optimization #:very-quickly
+	   ;;
+	   #:memoizing-let #:defmem #:with-memoization
+	   ))
 
 (defpackage "MATLISP-DLIST"
   (:use #:common-lisp #:matlisp-utilities #:iterate)

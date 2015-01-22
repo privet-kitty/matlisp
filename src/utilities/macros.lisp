@@ -337,4 +337,22 @@
   `(eval-when (:compile-toplevel :load-toplevel :execute)
      ,@forms))
 
+(defmacro with-memoization ((&optional (hash-table `(make-hash-table :test 'equal))) &rest body)
+  (with-gensyms (table value exists-p args)
+    (maptree '(memoizing-let defmem with-memoization)
+	     #'(lambda (x)
+		 (if (eq (first x) 'with-memoization) x
+		     (let ((id (gensym "memo-"))
+			   (def-p (eql (first x) 'defmem))
+			   (decl-p (and (consp (third x)) (eql (car (third x)) 'declare))))
+		       `(,(if def-p 'defun 'let) ,@(subseq x 1 (+ (if def-p 1 0) (if decl-p 3 2)))		      
+			  (letv* ((,args (list ',id ,@(if def-p
+							  (mapcar #'(lambda (x) (if (consp x) (car x) x)) (remove-if #'(lambda (x) (member x cl:lambda-list-keywords)) (third x)))
+							  (mapcar #'car (second x)))))
+				  (,value ,exists-p (gethash ,args ,table)))
+			    (values-list
+			     (if ,exists-p ,value
+				 (setf (gethash ,args ,table) (multiple-value-list (progn ,@(nthcdr (+ (if def-p 1 0) (if decl-p 3 2)) x)))))))))))
+	     `(let ((,table ,hash-table)) ,@body))))
+
 )

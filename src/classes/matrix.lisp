@@ -49,9 +49,6 @@
   Return T if X is either a row or a column matrix."
   (or (row-matrix-p matrix) (col-matrix-p matrix)))
 
-(definline tensor-square-matrixp (matrix)
-  (and (tensor-matrixp matrix) (tensor-squarep matrix)))
-
 ;; ;;
 ;; (defgeneric fill-matrix (matrix fill-element)
 ;;   (:documentation 

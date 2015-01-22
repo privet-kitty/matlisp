@@ -2,41 +2,59 @@
 
 ;;tensor specializations
 (deft/generic (t/field-type #'subtypep) sym ())
-(deft/method t/field-type (sym base-tensor) ()
-  t)
-
 (eval-every
+  (defun field-type (clname) (macroexpand-1 `(t/field-type ,clname)))
   (defun coerceable? (clx cly)
-    (handler-case
-	(progn
-	  (macroexpand-1 `(t/strict-coerce ((t/field-type ,clx) (t/field-type ,cly)) x))
-	  t)
+    (handler-case (progn (macroexpand-1 `(t/strict-coerce ((t/field-type ,clx) (t/field-type ,cly)) x)) t)
       (error () nil))))
 
+(deft/method t/field-type (sym base-tensor) () t)
+;;Beware of infinite loops here.
+(deft/generic (t/store-element-type #'subtypep) sym ())
 (eval-every
-  (defun field-type (clname)
-    (macroexpand-1 `(t/field-type ,clname))))
+  (defun store-element-type (clname) (macroexpand-1 `(t/store-element-type ,clname)))
+  (defun real-subtype (cl) (when (and (consp cl) (eql (first cl) 'complex)) (second cl))))
+
+(deft/method (t/store-element-type #'linear-storep) (sym base-tensor) ()
+  (let ((ty (field-type sym))) (or (real-subtype ty) ty)))
 
 ;;This is useful for Eigenvalue decompositions
 (deft/generic (t/complexified-type #'subtypep) sym ())
-(eval-every
-  (defun complexified-type (type)
-    (macroexpand-1 `(t/complexified-type ,type))))
+(eval-every (defun complexified-type (type) (macroexpand-1 `(t/complexified-type ,type))))
+
+(deft/method t/complexified-type (sym base-tensor) ()
+  (letv* (((type accessor &optional store) (tensor-load-form sym)))
+    (cond
+      ((real-subtype type) sym)
+      ((subtypep type 'real) (tensor (list 'complex type) accessor store))
+      (t (error "Unknown complex type for ~a" sym)))))
 
 ;;Now we're just making up names
 (deft/generic (t/realified-type #'subtypep) sym ())
-(eval-every
-  (defun realified-type (type)
-    (macroexpand-1 `(t/realified-type ,type))))
+(eval-every (defun realified-type (type) (macroexpand-1 `(t/realified-type ,type))))
 
+(deft/method t/realified-type (sym base-tensor) ()
+  (letv* (((type accessor &optional store) (tensor-load-form sym)))
+    (if (subtypep type 'complex)
+	(if (real-subtype type)
+	    (tensor (real-subtype type) accessor store)
+	    (tensor 'real accessor store))
+	sym)))
 ;;
-(deft/generic (t/store-allocator #'subtypep) sym (size &optional initial-element))
-
 (deft/generic (t/store-type #'subtypep) sym (&optional size))
 (eval-every
-  (defun store-type (cl &optional (size '*))
-    (macroexpand-1 `(t/store-type ,cl ,size))))
+  (defun store-type (cl &optional (size '*)) (macroexpand-1 `(t/store-type ,cl ,size)))
+  (defun linear-storep (cl) (eql (first (ensure-list (store-type cl))) 'simple-array)))
 
+(deft/method t/store-type (sym graph-accessor) (&optional (size '*))
+  `(simple-array ,(store-element-type sym) (,size)))
+(deft/method t/store-type (sym coordinate-accessor) (&optional (size '*))
+  `(simple-array ,(store-element-type sym) (,size)))
+
+;;
+(deft/generic (t/compute-store-size #'subtypep) sym (size))
+(deft/generic (t/store-size #'subtypep) sym (ele))
+(deft/generic (t/store-allocator #'subtypep) sym (size &optional initial-element))
 (deft/generic (t/store-ref #'subtypep) sym (store &rest idx))
 (deft/generic (t/store-set #'subtypep) sym (value store &rest idx))
 
@@ -45,34 +63,20 @@
       (get-setf-expansion store env)
     (declare (ignore newval setter))
     (with-gensyms (nval)
-      (values dummies
-	      vals
-	      `(,nval)
+      (values dummies vals `(,nval)
 	      `(t/store-set ,sym ,nval ,getter ,@idx)
 	      `(t/store-ref ,sym ,getter ,@idx)))))
-;;standard-tensor specific.
 
-;;Beware of infinite loops here.
-(deft/generic (t/store-element-type #'subtypep) sym ())
-(deft/method t/store-element-type (sym standard-tensor) ()
-  (macroexpand-1 `(t/field-type ,sym)))
+(deft/method t/compute-store-size (sym base-tensor) (size) size)
+(deft/method t/store-size (sym base-tensor) (ele) `(length ,ele))
 
-(eval-every
-  (defun store-element-type (clname)
-    (macroexpand-1 `(t/store-element-type ,clname))))
 ;;
-(deft/method t/store-type (sym standard-tensor) (&optional (size '*))
- `(simple-array ,(store-element-type sym) (,size)))
+(deft/method (t/store-ref #'linear-storep) (sym base-tensor) (store &rest idx)
+  (assert (null (cdr idx)) nil "given more than one index for linear-store")
+  `(aref (the ,(store-type sym) ,store) (the index-type ,(car idx))))
+
 ;;
-(deft/generic (t/compute-store-size #'subtypep) sym (size))
-(deft/method t/compute-store-size (sym standard-tensor) (size)
-  size)
-;;
-(deft/generic (t/store-size #'subtypep) sym (ele))
-(deft/method t/store-size (sym standard-tensor) (ele)
-  `(length ,ele))
-;;
-(deft/method t/store-allocator (sym standard-tensor) (size &optional initial-element)
+(deft/method t/store-allocator (sym base-tensor) (size &optional initial-element)
   (with-gensyms (sitm size-sym arr idx init)
     (let ((type (macroexpand-1 `(t/store-element-type ,sym))))
       `(let*-typed ((,size-sym (t/compute-store-size ,sym (let ((,sitm ,size))
@@ -89,24 +93,15 @@
 	,arr))))
 ;;
 (deft/generic (with-field-element #'subtypep) sym (decl &rest body))
-(deft/method with-field-element (sym standard-tensor) (decl &rest body)
-  (destructuring-bind (var init &optional (count 1)) decl
-    `(let-typed ((,var (t/store-allocator ,sym ,count ,init) :type ,(store-type sym)))
-       (locally
-	   ,@body))))
-
 (defmacro with-field-elements (sym decls &rest body)
   (if (null decls) `(progn ,@body)
       `(with-field-element ,sym ,(first decls)
 	 (with-field-elements ,sym ,(cdr decls) ,@body))))
-;;
-(deft/method t/store-ref (sym linear-store) (store &rest idx)
-   (assert (null (cdr idx)) nil "given more than one index for linear-store")
-  `(aref (the ,(store-type sym) ,store) (the index-type ,(car idx))))
 
-(deft/method t/store-set (sym linear-store) (value store &rest idx)
-   (assert (null (cdr idx)) nil "given more than one index for linear-store")
-  `(setf (aref (the ,(store-type sym) ,store) (the index-type ,(car idx))) (the ,(field-type sym) ,value)))
+(deft/method with-field-element (sym base-tensor) (decl &rest body)
+  (destructuring-bind (var init &optional (count 1)) decl
+    `(let-typed ((,var (t/store-allocator ,sym ,count ,init) :type ,(store-type sym)))
+       (locally ,@body))))
 ;;
 ;;A helper macro which takes of care of the class checking and stuff.
 (defparameter *generated-methods* (make-hash-table))
@@ -197,3 +192,43 @@
 ;;	 `(if-let (strd (and (call-fortran? x (t/l1-lb ,(cl x))) (blas-copyablep x y)))
 ;;	    (t/blas-axpy! ,(cl x) alpha x (first strd) y (second strd))))
 ;;        `(t/axpy! ,(cl x) alpha x y))))
+;;
+
+(defgeneric store-ref (tensor idx)
+  (:documentation  "Generic serial read access to the store.")
+  (:method ((tensor base-tensor) idx)
+    (let ((clname (class-name (class-of tensor))))
+      (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
+      (compile-and-eval
+       `(defmethod store-ref ((tensor ,clname) idx)
+	  (t/store-ref ,clname (store tensor) idx))))
+    (store-ref tensor idx)))
+
+(defgeneric (setf store-ref) (value tensor idx)
+  (:method (value (tensor base-tensor) idx)
+    (let ((clname (class-name (class-of tensor))))
+      (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
+      (compile-and-eval
+       `(defmethod (setf store-ref) (value (tensor ,clname) idx)
+	  (t/store-set ,clname value (store tensor) idx)
+	  (t/store-ref ,clname (store tensor) idx))))
+    (setf (store-ref tensor idx) value)))
+
+;;
+(defgeneric store-size (tensor)
+  (:documentation "
+  Syntax
+  ======
+  (store-size tensor)
+
+  Purpose
+  =======
+  Returns the number of elements the store of the tensor can hold
+  (which is not necessarily equal to its vector length).")
+  (:method ((tensor base-tensor))
+    (let ((clname (class-name (class-of tensor))))
+      (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
+      (compile-and-eval
+       `(defmethod store-size ((tensor ,clname))
+	  (t/store-size ,clname (store tensor))))
+      (store-size tensor))))

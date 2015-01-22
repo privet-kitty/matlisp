@@ -61,26 +61,38 @@
 	    :components ((:file "tweakable")
 			 (:file "base-tensor")
 			 (:file "numeric-template")
+			 #+nil
 			 (:file "tensor-template")
+			 #+nil
 			 (:file "standard-tensor"
 				:depends-on ("tweakable" "base-tensor" "numeric-template" "tensor-template"))
 			 ;;
+			 #+nil
 			 (:file "loopy"
 				:depends-on ("standard-tensor"))
+			 #+nil
 			 (:file "einstein"
 				:depends-on ("standard-tensor"))
+			 #+nil
 			 (:file "generic-copy"
 				:depends-on ("standard-tensor" "loopy"))
+			 #+nil
 			 (:file "generic-swap"
 				:depends-on ("standard-tensor" "loopy"))
+			 #+nil
 			 (:file "permutation"
 				:depends-on ("standard-tensor" "generic-copy" "generic-swap"))
+			 #+nil
 			 (:file "blas-helpers"
 				:depends-on ("standard-tensor" "permutation"))
+			 #+nil
 			 (:file "print"
 				:depends-on ("base-tensor" "standard-tensor"))
+			 #+nil
 			 (:file "coordinate-sparse")
+			 #+nil
 			 (:file "compressed-sparse")))
+   #+nil
    (:module "matlisp-classes"
 	    :pathname "classes"
 	    :depends-on ("matlisp-base")
@@ -90,6 +102,7 @@
 			 (:file "symbolic-tensor")
 			 (:file "matrix"
 				:depends-on ("numeric"))))
+   #+nil
    (:module "matlisp-blas"
 	    :pathname "blas"
 	    :depends-on ("matlisp-base" "matlisp-classes")
@@ -116,6 +129,7 @@
 			 (:file "gemm"
 				:depends-on ("copy"))
 			 (:file "trsm")))
+   #+nil
    (:module "matlisp-lapack"
 	    :pathname "lapack"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas")
@@ -127,6 +141,7 @@
 			 (:file "schur")
 			 (:file "svd")
 			 (:file "syl" :depends-on ("schur"))))
+   #+nil
    (:module "matlisp-special"
 	    :pathname "special"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas")
@@ -134,15 +149,18 @@
 			 (:file "map")
 			 (:file "norm")
 			 (:file "seq")))
+   #+nil
    (:module "matlisp-sugar"
 	    :pathname "sugar"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas")
 	    :components ((:file "arithmetic")
 			 (:file "oneseye")))
+   #+nil
    (:module "matlisp-reader"
 	    :pathname "reader"
 	    :components ((:file "infix")
 			 (:file "loadsave")))
+   #+nil
    (:module "matlisp-graph"
 	    :pathname "graph"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas" #+nil"matlisp-lapack")

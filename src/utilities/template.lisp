@@ -68,8 +68,8 @@
 	   (pred (getf data :predicate))
 	   (meth (getf data :methods)))
       (car (or
-	    (find args meth :test #'tree-equal :key #'second)
-	    (find args meth :test pred :key #'second)
+	    (find args meth :test #'(lambda (a m) (and (equal a (second m)) (or (not (third m)) (funcall (third m) a)))))
+	    (find args meth :test #'(lambda (a m) (and (funcall pred a (second m)) (or (not (third m)) (funcall (third m) a)))))
 	    (error "could not find a \"~a\" template for : ~a~%" name args))))))
 
 ;;
@@ -102,17 +102,16 @@
 
 (defmacro deft/method (name disp args &rest body)
   (with-gensyms (data-sym meth-sym afun-sym disp-sym sort-sym)
-    (let* ((data (or (gethash name *template-table*)
-		     (error "Undefined template : ~a~%" name)))
-	   (ll (getf data :lambda-list))
-	   (single? (not (consp (first ll))))
-	   ;;
-	   (disp-vars (funcall (if single? #'funcall #'mapcar) #'(lambda (x) (if (consp x) (car x) x)) disp))
-	   (disp-spls (funcall (if single? #'funcall #'mapcar) #'(lambda (x) (if (consp x) (cadr x) t)) disp)))
+    (letv* (((name &optional filter) (ensure-list name))
+	    (data (or (gethash name *template-table*) (error "Undefined template : ~a~%" name)))
+	    (ll (getf data :lambda-list))
+	    (single? (not (consp (first ll))))
+	    ;;
+	    (disp-vars (funcall (if single? #'funcall #'mapcar) #'(lambda (x) (if (consp x) (car x) x)) disp))
+	    (disp-spls (funcall (if single? #'funcall #'mapcar) #'(lambda (x) (if (consp x) (cadr x) t)) disp)))
       (assert (match-lambda-lists (list disp-vars args) ll) nil "mismatch in lambda-lists.")
     `(eval-when (:compile-toplevel :load-toplevel :execute)
-       (let* ((,data-sym (or (gethash ',name *template-table*)
-			     (error "Undefined template : ~a~%" ',name)))
+       (let* ((,data-sym (or (gethash ',name *template-table*) (error "Undefined template : ~a~%" ',name)))
 	      (,meth-sym (getf ,data-sym :methods))
 	      (,afun-sym (lambda (,(if single? disp-vars disp-sym) ,@args)
 			   (declare (ignorable ,@(remove-if #'(lambda (x) (member x cl:lambda-list-keywords))
@@ -122,19 +121,17 @@
 			     (unless single?
 			       `(destructuring-bind (,@disp-vars) ,disp-sym
 				  (declare (ignorable ,@disp-vars))))
-			     `(progn
-				,@body))))
+			     `(locally ,@body))))
 	      (,sort-sym (getf ,data-sym :sorter)))
 	 (declare (ignorable ,data-sym ,meth-sym ,afun-sym ,sort-sym))
-	 (setf ,meth-sym (,(getf data :sort-function) (union ,meth-sym (list (list ,afun-sym ',disp-spls)) :test #'(lambda (a b) (tree-equal (second a) (second b)))) #'(lambda (a b) (funcall ,sort-sym (second a) (second b)))))
+	 (setf ,meth-sym (,(getf data :sort-function) (union ,meth-sym (list (list ,afun-sym ',disp-spls ,filter)) :test #'(lambda (a b) (equal (second a) (second b)))) #'(lambda (a b) (funcall ,sort-sym (second a) (second b)))))
 	 (setf (getf ,data-sym :methods) ,meth-sym)
 	 ,afun-sym)))))
 
 (defun remt/method (name spls)
-  (let* ((data (or (gethash name *template-table*)
-		   (error "Undefined template : ~a~%" name)))
+  (let* ((data (or (gethash name *template-table*) (error "Undefined template : ~a~%" name)))
 	 (meth (getf data :methods)))
-    (setf (getf data :methods) (set-difference meth (list spls) :test #'(lambda (a b) (tree-equal (second a) b))))
+    (setf (getf data :methods) (set-difference meth (list spls) :test #'(lambda (a b) (equal (second a) b))))
     nil))
 
 )

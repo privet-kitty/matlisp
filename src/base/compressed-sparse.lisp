@@ -8,8 +8,19 @@
 		    :documentation "Start index for ids and store.")
    (neighbour-id :initarg :neighbour-id :reader neighbour-id :type index-store-vector
 		 :documentation "Row id.")))
-
 (declaim (ftype (function (compressed-sparse-matrix) index-store-vector) neighbour-start neighbour-id))
+
+(definline binary-search (val lb ub vec)
+  (declare (type index-type lb ub))
+  (unless (or (= lb ub) (< val (aref vec lb)) (> val (aref vec (1- ub))))
+    (very-quickly
+      (loop :for j :of-type index-type := (floor (+ lb ub) 2)
+	 :repeat #.(ceiling (log array-dimension-limit 2))
+	 :do (cond ((= (aref vec j) val) (return j))
+		   ((>= lb (1- ub)) (return))
+		   (t (if (< val (aref vec j))
+			  (setf ub j)
+			  (setf lb (1+ j)))))))))
 
 (defun compressed-sparse-indexing (subs tensor)
   (declare (type compressed-sparse-matrix tensor)
