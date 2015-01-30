@@ -77,7 +77,10 @@
 (defmacro cart-etypecase (vars &body cases)
   (let* ((decl (zipsym vars)))
     `(let (,@decl)
-       (cond ,@(mapcar #'(lambda (clause) `((ziprm (and typep) ,(mapcar #'car decl) ,(mapcar #'(lambda (x) `(quote ,x)) (first clause))) ,@(cdr clause))) cases)
+       (cond ,@(mapcar #'(lambda (clause)
+			   `((ziprm (and typep) ,(mapcar #'car decl) ,(mapcar #'(lambda (x) `(quote ,x)) (first clause)))
+			     (locally (declare ,@(mapcar #'(lambda (x y) `(type ,x ,y)) (first clause) (mapcar #'car decl))) ,@(cdr clause))))
+		       cases)
 	     (t (error "cart-etypecase: Case failure."))))))
 ;;
 (defmacro values-n (n &rest values)

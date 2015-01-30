@@ -37,7 +37,7 @@
       (loop :for j :of-type fixnum := (floor (+ lb ub) 2)
 	 :repeat #.(ceiling (log array-dimension-limit 2))
 	 :do (cond ((= (aref vec j) val) (return j))
-		   ((>= lb (1- ub)) (return))
+		   ((>= lb (1- ub)) (return (values nil lb)))
 		   (t (if (< val (aref vec j))
 			  (setf ub j)
 			  (setf lb (1+ j)))))))))
@@ -306,6 +306,14 @@ superclasses.  This class is generated automatically, if necessary."
 	       (t (find-programmatic-class superclasses)))
          initargs))
 
+;;Helper functions
+(declaim (incline modproj))
+(defun modproj (i d &optional open? def)
+  (cond
+    ((not i) def)
+    ((not d) i)
+    (t (assert (if open? (<= (- (1+ d)) i d) (< (- (1+ d)) i d)) nil 'invalid-value)
+       (if (< i 0) (if (and open? (= i (- (1+ d)))) -1 (mod i d)) i))))
 )
 
 
