@@ -67,9 +67,10 @@
 		     (error "undefined template : ~a~%" name)))
 	   (pred (getf data :predicate))
 	   (meth (getf data :methods)))
-      (car (or
-	    (find args meth :test #'(lambda (a m) (and (equal a (second m)) (or (not (third m)) (funcall (third m) a)))))
-	    (find args meth :test #'(lambda (a m) (and (funcall pred a (second m)) (or (not (third m)) (funcall (third m) a)))))
+      (car (or	     
+	    (when-let (lst (cdr (or (assoc args meth :test #'equal)
+				    (find args meth :test #'(lambda (a m) (and (not (equal a (first m))) (funcall pred a (first m))))))))
+	      (find args lst :test #'(lambda (a m) (if (cdr m) (funcall (cdr m) a) t))))
 	    (error "could not find a \"~a\" template for : ~a~%" name args))))))
 
 ;;
@@ -124,14 +125,23 @@
 			     `(locally ,@body))))
 	      (,sort-sym (getf ,data-sym :sorter)))
 	 (declare (ignorable ,data-sym ,meth-sym ,afun-sym ,sort-sym))
-	 (setf ,meth-sym (,(getf data :sort-function) (union ,meth-sym (list (list ,afun-sym ',disp-spls ,filter)) :test #'(lambda (a b) (equal (second a) (second b)))) #'(lambda (a b) (funcall ,sort-sym (second a) (second b)))))
+	 (if-let (lst (assoc ',disp-spls ,meth-sym :test #'equal))
+	   (if-let (flst (find ,filter (cdr lst) :key #'cdr))
+	     (rplaca flst ,afun-sym)
+	     (rplacd lst (sort (list* (cons ,afun-sym ,filter) (cdr lst)) #'(lambda (a b) (or (not (cdr a)) (cdr b))))))
+	   (setf ,meth-sym (,(getf data :sort-function) (list* (list ',disp-spls (cons ,afun-sym ,filter)) ,meth-sym)
+			     #'(lambda (a b) (funcall ,sort-sym (first a) (first b))))))
 	 (setf (getf ,data-sym :methods) ,meth-sym)
 	 ,afun-sym)))))
 
 (defun remt/method (name spls)
-  (let* ((data (or (gethash name *template-table*) (error "Undefined template : ~a~%" name)))
-	 (meth (getf data :methods)))
-    (setf (getf data :methods) (set-difference meth (list spls) :test #'(lambda (a b) (equal (second a) b))))
+  (letv* (((name &optional (filter '*)) (ensure-list name))
+	  (data (or (gethash name *template-table*) (error "Undefined template : ~a~%" name)))
+	  (meth (getf data :methods)))
+    (if (eql filter '*)
+	(setf (getf data :methods) (remove spls meth :test #'(lambda (a b) (equal a (first b)))))
+	(when-let (lst (find spls meth :test #'(lambda (a b) (equal a (first b)))))
+	  (rplacd lst (remove filter (cdr lst) :test #'(lambda (a b) (eql a (cdr b)))))))
     nil))
 
 )
