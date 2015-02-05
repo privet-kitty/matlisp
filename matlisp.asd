@@ -60,13 +60,17 @@
 	    :pathname "base"
 	    :components ((:file "tweakable")
 			 (:file "base-tensor")
-			 (:file "numeric-template")
-			 #+nil
-			 (:file "tensor-template")
-			 #+nil
-			 (:file "standard-tensor"
-				:depends-on ("tweakable" "base-tensor" "numeric-template" "tensor-template"))
 			 ;;
+			 (:file "generic/copy" :depends-on ("base-tensor"))
+			 (:file "generic/swap" :depends-on ("base-tensor"))
+			 (:file "generic/ref" :depends-on ("base-tensor"))
+			 (:file "print" :depends-on ("base-tensor" "generic/ref"))
+			 ;;
+			 (:file "numeric-template")
+			 (:file "tensor-template" :depends-on ("base-tensor" "numeric-template"))
+			 ;;
+			 (:file "stride-accessor" :depends-on ("tensor-template"))
+			 ;;			 
 			 #+nil
 			 (:file "loopy"
 				:depends-on ("standard-tensor"))
@@ -85,9 +89,6 @@
 			 #+nil
 			 (:file "blas-helpers"
 				:depends-on ("standard-tensor" "permutation"))
-			 #+nil
-			 (:file "print"
-				:depends-on ("base-tensor" "standard-tensor"))
 			 #+nil
 			 (:file "coordinate-sparse")
 			 #+nil
@@ -160,10 +161,9 @@
 	    :pathname "reader"
 	    :components ((:file "infix")
 			 (:file "loadsave")))
-   #+nil
    (:module "matlisp-graph"
 	    :pathname "graph"
-	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas" #+nil"matlisp-lapack")
+	    :depends-on ("matlisp-base" #+nil"matlisp-classes" #+nil"matlisp-blas" #+nil"matlisp-lapack")
 	    :components ((:file "fibonacci")))))
 
 ;; (defclass f2cl-cl-source-file (asdf:cl-source-file)

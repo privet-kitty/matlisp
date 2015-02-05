@@ -2,29 +2,6 @@
 
 ;;
 
-;;Is it a tensor, is a store ? It is both!
-
-(defmethod ref ((tensor standard-tensor) &rest subscripts)
-  (let ((clname (class-name (class-of tensor))))
-    (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
-    (compile-and-eval
-     `(defmethod ref ((tensor ,clname) &rest subscripts)
-	(let ((subs (if (numberp (car subscripts)) subscripts (car subscripts))))
-	  (t/store-ref ,clname (store tensor) (store-indexing subs tensor)))))
-    (apply #'ref (cons tensor subscripts))))
-
-(defmethod (setf ref) (value (tensor standard-tensor) &rest subscripts)
-  (let ((clname (class-name (class-of tensor))))
-    (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
-    (compile-and-eval
-     `(defmethod (setf ref) (value (tensor ,clname) &rest subscripts)
-	(let* ((subs (if (numberp (car subscripts)) subscripts (car subscripts)))
-	       (idx (store-indexing subs tensor))
-	       (sto (store tensor)))
-	  (t/store-set ,clname (t/coerce ,(field-type clname) value) sto idx)
-	  (t/store-ref ,clname sto idx))))
-    (setf (ref tensor (if (numberp (car subscripts)) subscripts (car subscripts))) value)))
-
 ;;
 (defmethod subtensor~ ((tensor standard-tensor) (subscripts list))
   (multiple-value-bind (hd dims stds) (parse-slice-for-strides subscripts (dimensions tensor) (strides tensor))

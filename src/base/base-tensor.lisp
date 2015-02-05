@@ -2,14 +2,11 @@
 
 ;;Alias for fixnum.
 (deftype index-type () 'fixnum)
+(deftype index-store (&optional (size '*)) `(simple-array index-type ,size))
 (deftype index-store-vector (&optional (size '*)) `(simple-array index-type (,size)))
 (deftype index-store-matrix (&optional (m '*) (n '*)) `(simple-array index-type (,m ,n)))
-
-(deft/generic (t/store-allocator #'subtypep) sym (size &optional init))
-(deft/method t/store-allocator (sym index-store-vector) (size &optional initial-contents)
-  `(the index-store-vector (make-array ,size :element-type 'index-type ,@(when initial-contents `(:initial-contents ,initial-contents)))))
-(deft/method t/store-allocator (sym index-store-matrix) (size &optional initial-contents)
-  `(the index-store-matrix (make-array ,size :element-type 'index-type ,@(when initial-contents `(:initial-contents ,initial-contents)))))
+;;
+(defclass base-tensor () ())
 ;;
 (defparameter *accessor-types* '(stride-accessor coordinate-accessor graph-accessor))
 
@@ -36,87 +33,41 @@
     (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (* x y))) (the index-store-vector (dimensions x))))
   (:method ((obj sequence)) (length obj))
   (:method ((arr array)) (array-total-size arr)))
-
 ;;We use order (opposed to CL convention) so as not to cause confusion with matrix rank.
 (definline order (x)
   (declare (type base-accessor x))
   (length (the index-store-vector (slot-value x 'dimensions))))
-
-;;Vanilla accessor
+;;
 (defclass stride-accessor (base-accessor)
   ((strides :initarg :strides :type index-store-vector :documentation "Strides for accesing elements of the tensor.")
-   (head :initarg :head :initform 0 :type index-type :documentation "Head for the store's accessor.")))
+   (head :initarg :head :initform 0 :type index-type :documentation "Head for the store's accessor."))
+  (:documentation "Vanilla stride accessor."))
 
-(declaim (ftype (function (stride-accessor &optional index-type) (or index-type index-store-vector)) strides)
-	 (ftype (function (stride-accessor) index-type) head))
-(definline strides (x &optional idx)
-  (declare (type stride-accessor x))
-  (typecase idx
-    (null (the index-store-vector (slot-value x 'strides)))
-    (index-type (the index-type (aref (the index-store-vector (slot-value x 'strides)) (modproj (or idx 0) (order x) nil 0))))
-    (t (lvec->list (the index-store-vector (slot-value x 'strides))))))
-(definline head (x)
-  (declare (type stride-accessor x))
-  (slot-value x 'head))
-;;Bipartite/Factor/Co-ordinate store
 (defclass coordinate-accessor (base-accessor)
-  ((indices :initarg :indices :type index-store-matrix :documentation "Non-zero indices in the tensor.")))
+  ((indices :initarg :indices :type index-store-matrix :documentation "Non-zero indices in the tensor."))
+  (:documentation "Bi-partite graph/Hypergraph/Factor/Co-ordinate store"))
 
-;;Graph store, only works for matrices.
 (defclass graph-accessor (base-accessor)
   ((fence :initarg :fence :type index-store-vector :documentation "Start index for neighbourhood.")
-   (neighbours :initarg :neighbours :type index-store-vector :documentation "Neighbour ids.")))
-
-(definline fence (g &optional idx)
-  (declare (type graph-accessor g))
-  (typecase idx
-    (null (the index-store-vector (slot-value g 'fence)))
-    (index-type (let-typed ((f (slot-value g 'fence) :type index-store-vector)
-			    (idx (modproj (or idx 0) (order g) nil 0)))
-		  (values (aref f idx) (aref f (1+ idx)))))
-    (t (lvec->list (the index-store-vector (slot-value g 'fence))))))
-
-(definline neighbours (g &optional j)
-  (declare (type graph-accessor g))
-  (etypecase j
-    (null (the index-store-vector (slot-value g 'neighbours)))
-    (index-type (aref (the index-store-vector (slot-value g 'neighbours)) j))
-    (cons (letv* (((u &optional v) j :type (index-type))
-		  (l r (fence g u))
-		  (nn (slot-value g 'neighbours) :type index-store-vector))
-	    (if v
-	        (binary-search (the index-type v) l r nn)
-		(loop :for ii :from l :below r :collect (aref nn ii)))))))
+   (neighbours :initarg :neighbours :type index-store-vector :documentation "Neighbour ids.")
+   (transposep :initarg :transposep :initform nil :type boolean :documentation "Choose between row-column compressed forms."))
+  (:documentation "Graph store via Adjacency lists; only works for matrices."))
 ;;
-(defclass base-tensor (base-accessor)
+(defclass tensor (base-tensor base-accessor)
   ((store :initarg :store :documentation "Storage for the tensor.")
-   (parent :initform nil :initarg :parent :type (or null base-tensor) :documentation "This slot is bound if the tensor is the view of another.")
+   (parent :initform nil :initarg :parent :type (or null tensor) :documentation "This slot is bound if the tensor is the view of another.")
    (memos :initform nil :documentation "Memoized attributes."))
   (:documentation "Basic tensor class."))
-
-(defgeneric print-element (x element stream)
-  (:documentation "
-  Syntax
-  ======
-  (PRINT-ELEMENT tensor element stream)
-
-  Purpose
-  =======
-  This generic function is specialized to TENSOR to
-  print ELEMENT to STREAM.  Called by PRINT-TENSOR/MATRIX
-  to format a tensor into the STREAM.")
-  (:method ((x base-tensor) element stream)
-    (format stream "~a" element)))
 ;;I have no idea what this does, or why we want it (inherited from standard-matrix.lisp)
-(defmethod make-load-form ((tensor base-tensor) &optional env)
+(defmethod make-load-form ((tensor tensor) &optional env)
   "
   MAKE-LOAD-FORM allows us to determine a load time value for
   tensor, for example #.(make-tensors ...)"
   (make-load-form-saving-slots tensor :environment env))
-;;
-(declaim (ftype (function (base-tensor) hash-table) memos))
+
+(declaim (ftype (function (tensor) hash-table) memos))
 (definline memos (x)
-  (declare (type base-tensor x))
+  (declare (type tensor x))
   ;;Create hash-table only when necessary
   (or (slot-value x 'memos)
       (setf (slot-value x 'memos) (make-hash-table :test 'equal))))
@@ -141,7 +92,7 @@
   > (tensor-typep ten '(real-tensor (* 2)))
 
   "
-  (declare (type base-tensor tensor))
+  (declare (type base-accessor tensor))
   (destructuring-bind (cls &optional subscripts) (ensure-list subs)
     (and (typep tensor cls)
 	 (if subscripts
@@ -156,58 +107,48 @@
 	     t))))
 
 (definline tensor-matrixp (ten)
-  (declare (type base-tensor ten))
+  (declare (type base-accessor ten))
   (= (order ten) 2))
 
 (definline tensor-vectorp (ten)
-  (declare (type base-tensor ten))
+  (declare (type base-accessor ten))
   (= (order ten) 1))
 
 (definline tensor-squarep (tensor)
-  (declare (type base-tensor tensor))
+  (declare (type base-accessor tensor))
   (let-typed ((dims (dimensions tensor) :type index-store-vector))
     (loop :for i :from 1 :below (length dims)
        :do (unless (= (aref dims i) (aref dims 0)) (return nil))
        :finally (return t))))
 
-(deftype base-vector () `(and base-tensor (satisfies tensor-vectorp)))
-(deftype base-matrix () `(and base-tensor (satisfies tensor-matrixp)))
-(deftype base-square-matrix () `(and base-tensor (satisfies tensor-matrixp) (satisfies tensor-squarep)))
+(deftype tensor-vector () `(and standard-tensor (satisfies tensor-vectorp)))
+(deftype tensor-matrix () `(and standard-tensor (satisfies tensor-matrixp)))
+(deftype tensor-square-matrix () `(and standard-tensor (satisfies tensor-matrixp) (satisfies tensor-squarep)))
 ;;
-
-
 (with-memoization ()
-  (defmem tensor (field &optional (accessor 'stride-accessor) (store 'simple-array))
-    (assert (and (member accessor *accessor-types*) (or (not store) (and (eql accessor 'stride-accessor) (member store '(simple-array hash-table))))) nil 'invalid-arguments)
-    (or
-     (find-if #'(lambda (x)
-		  (and (eql (field-type x) field)
-		       (or (not (eql accessor 'stride-accessor)) (eql (first (ensure-list (store-type x))) store))
-		       (and (= (length (closer-mop:class-direct-subclasses (find-class x))) 2))))
-	      (mapcar #'class-name (intersection (closer-mop:class-direct-subclasses (find-class 'base-tensor)) (closer-mop:class-direct-subclasses (find-class 'stride-accessor)))))
-     (let ((cl (intern (format nil "~a" (list field accessor store)))))
-       (compile-and-eval `(defclass ,cl (base-tensor ,accessor) ()))
-       (compile-and-eval `(deft/method t/field-type (sym ,cl) () ',field))
-       (case store
-	 (simple-array (compile-and-eval `(deft/method t/store-type (sym ,cl) (&optional (size '*))
-					    `(simple-array ,(store-element-type sym) (,size)))))
-	 (hash-table (compile-and-eval `(deft/method t/store-type (sym ,cl) (&optional (size '*))
-					  'hash-table))))
-       cl))))
+  (defmem tensor (field &optional accessor store)    
+    (let* ((accessor (or accessor 'stride-accessor))
+	   (store (or store (and (eql accessor 'stride-accessor) 'simple-array))))
+      (assert (and (member accessor *accessor-types*) (or (not store) (and (eql accessor 'stride-accessor) (member store '(simple-array hash-table))))) nil 'invalid-arguments)
+      (or
+       (find-if #'(lambda (x)
+		    (and (eql (field-type x) field)
+			 (or (not (eql accessor 'stride-accessor)) (eql (first (ensure-list (store-type x))) store))
+			 (and (= (length (closer-mop:class-direct-superclasses (find-class x))) 2))))
+		(mapcar #'class-name (apply #'intersection (mapcar #'closer-mop:class-direct-subclasses (mapcar #'find-class `(tensor ,accessor))))))
+       (let ((cl (intern (format nil "~{~a~^ ~}" (remove nil (list field accessor store))))))
+	 (compile-and-eval `(defclass ,cl (tensor ,accessor) ()))
+	 (compile-and-eval `(deft/method t/field-type (sym ,cl) () ',field))
+	 (case store
+	   (simple-array (compile-and-eval `(deft/method t/store-type (sym ,cl) (&optional (size '*))
+					      `(simple-array ,(or (real-subtype (field-type sym)) (field-type sym)) (,size)))))
+	   (hash-table (compile-and-eval `(deft/method t/store-type (sym ,cl) (&optional (size '*))
+					    'hash-table))))
+	 cl)))))
 
 (defun tensor-load-form (class)
   (let ((supclass (mapcar #'class-name (closer-mop:class-direct-superclasses (find-class class)))))
     (append
      (list (field-type class))
-     (remove 'base-tensor supclass)
+     (remove 'tensor supclass)
      (when (member 'stride-accessor supclass) (list (first (ensure-list (store-type class))))))))
-
-#+nil
-(defmacro memoizing ((tensor name) &rest body)
-  (declare (type symbol name))
-  (using-gensyms (decl (tensor) (value exists-p))
-    `(let (,@decl)
-       (declare (type base-tensor ,tensor))
-       (letv* ((,value ,exists-p (gethash ',name (attributes ,tensor))))
-	 (values-list (if ,exists-p ,value
-			  (setf (gethash ',name (attributes ,tensor)) (multiple-value-list (progn ,@body)))))))))

@@ -78,7 +78,7 @@
 	   #:list-dimensions
 	   #:maprange #:maptree-if #:maptree #:flatten #:pair #:ziptree #:cart #:mapcart
 	   #:recursive-append #:unquote-args
-	   #:compile-and-eval
+	   #:compile-and-eval #:modproj
 	   ;;mop
 	   #:find-programmatic-class #:make-programmatic-class
 	   ;;string
@@ -107,8 +107,12 @@
   (:use #:common-lisp #:matlisp-utilities #:matlisp-dlist #:iterate)
   (:export #:make-heap #:insert-key #:min-key #:node-key #:node-existsp #:extract-min #:decrease-key #:delete-node))
 
+(defpackage "MATLISP-UNION-FIND"
+  (:nicknames :uni)
+  (:use #:common-lisp #:matlisp-utilities #:matlisp-dlist #:iterate))
+
 (defpackage "MATLISP-TEMPLATE"
-  (:use #:common-lisp #:matlisp-utilities)
+  (:use #:common-lisp #:iterate #:matlisp-utilities)
   (:export #:deft/generic #:deft/method #:remt/method))
 
 (defpackage "MATLISP-INFIX"

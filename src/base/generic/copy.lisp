@@ -12,8 +12,7 @@
   Copies the contents of X into Y. Returns Y.
 ")
   (:method :before ((x array) (y array))
-	   (assert (tree-equal (array-dimensions x) (array-dimensions y))
-		   nil 'dimension-mismatch)))
+	   (assert (equal (array-dimensions x) (array-dimensions y)) nil 'dimension-mismatch)))
 
 (defmethod copy! ((from cons) (to cons))
   (do ((flst from (cdr flst))
@@ -43,14 +42,12 @@
   to))
 
 ;;
-(defmethod copy! :before ((x array) (y standard-tensor))
-  (assert (tree-equal (array-dimensions x) (lvec->list (dimensions y)))
-	  nil 'dimension-mismatch))
-(defmethod copy! :before ((x standard-tensor) (y array))
-  (assert (tree-equal (array-dimensions y) (lvec->list (dimensions x)))
-	  nil 'dimension-mismatch))
+(defmethod copy! :before ((x array) (y tensor))
+  (assert (equal (array-dimensions x) (dimensions y t)) nil 'dimension-mismatch))
+(defmethod copy! :before ((x tensor) (y array))
+  (assert (equal (array-dimensions y) (dimensions x t)) nil 'dimension-mismatch))
 
-(defmethod copy! ((x array) (y standard-tensor))
+(defmethod copy! ((x array) (y tensor))
   (let ((clname (class-name (class-of y))))
     (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
     (compile-and-eval
@@ -64,7 +61,7 @@
 	y))
     (copy! x y)))
 
-(defmethod copy! ((x standard-tensor) (y array))
+(defmethod copy! ((x tensor) (y array))
   (let ((clname (class-name (class-of x))))
     (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
     (compile-and-eval
@@ -78,7 +75,7 @@
 	y))
     (copy! x y)))
 
-(defmethod copy! ((x cons) (y standard-tensor))
+(defmethod copy! ((x cons) (y tensor))
   ;;You seriously weren't expecting efficiency were you :) ?
   (let ((arr (make-array (list-dimensions x) :initial-contents x)))
     (copy! arr y)))
@@ -106,7 +103,7 @@
     ((eql type 'vector) (make-array (length lst) :initial-contents lst))
     ((eql type 'array)
      (make-array (list-dimensions lst) :initial-contents lst))
-    ((subtypep type 'standard-tensor)
+    ((subtypep type 'tensor)
      (let ((ret (zeros (list-dimensions lst) type)))
        (copy! lst ret)))
     (t (error "don't know how to copy a list to type ~a" type))))
@@ -123,7 +120,7 @@
 		      (loop :for i :from 0 :below (array-dimension arr n)
 			 :collect (mtree arr (append idx (list i))))))))
        (mtree arr nil)))
-    ((subtypep type 'standard-tensor)
+    ((subtypep type 'tensor)
      (let ((ret (zeros (array-dimensions arr) type)))
        (copy! arr ret)))
     (t (error "don't know how to copy a list to type ~a" type))))

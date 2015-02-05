@@ -29,63 +29,67 @@
 (in-package #:matlisp)
 ;; Routines for printing a tensors/matrices nicely.
 
-(defparameter *print-max-len* 10
+(defparameter *tensor-print-parameters* `(10 5 0)
 "
-Maximum number of elements in any particular argument to print.
+0: Maximum number of elements in any particular argument to print.
 Set this to T to print all the elements.
-")
 
-(defparameter *print-max-args* 5
-"
-Maximum number of arguments of the tensor to print.
+1: Maximum number of arguments of the tensor to print.
 Set this to T to print all the arguments.
-")
 
-(defparameter *print-indent* 0
-"
-Determines how many spaces will be printed before each row
+2: Determines how many spaces will be printed before each row
 of a matrix (default 0)
 ")
 
+(defgeneric print-element (x element stream)
+  (:documentation "
+  Syntax
+  ======
+  (PRINT-ELEMENT tensor element stream)
+
+  Purpose
+  =======
+  This generic function is specialized to TENSOR to
+  print ELEMENT to STREAM.  Called by PRINT-TENSOR/MATRIX
+  to format a tensor into the STREAM."))
+
 (defun print-tensor (tensor stream)
-  (let ((rank (order tensor))
-	(dims (dimensions tensor))
-	(two-print-calls 0))
+  (letv* ((rank (order tensor)) (dims (dimensions tensor))
+	  (two-print-calls 0)
+	  ((print-max-len print-max-args print-indent) *tensor-print-parameters*))
     (labels ((two-print (tensor subs)
-	       (let ((strs nil)
-		     (maxw (make-array (if (eq *print-max-len* t) (aref dims 1) (1+ *print-max-len*)) :initial-element 0)))
-		 (setq strs
-		       (iter (for i from 0 below (aref dims 0))
-			     (if (or (eq *print-max-len* t) (< i *print-max-len*))
-				 (collect (iter (for j from 0 below (aref dims 1))
-						(if (or (eq *print-max-len* t) (< j *print-max-len*))
-						    (let ((str (with-output-to-string (str)
-								 (print-element tensor (ref tensor (append `(,i ,j) subs)) str))))
-						      (collect str into cprints)
-						      (setf (aref maxw j) (max (aref maxw j) (length str))))
-						    (let ((str (with-output-to-string (str) (format str "..."))))
-						      (collect str into cprints)
-						      (setf (aref maxw j) (max (aref maxw j) (length str)))
-						      (return cprints)))
-						(finally (return cprints)))
-				   into rprints)
-				 (return rprints))
-			     (finally (return rprints))))
+	       (let* ((maxw (make-array (if (eq print-max-len t) (aref dims 1) (1+ print-max-len)) :initial-element 0))
+		      (strs (iter (for i from 0 below (aref dims 0))
+				  (if (or (eq print-max-len t) (< i print-max-len))
+				      (collect (iter (for j from 0 below (aref dims 1))
+						     (if (or (eq print-max-len t) (< j print-max-len))
+							 (let ((str (with-output-to-string (str)
+								      (print-element tensor (ref tensor (append `(,i ,j) subs)) str))))
+							   (collect str into cprints)
+							   (setf (aref maxw j) (max (aref maxw j) (length str))))
+							 (let ((str (with-output-to-string (str) (format str "..."))))
+							   (collect str into cprints)
+							   (setf (aref maxw j) (max (aref maxw j) (length str)))
+							   (return cprints)))
+						     (finally (return cprints)))
+					into rprints)
+				      (return rprints))
+				  (finally (return rprints)))))
 		 (iter (for row in strs)
-		       (format stream (format nil "~~~AT" *print-indent*))
+		       (format stream (format nil "~~~AT" print-indent))
 		       (iter (for cref in row)
 			     (for j initially 0 then (1+ j))
 			     (format stream (replace (make-string (+ (aref maxw j) 4) :initial-element #\Space) cref :start1 (if (char= (aref cref 0) #\-) 0 1))))
 		       (format stream "~%"))
-		 (unless (or (eq *print-max-len* t) (< (aref dims 0) *print-max-len*))
-		   (format stream (format nil "~~~AT.~~%~~~:*~AT:~~%" *print-indent*)))))
+		 (unless (or (eq print-max-len t) (< (aref dims 0) print-max-len))
+		   (format stream (format nil "~~~AT.~~%~~~:*~AT:~~%" print-indent)))))
 	     (rec-print (tensor idx subs)
 	       (if (>= idx 2)
 		   (dotimes (i (aref dims idx) t)
 		     (unless (rec-print tensor (1- idx) (append `(,i) subs))
 		       (return nil)))
 		   (progn
-		     (if (or (eq *print-max-args* t) (< two-print-calls *print-max-args*))
+		     (if (or (eq print-max-args t) (< two-print-calls print-max-args))
 			 (progn
 			   (format stream "~A~%" (append '(\: \:) subs))
 			   (two-print tensor subs)
@@ -94,13 +98,13 @@ of a matrix (default 0)
 			   t)
 			 (progn
 			   (format stream "~A~%" (make-list rank :initial-element '\:))
-			   (format stream (format nil "~~~AT..~~%~~~AT::~~%" *print-indent* *print-indent*))
+			   (format stream (format nil "~~~AT..~~%~~~AT::~~%" print-indent print-indent))
 			   nil))))))
 	(case rank
 	  (1
-	   (format stream (format nil "~~~AT" *print-indent*))
+	   (format stream (format nil "~~~AT" print-indent))
 	   (dotimes (i (aref dims 0))
-	     (if (or (eq *print-max-len* t) (< i *print-max-len*))
+	     (if (or (eq print-max-len t) (< i print-max-len))
 		 (progn
 		   (print-element tensor (ref tensor i) stream)
 		   (format stream "~,4T"))
@@ -113,18 +117,25 @@ of a matrix (default 0)
 	  (t
 	   (rec-print tensor (1- (order tensor)) nil))))))
 
-(defmethod print-object ((tensor standard-tensor) stream)
-  (print-unreadable-object (tensor stream :type t)
-    (if (slot-value tensor 'parent-tensor)
-	(format stream "~A~,4T:DISPLACED" (dimensions tensor))
-	(format stream "~A" (dimensions tensor)))
-    (when (> (size tensor) 0)
-      (format stream "~%")
-      (print-tensor tensor stream))))
+(defmethod print-element ((x tensor) element stream)
+  (cond
+    ((floatp element) (format stream "~,4,-2,,,,'Eg" element))
+    ((complexp element)
+     (let ((realpart (realpart element))
+	   (imagpart (imagpart element)))
+       (if (not (zerop imagpart))
+	   (format stream "~,4,-2,,,,'Eg ~a ~,4,-2,,,,'Egi"  realpart (if (>= imagpart 0) #\+ #\-) (abs imagpart))
+	   (format stream "~,4,-2,,,,'Eg" realpart))))
+    (t (format stream "~a" element))))
 
-(defmethod print-object ((tensor sparse-tensor) stream)
-  (print-unreadable-object (tensor stream :type t)
-    (format stream
-	    (string+ "~A, store-size: ~A"
-		     (if (slot-value tensor 'parent-tensor) ",4T:DISPLACED" ""))
-	    (dimensions tensor) (store-size tensor))))
+(defmethod print-object ((tensor tensor) stream)
+  (if (and (typep tensor 'stride-accessor) (vectorp (slot-value tensor 'store)))
+      (print-unreadable-object (tensor stream :type t)
+	(format stream (string+ "~A" (if (slot-exists-p tensor 'parent-tensor) "~,4T:DISPLACED" "")) (dimensions tensor))
+	(when (> (total-size tensor) 0)
+	  (format stream "~%")
+	  (print-tensor tensor stream)))
+      (print-unreadable-object (tensor stream :type t)
+	(format stream
+		(string+ "~A, store-size: ~A" (if (slot-exists-p tensor 'parent-tensor) ",4T:DISPLACED" ""))
+		(dimensions tensor) (store-size tensor)))))

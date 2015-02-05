@@ -26,14 +26,16 @@
    (number-of-trees :initform 0 :accessor number-of-trees)
    (number-of-elements :initform 0 :accessor number-of-elements)
    (heap-order :initarg :heap-order :initform #'<)
-   (node-table :initform (make-hash-table) :accessor node-table)))
+   (node-table :initarg :node-table :initform (make-hash-table) :accessor node-table)))
+
+(defmethod matlisp::total-size ((obj fib-heap)) (slot-value obj 'number-of-elements))
 
 (defmethod print-object ((fib fib-heap) stream)
   (print-unreadable-object (fib stream :type t)
     (format stream "size: ~A, trees: ~A" (number-of-elements fib) (number-of-trees fib))))
 
-(defun make-heap (&optional (func #'<))
-  (make-instance 'fib-heap :heap-order func))
+(defun make-heap (&optional (func #'<) (test 'eql))
+  (make-instance 'fib-heap :heap-order func :node-table (make-hash-table :test test)))
 
 (definline fib-order (a b fib)
   (funcall (slot-value fib 'heap-order) a b))
@@ -42,9 +44,10 @@
   (when (root fib)
     (values (hnode-key (dcar (root fib))) (hnode-id (dcar (root fib))))))
 
-(defun insert-key (key fib)
+(defun insert-key (key fib &optional id)
   (let ((pmin (min-key fib))
-	(node (make-hnode :key key :id (number-of-elements fib))))
+	(node (make-hnode :key key :id (or id (number-of-elements fib)))))
+    (assert (not (node-existsp (hnode-id node) fib)) nil "id already exists in the heap")
     (setf (hnode-dcons node) (dpush node (root fib)))
     (unless (and pmin (fib-order key pmin fib))
       (setf (root fib) (dcdr (root fib))))
@@ -55,7 +58,7 @@
 
 (definline node-existsp (id fib)
   (letv* ((node exists-p (gethash id (node-table fib))))
-    (when (and exists-p (hnode-dcons node)) t)))
+    (and exists-p (hnode-dcons node) t)))
 
 (definline node-key (id fib)
   (letv* ((node exists-p (gethash id (node-table fib))))
@@ -149,7 +152,7 @@
 	(setf (root fib) (hnode-dcons node)))))
   key)
 
-(defun delete-node (id fib)
+(defun delete-node (id fib &optional delete?)
   (let ((node (gethash id (node-table fib))))
     (declare (type hnode node))
     (when (hnode-dcons node)
@@ -158,7 +161,8 @@
 	(when y (cut node y fib) (ccut y fib)))
       ;;move to root
       (setf (root fib) (hnode-dcons node))
-      (extract-min fib)))
+      (extract-min fib))
+    (when delete? (remhash id (node-table fib))))
   id)
 ;;
 

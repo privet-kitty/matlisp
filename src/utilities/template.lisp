@@ -67,10 +67,12 @@
 		     (error "undefined template : ~a~%" name)))
 	   (pred (getf data :predicate))
 	   (meth (getf data :methods)))
-      (car (or	     
-	    (when-let (lst (cdr (or (assoc args meth :test #'equal)
-				    (find args meth :test #'(lambda (a m) (and (not (equal a (first m))) (funcall pred a (first m))))))))
-	      (find args lst :test #'(lambda (a m) (if (cdr m) (funcall (cdr m) a) t))))
+      (flet ((ffilter (pred)
+	       (iter ff (for ele in meth)
+		     (when (funcall pred args (first ele))
+		       (iter (for (code . pp) in (cdr ele)) (when (or (not pp) (funcall pp args)) (return-from ff code)))))))
+	(or (ffilter #'equal)
+	    (ffilter #'(lambda (a m) (and (not (equal a m)) (funcall pred a m))))
 	    (error "could not find a \"~a\" template for : ~a~%" name args))))))
 
 ;;

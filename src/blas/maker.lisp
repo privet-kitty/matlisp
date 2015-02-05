@@ -1,29 +1,17 @@
 (in-package #:matlisp)
 
 (deft/generic (t/zeros #'subtypep) sym (dims &optional initial-element))
-(deft/method t/zeros (class standard-tensor) (dims &optional initial-element)
-  (with-gensyms (astrs adims sizs)
-    `(let* ((,adims (make-index-store ,dims)))
-       (declare (type index-store-vector ,adims))
-       (multiple-value-bind (,astrs ,sizs) (make-stride ,adims)
-	 (declare (type index-store-vector ,astrs))
-	 (make-instance ',class
-			:dimensions ,adims
-			:head 0
-			:strides ,astrs
-			:store (t/store-allocator ,class ,sizs ,@(when initial-element `((t/coerce ,(field-type class) ,initial-element)))))))))
 
-(deft/method t/zeros (class coordinate-sparse-tensor) (dims &optional nz)
+(deft/method t/zeros (class stride-accessor) (dims &optional initial-element)
   (with-gensyms (astrs adims sizs)
-    `(let* ((,adims (make-index-store ,dims)))
-       (declare (type index-store-vector ,adims))
-       (multiple-value-bind (,astrs ,sizs) (make-stride-cmj ,adims)
-	 (declare (type index-store-vector ,astrs))
-	 (make-instance ',class
-			:dimensions ,adims
-			:strides ,astrs
-			:store (t/store-allocator ,class ,sizs ,nz))))))
+    `(letv* ((,adims (coerce ,dims 'index-store-vector) :type index-store-vector)
+	     (,astrs ,sizs (make-stride ,adims) :type index-store-vector index-type))
+       (make-instance ',class
+		      :dimensions ,adims
+		      :head 0 :strides ,astrs
+		      :store (t/store-allocator ,class ,sizs ,@(when initial-element `((t/coerce ,(field-type class) ,initial-element))))))))
 
+#+nil
 (deft/method t/zeros (class compressed-sparse-matrix) (dims &optional nz)
   (with-gensyms (dsym)
     `(let ((,dsym ,dims))
@@ -68,12 +56,12 @@
     A generic version of @func{zeros}.
 ")
   (:method ((dims cons) (dtype t) &optional initial-element)
-    ;; (assert (member dtype *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class dtype)
+    ;;(assert (member dtype *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class dtype)
     (compile-and-eval
      `(defmethod zeros-generic ((dims cons) (dtype (eql ',dtype)) &optional initial-element)
 	(if initial-element
-	  (t/zeros ,dtype dims initial-element)
-	  (t/zeros ,dtype dims))))
+	    (t/zeros ,dtype dims initial-element)
+	    (t/zeros ,dtype dims))))
     (zeros-generic dims dtype initial-element)))
 
 (definline zeros (dims &optional (type *default-tensor-type*) initial-element)
@@ -101,13 +89,10 @@
     #<REAL-COMPRESSED-SPARSE-MATRIX #(10000 10000), store-size: 10000>
 "
   (with-no-init-checks
-    (let ((type (etypecase type (standard-class (class-name type)) (symbol type))))
+    (let ((type (etypecase type (standard-class (class-name type)) (symbol type) (list (apply #'tensor type)))))
       (etypecase dims
-	(cons
-	 (zeros-generic dims type initial-element))
-	(vector
-	 (zeros-generic (lvec->list dims) type initial-element))
-	(fixnum
-	 (zeros-generic (list dims) type initial-element))))))
+	(cons (zeros-generic dims type initial-element))
+	(vector (zeros-generic (lvec->list dims) type initial-element))
+	(fixnum (zeros-generic (list dims) type initial-element))))))
 
 (declaim (ftype (function ((or cons vector fixnum) &optional t t) base-tensor) zeros))

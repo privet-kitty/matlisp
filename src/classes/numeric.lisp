@@ -30,21 +30,24 @@
   '(mod 2))
 ;;
 (defclass blas-numeric-tensor (numeric-tensor) ())
-(deft/generic (t/l1-lb #'subtypep) sym ())
-(deft/generic (t/l2-lb #'subtypep) sym ())
-(deft/generic (t/l3-lb #'subtypep) sym ())
+
+(deft/generic (t/blas-lb #'subtypep) sym (i))
+
+(defun blas-tensorp)
+(deft/method t/blas-lb (sym base-tensor) (i)
+  (ecase i
+    (1 '*real-l1-fcall-lb*)
+    (2 '*real-l2-fcall-lb*)
+    (3 '*real-l3-fcall-lb*)))
+
 ;;Real tensor
 (defclass real-blas-tensor (real-numeric-tensor blas-numeric-tensor) ())
 (deft/method t/l1-lb (sym real-blas-tensor) ()
-  '*real-l1-fcall-lb*)
+  )
 (deft/method t/l2-lb (sym real-blas-tensor) ()
   '*real-l2-fcall-lb*)
 (deft/method t/l3-lb (sym real-blas-tensor) ()
   '*real-l3-fcall-lb*)
-
-(defmethod print-element ((tensor real-blas-tensor)
-			  element stream)
-  (format stream "~,4,-2,,,,'Eg" element))
 
 (define-constant +real-infinity+
     (matlisp-ffi::with-fortran-float-modes
@@ -123,11 +126,7 @@
 
 (defmethod print-element ((tensor complex-blas-tensor)
 			  element stream)
-  (let ((realpart (realpart element))
-	(imagpart (imagpart element)))
-    (if (not (zerop imagpart))
-	(format stream "~,4,-2,,,,'Eg ~a ~,4,-2,,,,'Egi"  realpart (if (>= imagpart 0) #\+ #\-) (abs imagpart))
-	(format stream "~,4,-2,,,,'Eg" realpart))))
+  )
 ;;
 (defleaf complex-tensor (complex-blas-tensor) ())
 (deft/method t/field-type (sym complex-tensor) ()

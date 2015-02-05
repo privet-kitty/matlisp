@@ -1,6 +1,7 @@
 (in-package #:matlisp)
 ;;
-(definline idxv (&rest contents) (make-index-store contents))
+(definline idxv (&rest contents)
+  (make-array (length contents) :element-type 'index-type :initial-contents contents))
 
 (definline idxn (n)
  "Syntax
@@ -18,7 +19,7 @@
 
 (defun pick-random (k n)
   (let ((ret nil)
-	(perm (allocate-index-store k)))
+	(perm (t/store-allocator index-store-vector k)))
     (loop :for i :from 0 :below k
        :do (let ((sd (random (- n i))))
 	     (loop :for ele :in ret
