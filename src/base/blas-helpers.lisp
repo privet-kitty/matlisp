@@ -1,17 +1,18 @@
 (in-package #:matlisp)
    
 (defun consecutive-storep (tensor)
-  (declare (type standard-tensor tensor))
-  (memoizing (tensor consecutive-storep)
-    (letv* ((sort-std std-perm (very-quickly (sort-permute-base (copy-seq (the index-store-vector (strides tensor))) #'<)) :type index-store-vector index-store-vector)
-	    (perm-dims (very-quickly (apply-action! (copy-seq (the index-store-vector (dimensions tensor))) std-perm)) :type index-store-vector))
-      (very-quickly
-	(loop
-	   :for so-st :across sort-std
-	   :for so-di :across perm-dims
-	   :and accumulated-off := (aref sort-std 0) :then (the index-type (* accumulated-off so-di))
-	   :unless (= so-st accumulated-off) :do (return (values nil perm-dims sort-std std-perm))
-	   :finally (return (values (aref sort-std 0) perm-dims sort-std std-perm)))))))
+  (declare (type stride-accessor tensor))
+  (with-memoization ((memos tensor))
+    (memoizing-let ((tensor tensor))
+      (letv* ((sort-std std-perm (very-quickly (sort-permute-base (copy-seq (the index-store-vector (strides tensor))) #'<)) :type index-store-vector index-store-vector)
+	      (perm-dims (very-quickly (apply-action! (copy-seq (the index-store-vector (dimensions tensor))) std-perm)) :type index-store-vector))
+	(very-quickly
+	  (loop
+	     :for so-st :across sort-std
+	     :for so-di :across perm-dims
+	     :and accumulated-off := (aref sort-std 0) :then (the index-type (* accumulated-off so-di))
+	     :unless (= so-st accumulated-off) :do (return (values nil perm-dims sort-std std-perm))
+	     :finally (return (values (aref sort-std 0) perm-dims sort-std std-perm))))))))
 
 (definline blas-func (name type)
   (string+
@@ -24,7 +25,7 @@
    name))
 
 (definline blas-copyablep (ten-a ten-b)
-  (declare (type standard-tensor ten-a ten-b))
+  (declare (type stride-accessor ten-a ten-b))
   (when (= (order ten-a) (order ten-b))
     (letv* ((csto-a? pdims-a tmp perm-a (consecutive-storep ten-a) :type t index-store-vector nil index-store-vector)
 	    (csto-b? pdims-b tmp perm-b (consecutive-storep ten-b) :type t index-store-vector nil index-store-vector))
@@ -49,7 +50,7 @@
     (:col-major :row-major)))
 
 (definline blas-matrix-compatiblep (matrix &optional (op #\N))
-  (declare (type standard-tensor matrix)
+  (declare (type stride-accessor matrix)
 	   (type character op))
   (assert (tensor-matrixp matrix) nil 'tensor-not-matrix)
   (let*-typed ((stds (strides matrix) :type index-store-vector)
@@ -62,8 +63,8 @@
       ((and (= rs 1) (> cs 0)) (values cs op :col-major))
       ((and (char/= op #\C) (= cs 1) (> rs 0)) (values rs (fortran-nop op) :row-major)))))
 
-(definline call-fortran? ( x lb)
-  (declare (type standard-tensor x))
+(definline call-fortran? (x lb)
+  (declare (type stride-accessor x))
   (> (size x) lb))
 
 (defmacro with-rowm (&rest body)

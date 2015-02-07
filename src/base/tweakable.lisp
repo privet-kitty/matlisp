@@ -31,7 +31,7 @@
   returns a 10x10 matrix with Column major order.
 ")
 
-(defparameter *default-tensor-type* '|DOUBLE-FLOAT STRIDE-ACCESSOR SIMPLE-ARRAY|)
+(defparameter *default-tensor-type* '(double-float))
 
 (defparameter *check-after-initializing?* t
   "

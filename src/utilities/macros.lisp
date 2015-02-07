@@ -126,8 +126,8 @@
 	     (let ((decls (remove-if #'null (mapcar #'(lambda (s)
 							(let ((ts (assoc s alist)))
 							  (when ts
-							    (if (cdr ts)
-								`(type ,(cdr ts) ,s)
+							    (if (second ts)
+								`(type ,(second ts) ,s)
 								`(ignore ,s)))))
 						    syms))))
 	       (when decls `((declare ,@decls))))))
@@ -136,18 +136,13 @@
 	    (mapcan #'(lambda (x)
 			(destructuring-bind (bind expr type) (let ((tpos (position :type x)) (len (length x)))
 							       (list (subseq x 0 (1- (or tpos len))) (nth (1- (or tpos len)) x) (when tpos (nthcdr (1+ tpos) x))))
-			  (let* ((typa (iter (for (s ty) on (flatten (ziptree bind type)))
-					     (with skip? = nil)
-					     (if (or skip? (null s)) (setf skip? nil)
-						 (progn (setf skip? t)
-							(unless (member s cl:lambda-list-keywords)
-							  (collect (cons s ty)))))))
-				 (vsyms (mapcar #'(lambda (x) (if (consp x)
+			  (let* ((typa (maptree t #'(lambda (x) (if (atom (car x))
+								    (unless (member (car x) cl:lambda-list-keywords) (list x))
+								    (values x #'(lambda (mf x) (apply #'append (mapcar mf x))))))
+						(ziptree bind type)))
+				 (vsyms (mapcar #'(lambda (x) (if (atom x) (list x)
 								  (let ((g (gensym)))
-								    (list g
-									  `(destructuring-bind (,@x) ,g
-									     ,@(typedecl (flatten x) typa))))
-								  (list x)))
+								    (list g `(destructuring-bind (,@x) ,g ,@(typedecl (flatten x) typa))))))
 						bind)))
 			    (list*
 			     (recursive-append
@@ -348,7 +343,7 @@
 		     (let ((id (gensym "memo-"))
 			   (def-p (eql (first x) 'defmem))
 			   (decl-p (and (consp (third x)) (eql (car (third x)) 'declare))))
-		       `(,(if def-p 'defun 'let) ,@(subseq x 1 (+ (if def-p 1 0) (if decl-p 3 2)))		      
+		       `(,(if def-p 'defun 'let) ,@(subseq x 1 (+ (if def-p 1 0) (if decl-p 3 2)))
 			  (letv* ((,args (list ',id ,@(if def-p
 							  (mapcar #'(lambda (x) (if (consp x) (car x) x)) (remove-if #'(lambda (x) (member x cl:lambda-list-keywords)) (third x)))
 							  (mapcar #'car (second x)))))

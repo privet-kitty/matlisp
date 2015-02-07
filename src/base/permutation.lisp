@@ -11,11 +11,11 @@
   Purpose
   =======
   Create an array with length @arg{n} with values 0,..,@arg{n}-1."
-  (let-typed ((ret (allocate-index-store n) :type index-store-vector))
-    (very-quickly
-      (loop :for i :of-type index-type :from 0 :below n
-	 :do (setf (aref ret i) i)))
-    ret))
+ (let-typed ((ret (t/store-allocator index-store-vector n) :type index-store-vector))
+   (very-quickly
+     (loop :for i :of-type index-type :from 0 :below n
+	:do (setf (aref ret i) i)))
+   ret))
 
 (defun pick-random (k n)
   (let ((ret nil)
@@ -108,9 +108,9 @@
 	   (let ((len (length seq)))
 	     (assert (>= len (permutation-size perm)) nil
 		     'permutation-permute-error :seq-len len :per-size (permutation-size perm))))
-  (:method :before ((ten standard-tensor) (perm permutation) &optional (arg 0))
-	   (assert (>= (dims ten arg) (permutation-size perm)) nil
-		   'permutation-permute-error :seq-len (dims ten arg) :permutation-size (permutation-size perm))))
+  (:method :before ((ten tensor) (perm permutation) &optional (arg 0))
+	   (assert (>= (dimensions ten arg) (permutation-size perm)) nil
+		   'permutation-permute-error :seq-len (dimensions ten arg) :permutation-size (permutation-size perm))))
 
 (definline permute (thing perm &optional (arg 0))
   (permute! (copy thing) perm arg))
@@ -139,7 +139,7 @@
   (declare (ignore arg))
   (apply-action! seq (the index-store-vector (store perm))))
 
-(defmethod permute! ((ten standard-tensor) (perm permutation-action) &optional (arg 0))
+(defmethod permute! ((ten tensor) (perm permutation-action) &optional (arg 0))
   (permute! ten (copy perm 'permutation-pivot-flip) arg))
 
 ;;Cycle
@@ -170,7 +170,7 @@
        :do (apply-cycle! seq cyc)))
   seq)
 
-(defmethod permute! ((A standard-tensor) (perm permutation-cycle) &optional (arg 0))
+(defmethod permute! ((A tensor) (perm permutation-cycle) &optional (arg 0))
   (permute! A (copy perm 'permutation-pivot-flip) arg))
 
 ;Pivot idx
@@ -194,7 +194,8 @@
     (copy-n cseq seq size))
   seq)
 
-(defmethod permute! ((A standard-tensor) (perm permutation-pivot-flip) &optional (arg 0))
+#+nil
+(defmethod permute! ((A tensor) (perm permutation-pivot-flip) &optional (arg 0))
   (let ((t1 (slice~ A arg)) (t2 (slice~ A arg)))
     (let-typed ((argstd (strides A arg) :type index-type)
 		(hd-sl (head t2) :type index-type)
@@ -294,7 +295,7 @@
 
 (defmethod inv ((obj permutation-action))
   (let*-typed ((sto (store obj) :type index-store-vector)
-	       (rsto (allocate-index-store (length sto)) :type index-store-vector))
+	       (rsto (t/store-allocator index-store-vector (length sto)) :type index-store-vector))
     (loop :for i :from 0 :below (length rsto)
        :for ele of-type index-type :across sto
        :do (setf (aref rsto ele) i))

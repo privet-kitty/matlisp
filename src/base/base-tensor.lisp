@@ -126,7 +126,7 @@
 (deftype tensor-square-matrix () `(and standard-tensor (satisfies tensor-matrixp) (satisfies tensor-squarep)))
 ;;
 (with-memoization ()
-  (defmem tensor (field &optional accessor store)    
+  (defmem tensor (field &optional accessor store)
     (let* ((accessor (or accessor 'stride-accessor))
 	   (store (or store (and (eql accessor 'stride-accessor) 'simple-array))))
       (assert (and (member accessor *accessor-types*) (or (not store) (and (eql accessor 'stride-accessor) (member store '(simple-array hash-table))))) nil 'invalid-arguments)

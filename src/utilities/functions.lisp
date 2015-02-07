@@ -32,15 +32,17 @@
 (defun binary-search (val lb ub vec)
   (declare (type fixnum lb ub)
 	   (type vector vec))
-  (unless (or (= lb ub) (< val (aref vec lb)) (> val (aref vec (1- ub))))
-    (very-quickly
-      (loop :for j :of-type fixnum := (floor (+ lb ub) 2)
-	 :repeat #.(ceiling (log array-dimension-limit 2))
-	 :do (cond ((= (aref vec j) val) (return j))
-		   ((>= lb (1- ub)) (return (values nil lb)))
-		   (t (if (< val (aref vec j))
-			  (setf ub j)
-			  (setf lb (1+ j)))))))))
+  (cond
+    ((or (= lb ub) (< val (aref vec lb))) (values nil lb))
+    ((> val (aref vec (1- ub))) (values nil ub))
+    (t (very-quickly
+	 (loop :for j :of-type fixnum := (floor (+ lb ub) 2)
+	    :repeat #.(ceiling (log array-dimension-limit 2))
+	    :do (cond ((= (aref vec j) val) (return j))
+		      ((>= lb (1- ub)) (return (values nil (if (< (aref vec lb) val) (1+ lb) lb))))
+		      (t (if (< val (aref vec j))
+			     (setf ub j)
+			     (setf lb (1+ j))))))))))
 
 (declaim (inline copy-n))
 (defun copy-n (vec lst n)
@@ -97,7 +99,9 @@
 	t-tree)))
 
 (defun maptree (keys transformer tree)
-  (maptree-if #'(lambda (x) (and (consp x) (member (car x) keys)))
+  (maptree-if (if (eql keys t)
+		  #'(lambda (x) (declare (ignore x)) t)
+		  #'(lambda (x) (and (consp x) (member (car x) keys))))
 	      transformer tree))
 
 (defun flatten (x)
@@ -169,10 +173,10 @@
   "
   (apply #'map 'list #'list args))
 
-(defun ziptree (&rest args)
-  (if (and (some #'atom args) (some #'consp args)) nil
-      (if (every #'atom args) args
-	  (apply #'mapcar #'ziptree args))))
+(defun ziptree (tree &rest more-trees)
+  (if (atom tree)
+      (cons tree more-trees)
+      (apply #'mapcar (list* #'ziptree tree more-trees))))
 
 (declaim (inline zipsym))
 (defun zipsym (lst)

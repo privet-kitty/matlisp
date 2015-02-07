@@ -11,6 +11,16 @@
 		      :head 0 :strides ,astrs
 		      :store (t/store-allocator ,class ,sizs ,@(when initial-element `((t/coerce ,(field-type class) ,initial-element))))))))
 
+(deft/method t/zeros (class graph-accessor) (dims &optional nz)
+  (with-gensyms (adims nnz)
+    `(letv* ((,adims (coerce ,dims 'index-store-vector) :type (index-store-vector 2))
+	     (,nnz (max (ceiling (* *default-sparsity* (lvec-foldr #'* ,adims))) (or ,nz 0))))
+       (make-instance ',class
+		      :dimensions ,adims
+		      :fence (t/store-allocator index-store-vector (1+ (aref ,adims 1))) ;;Compressed Columns by default		      
+		      :neighbours (t/store-allocator index-store-vector ,nnz)
+		      :store (t/store-allocator ,class ,nnz)))))
+
 #+nil
 (deft/method t/zeros (class compressed-sparse-matrix) (dims &optional nz)
   (with-gensyms (dsym)
@@ -63,6 +73,7 @@
 	    (t/zeros ,dtype dims initial-element)
 	    (t/zeros ,dtype dims))))
     (zeros-generic dims dtype initial-element)))
+
 
 (definline zeros (dims &optional (type *default-tensor-type*) initial-element)
 "
