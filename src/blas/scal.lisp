@@ -38,11 +38,9 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
 	     (,sto-y (store ,y)))
 	 (declare (type ,(store-type sym) ,@(unless numx? `(,sto-x)) ,sto-y))
 	 (very-quickly
-	   (mod-dotimes (,idx (dimensions ,y))
-	     :with (linear-sums
-		    ,@(unless numx? `((,of-x (strides ,x) (head ,x))))
-		    (,of-y (strides ,y) (head ,y)))
-	     :do (t/store-set ,sym (,(if scal? 't/f* 't/f/) ,(field-type sym)
+	   (iter (for-mod ,idx from 0 below (dimensions ,y) with-strides (,@(unless numx? `((,of-x (strides ,x) (head ,x))))
+									    (,of-y (strides ,y) (head ,y))))
+		 (t/store-set ,sym (,(if scal? 't/f* 't/f/) ,(field-type sym)
 				     (t/store-ref ,sym ,sto-y ,of-y)
 				     ,@(if numx? `(,x) `((t/store-ref ,sym ,sto-x ,of-x))))
 			      ,sto-y ,of-y))))
@@ -161,12 +159,9 @@ s  Purpose
 	       (sto-x (store x) :type ,(store-type (cl x)))
 	       (axis (modproj axis (order m))))
      (very-quickly
-       (mod-dotimes (idx (dimensions m))
-	 :with (linear-sums
-		(of-m (strides m) (head m))
-		(of-x (let ((tmp (allocate-index-store (order m))))
-			(setf (aref tmp axis) (strides x 0))
-			tmp)
-		      (head x)))
-	 :do (t/store-set ,(cl m) (t/f* ,(field-type (cl m)) (t/store-ref ,(cl x) sto-x of-x) (t/store-ref ,(cl m) sto-m of-m)) sto-m of-m))))
+       (iter (for-mod idx from 0 below (dimensions m) with-strides ((of-m (strides m) (head m))
+								    (of-x (let ((tmp (t/store-allocator index-store-vector (order m))))
+									    (setf (aref tmp axis) (strides x 0))
+									    tmp) (head x))))
+	     (t/store-set ,(cl m) (t/f* ,(field-type (cl m)) (t/store-ref ,(cl x) sto-x of-x) (t/store-ref ,(cl m) sto-m of-m)) sto-m of-m))))
   'm)

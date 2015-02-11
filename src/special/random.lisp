@@ -52,15 +52,15 @@
 		   (func! (intern (string+ (symbol-name func) "!"))))
 	       `(eval-every
 		  (defun ,func! (tensor)
-		    (declare (type real-tensor tensor))
+		    (declare (type #.(tensor 'double-float) tensor))
 		    (very-quickly
 		      (dorefs (idx (dimensions tensor))
-			      ((ref tensor :type real-tensor))
+			      ((ref tensor :type #.(tensor 'double-float)))
 			      (setf ref ,clause)))
 		    tensor)
 		  (defun ,func (&optional dims)
 		     (if dims
-			 (,func! (zeros dims 'real-tensor))
+			 (,func! (zeros dims '(double-float)))
 			 ,clause)))
 	       ))
 	   (generate-rands ((&rest args))
@@ -72,9 +72,9 @@
 
 (defun randi (&optional dims (arg 2))
   (if dims
-      (let ((ret (zeros dims 'real-tensor)))
+      (let ((ret (zeros dims '(double-float))))
 	(dorefs (idx (dimensions ret))
-		((ref ret :type real-tensor))
+		((ref ret :type #.(tensor 'double-float)))
 	  (setf ref (coerce (random arg) 'double-float)))
 	ret)
       (random arg)))

@@ -27,18 +27,15 @@
 
 (defmethod copy! ((from array) (to array))
   (let ((lst (make-list (array-rank to))))
-    (mod-dotimes (idx (make-index-store (array-dimensions to)))
-      :do (progn
-	    (lvec->list! idx lst)
-	    (setf (apply #'aref to lst) (apply #'aref from lst)))))
+    (iter (for-mod idx from 0 below (array-dimensions to))
+	  (lvec->list! idx lst)
+	  (setf (apply #'aref to lst) (apply #'aref from lst))))
   to)
 
 (defmethod copy! ((from t) (to array))
   (let ((lst (make-list (array-rank to))))
-    (mod-dotimes (idx (make-index-store (array-dimensions to)))
-      do (progn
-	   (lvec->list! idx lst)
-	   (setf (apply #'aref to lst) from)))
+    (iter (for-mod idx from 0 below (array-dimensions to))
+	  (apply #'(setf aref) (list* from to (lvec->list! idx lst))))
   to))
 
 ;;
@@ -54,10 +51,8 @@
      `(defmethod copy! ((x array) (y ,clname))
 	(let-typed ((sto-y (store y) :type (simple-array ,(store-element-type clname)))
 		    (lst (make-list (array-rank x)) :type cons))
-	  (mod-dotimes (idx (dimensions y))
-	    :with (linear-sums
-		   (of-y (strides y) (head y)))
-	    :do (t/store-set ,clname (t/coerce ,(field-type clname) (apply #'aref x (lvec->list! idx lst))) sto-y of-y)))
+	  (iter (for-mod idx from 0 below (dimensions y) with-strides ((of-y (strides y) (head y))))
+		(t/store-set ,clname (t/coerce ,(field-type clname) (apply #'aref x (lvec->list! idx lst))) sto-y of-y)))
 	y))
     (copy! x y)))
 
@@ -68,10 +63,8 @@
      `(defmethod copy! ((x ,clname) (y array))
 	(let-typed ((sto-x (store x) :type (simple-array ,(store-element-type clname)))
 		    (lst (make-list (array-rank y)) :type cons))
-	  (mod-dotimes (idx (dimensions x))
-	    :with (linear-sums
-		   (of-x (strides x) (head x)))
-	    :do (setf (apply #'aref y (lvec->list! idx lst)) (t/store-ref ,clname sto-x of-x))))
+	  (iter (for-mod idx from 0 below (dimensions x) with-strides ((of-x (strides x) (head x))))
+		(setf (apply #'aref y (lvec->list! idx lst)) (t/store-ref ,clname sto-x of-x))))
 	y))
     (copy! x y)))
 

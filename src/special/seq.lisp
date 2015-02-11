@@ -38,7 +38,7 @@
 	  (very-quickly
 	    (loop :for i :from 0 :below quo
 	       :for ori := (coerce start 'double-float) :then (+ ori h)
-	       :do (t/store-set real-tensor ori sto i)))
+	       :do (t/store-set #.(tensor 'double-float) ori sto i)))
 	  ret))))
 
 (defun linspace (start end &optional (num-points (1+ (abs (- start end)))))

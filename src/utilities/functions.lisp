@@ -28,22 +28,6 @@
 	  :do (setf (aref ret i) ele)
 	  :finally (return ret))))))
 
-(declaim (inline binary-search))
-(defun binary-search (val lb ub vec)
-  (declare (type fixnum lb ub)
-	   (type vector vec))
-  (cond
-    ((or (= lb ub) (< val (aref vec lb))) (values nil lb))
-    ((> val (aref vec (1- ub))) (values nil ub))
-    (t (very-quickly
-	 (loop :for j :of-type fixnum := (floor (+ lb ub) 2)
-	    :repeat #.(ceiling (log array-dimension-limit 2))
-	    :do (cond ((= (aref vec j) val) (return j))
-		      ((>= lb (1- ub)) (return (values nil (if (< (aref vec lb) val) (1+ lb) lb))))
-		      (t (if (< val (aref vec j))
-			     (setf ub j)
-			     (setf lb (1+ j))))))))))
-
 (declaim (inline copy-n))
 (defun copy-n (vec lst n)
   (declare (type vector vec)
@@ -311,7 +295,7 @@ superclasses.  This class is generated automatically, if necessary."
          initargs))
 
 ;;Helper functions
-(declaim (incline modproj))
+(declaim (inline modproj))
 (defun modproj (i d &optional open? def)
   (cond
     ((not i) def)

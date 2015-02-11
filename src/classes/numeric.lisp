@@ -31,14 +31,10 @@
 ;;
 (defclass blas-numeric-tensor (numeric-tensor) ())
 
-(deft/generic (t/blas-lb #'subtypep) sym (i))
+
 
 (defun blas-tensorp)
-(deft/method t/blas-lb (sym base-tensor) (i)
-  (ecase i
-    (1 '*real-l1-fcall-lb*)
-    (2 '*real-l2-fcall-lb*)
-    (3 '*real-l3-fcall-lb*)))
+
 
 ;;Real tensor
 (defclass real-blas-tensor (real-numeric-tensor blas-numeric-tensor) ())

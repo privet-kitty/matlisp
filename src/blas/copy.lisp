@@ -28,7 +28,7 @@
 (in-package #:matlisp)
 
 (deft/generic (t/blas-copy! #'subtypep) sym (x st-x y st-y))
-(deft/method t/blas-copy! (sym blas-numeric-tensor) (x st-x y st-y)
+(deft/method t/blas-copy! (sym dense-tensor) (x st-x y st-y)
   (let ((ncp? (null st-x)) (ftype (field-type sym)))
     (using-gensyms (decl (x y) (sto-x))
       `(let (,@decl)
@@ -37,75 +37,53 @@
 	 ,(recursive-append
 	   (when ncp? `(with-field-element ,sym (,sto-x ,x)))
 	   `(ffuncall ,(blas-func "copy" ftype)
-	      (:& :integer) (the index-type (size ,y))
-	      (:* ,(lisp->ffc ftype) ,@(unless ncp? `(:+ (head ,x)))) ,(if ncp? sto-x `(the ,(store-type sym) (store ,x)))
+	      (:& :integer) (the index-type (total-size ,y))
+	      (:* ,(lisp->ffc ftype) ,@(unless ncp? `(:+ (head ,x)))) ,(if ncp? sto-x `(t/store ,sym ,x))
 	      (:& :integer) (the index-type ,(if ncp? 0 st-x))
-	      (:* ,(lisp->ffc ftype) :+ (head ,y)) (the ,(store-type sym) (store ,y))
+	      (:* ,(lisp->ffc ftype) :+ (head ,y)) (t/store ,sym ,y)
 	      (:& :integer) (the index-type ,st-y)))
 	 ,y))))
 
 ;;
 (deft/generic (t/copy! #'(lambda (a b) (strict-compare (list #'subtypep #'subtypep) a b))) (clx cly) (x y))
-(deft/method t/copy! ((clx standard-tensor) (cly standard-tensor)) (x y)
+(deft/method t/copy! ((clx dense-tensor) (cly dense-tensor)) (x y)
   (using-gensyms (decl (x y) (sto-x sto-y of-x of-y idx))
     `(let* (,@decl
-	    (,sto-x (store ,x))
-	    (,sto-y (store ,y)))
+	    (,sto-x (t/store ,clx ,x))
+	    (,sto-y (t/store ,cly ,y)))
        (declare (type ,clx ,x)
 		(type ,cly ,y)
 		(type ,(store-type clx) ,sto-x)
 		(type ,(store-type cly) ,sto-y))
        (very-quickly
-	 (mod-dotimes (,idx (dimensions ,x))
-	   :with (linear-sums
-		  (,of-x (strides ,x) (head ,x))
-		  (,of-y (strides ,y) (head ,y)))
-	   :do (t/store-set ,cly
-			    ,(recursive-append
-			      (unless (eq clx cly)
-				`(t/strict-coerce (,(field-type clx) ,(field-type cly)) ))
-			      `(t/store-ref ,clx ,sto-x ,of-x))
+	 (iter (for-mod ,idx from 0 below (dimensions ,x) with-strides ((,of-x (strides ,x) (head ,x))
+									(,of-y (strides ,y) (head ,y))))
+	       (t/store-set ,cly
+			    ;;Coercion messes up optimization in SBCL, so we specialize.
+			    ,(if (real-subtype (field-type cly))
+				 `(the ,(field-type cly) (complex (t/coerce ,(real-subtype (field-type cly)) (t/store-ref ,clx ,sto-x ,of-x)) (t/fid+ ,(real-subtype (field-type cly)))))
+				 (recursive-append
+				  (unless (eq clx cly) `(t/strict-coerce (,(field-type clx) ,(field-type cly)) ))
+				  `(t/store-ref ,clx ,sto-x ,of-x)))
 			    ,sto-y ,of-y)))
-       ,y)))
+	   ,y)))
 
-;;Coercion messes up optimization in SBCL, so we specialize.
-(deft/method t/copy! ((clx real-numeric-tensor) (cly complex-numeric-tensor)) (x y)
-  (using-gensyms (decl (x y) (sto-x sto-y of-x of-y idx))
-    `(let* (,@decl
-	    (,sto-x (store ,x))
-	    (,sto-y (store ,y)))
-       (declare (type ,clx ,x)
-		(type ,cly ,y)
-		(type ,(store-type clx) ,sto-x)
-		(type ,(store-type cly) ,sto-y))
-       (very-quickly
-	 (mod-dotimes (,idx (dimensions ,x))
-	   :with (linear-sums
-		  (,of-x (strides ,x) (head ,x))
-		  (,of-y (strides ,y) (head ,y)))
-	   :do (t/store-set ,cly
-			    (the ,(field-type cly) (complex (t/coerce ,(store-element-type cly) (t/store-ref ,clx ,sto-x ,of-x)) (t/fid+ ,(store-element-type cly))))
-			    ,sto-y ,of-y)))
-       ,y)))
-
-;;
-(deft/method t/copy! ((clx t) (cly standard-tensor)) (x y)
+(deft/method t/copy! ((clx t) (cly dense-tensor)) (x y)
   (using-gensyms (decl (x y) (sto-y of-y idx cx))
     `(let* (,@decl
-	    (,sto-y (store ,y))
+	    (,sto-y (t/store ,cly ,y))
 	    (,cx (t/coerce ,(field-type cly) ,x)))
        (declare (type ,cly ,y)
 		(type ,(field-type cly) ,cx)
 		(type ,(store-type cly) ,sto-y))
        ;;This should be safe
        (very-quickly
-	 (mod-dotimes (,idx (dimensions ,y))
-	   :with (linear-sums
-		  (,of-y (strides ,y) (head ,y)))
-	   :do (t/store-set ,cly ,cx ,sto-y ,of-y)))
+	 (iter (for-mod ,idx from 0 below (dimensions ,y) with-strides ((,of-y (strides ,y) (head ,y))))
+	       (t/store-set ,cly ,cx ,sto-y ,of-y)))
        ,y)))
 
 ;;
+#+nil
 (deft/method t/copy! ((clx coordinate-sparse-tensor) (cly compressed-sparse-matrix)) (x y)
   (using-gensyms (decl (x y) (rstd cstd rdat key value r c s? v vi vr vd i col-stop row))
     `(let (,@decl)
@@ -144,6 +122,7 @@
 		      (setf (aref ,vi (1+ ,i)) ,col-stop)))))
 	 ,y))))
 
+#+nil
 (deft/method t/copy! ((clx compressed-sparse-matrix) (cly standard-tensor)) (x y)
   (using-gensyms (decl (x y) (vi vr vd i j))
    `(let (,@decl)
@@ -197,52 +176,30 @@
 
 ;;
 (defmethod copy! :before ((x base-tensor) (y base-tensor))
-  (assert (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)) nil
-	  'tensor-dimension-mismatch))
+  (assert (very-quickly (lvec-eq (dimensions x) (dimensions y) '=)) nil 'tensor-dimension-mismatch))
 
+#+nil
 (defmethod copy! :before ((a base-tensor) (b compressed-sparse-matrix))
   (assert (<= (store-size a) (store-size b)) nil 'tensor-insufficient-store))
+(define-tensor-method copy! ((x dense-tensor :x) (y dense-tensor :y t))
+  (recursive-append
+   (when (and (eql (cl x) (cl y)) (blas-tensorp (cl y)))
+     `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl y) 1)) (blas-copyablep x y)))
+	(t/blas-copy! ,(cl y) x (first strd) y (second strd))))
+   `(t/copy! (,(cl x) ,(cl y)) x y))
+  'y)
 
-(defmethod copy! ((x base-tensor) (y base-tensor))
-  (let ((clx (class-name (class-of x)))
-	(cly (class-name (class-of y))))
-    (assert (and (member clx *tensor-type-leaves*)
-		 (member cly *tensor-type-leaves*))
-	    nil 'tensor-abstract-class :tensor-class (list clx cly))
-    (cond
-      ((eq clx cly)
-       (compile-and-eval
-	`(defmethod copy! ((x ,clx) (y ,cly))
-	   ,(recursive-append
-	     (when (subtypep clx 'blas-numeric-tensor)
-	       `(if-let (strd (and (call-fortran? x (t/l1-lb ,clx)) (blas-copyablep x y)))
-		  (t/blas-copy! ,clx x (first strd) y (second strd))))
-	     `(t/copy! (,clx ,cly) x y))
-	   y)))
-      ((coerceable? clx cly)
-       (compile-and-eval
-	`(defmethod copy! ((x ,clx) (y ,cly))
-	   (t/copy! (,clx ,cly) x y)
-	   y)))
-      (t
-       (error "Don't know how to copy from ~a to ~a" clx cly))))
-  (copy! x y))
-
-(defmethod copy! ((x t) (y standard-tensor))
-  (let ((cly (class-name (class-of y))))
-    (assert (and (member cly *tensor-type-leaves*))
-	    nil 'tensor-abstract-class :tensor-class cly)
-    (compile-and-eval
-     `(defmethod copy! ((x t) (y ,cly))
-	,(recursive-append
-	  (when (subtypep cly 'blas-numeric-tensor)
-	    `(if-let (strd (and (call-fortran? y (t/l1-lb ,cly)) (consecutive-storep y)))
-	       (t/blas-copy! ,cly (t/coerce ,(field-type cly) x) nil y strd)))
-	  `(t/copy! (t ,cly) x y))))
-    (copy! x y)))
+(define-tensor-method copy! ((x t) (y dense-tensor :y t))
+  (recursive-append
+   (when (blas-tensorp (cl y))
+     `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl y) 1)) (consecutive-storep y)))
+	(t/blas-copy! ,(cl y) (t/coerce ,(field-type (cl y)) x) nil y strd)))
+   `(t/copy! (t ,(cl y)) x y)))
 ;;
-(defgeneric tricopy! (a b uplo?))
-(define-tensor-method tricopy! ((a standard-tensor :input) (b standard-tensor :output) uplo?)
+(defgeneric tricopy! (a b uplo?)
+  (:documentation "Copy upper order, lower order, or diagonal."))
+
+(define-tensor-method tricopy! ((x standard-tensor :x) (b standard-tensor :x t) uplo?)
   `(ecase uplo?
      (:u
       (dorefs (idx (dimensions b) :uplo? :u)
@@ -285,7 +242,7 @@
      b))
 
 ;;Generic function defined in src;base;generic-copy.lisp
-(defmethod copy-generic ((tensor standard-tensor) type)
+(defmethod copy-generic ((tensor dense-tensor) type)
   (cond
     ((eql type 'array)
      (let ((ret (make-array (lvec->list (dimensions tensor)))))
@@ -297,11 +254,12 @@
 		      (loop :for i :from 0 :below (aref (dimensions arr) n)
 			 :collect (mtree arr (append idx (list i))))))))
        (mtree tensor nil)))
-    ((or (not type) (subtypep type 'standard-tensor))
+    ((or (not type) (subtypep type 'dense-tensor))
      (let ((ret (zeros (dimensions tensor) (or type (class-of tensor)))))
        (copy! tensor ret)))
     (t (error "don't know how to copy ~a into ~a." (class-name (class-of tensor)) type))))
 
+#+nil
 (defmethod copy-generic ((tensor sparse-tensor) type)
   (cond
     ((or (not type) (subtypep type 'sparse-tensor))

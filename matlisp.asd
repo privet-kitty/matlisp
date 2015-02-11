@@ -41,6 +41,7 @@
 	    :components ((:file "functions")
 			 (:file "string")
 			 (:file "macros" :depends-on ("functions"))
+			 (:file "search" :depends-on ("macros" "functions"))
 			 (:file "dlist" :depends-on ("macros" "functions"))
 			 (:file "lvec" :depends-on ("macros" "functions"))
 			 (:file "template" :depends-on ("macros" "functions"))))
@@ -59,9 +60,10 @@
    (:module "matlisp-base"
 	    :pathname "base"
 	    :components ((:file "tweakable")
-			 (:file "base-tensor")
+			 (:file "base-tensor" :depends-on ("tweakable"))
+			 (:file "loopy" :depends-on ("base-tensor"))
 			 ;;
-			 (:file "generic/copy" :depends-on ("base-tensor"))
+			 (:file "generic/copy" :depends-on ("base-tensor" "loopy"))
 			 (:file "generic/swap" :depends-on ("base-tensor"))
 			 (:file "generic/ref" :depends-on ("base-tensor"))
 			 (:file "print" :depends-on ("base-tensor" "generic/ref"))
@@ -75,11 +77,7 @@
 			 (:file "permutation" :depends-on ("base-tensor" "generic/copy" "generic/swap"))
 			 ;;
 			 (:file "blas-helpers" :depends-on ("base-tensor" "stride-accessor" "permutation"))
-			 #+nil
-			 (:file "loopy" :depends-on ("standard-tensor"))
-			 #+nil
-			 (:file "einstein"
-				:depends-on ("standard-tensor"))
+			 (:file "einstein" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))
 			 ))
    #+nil
    (:module "matlisp-classes"
@@ -133,7 +131,7 @@
    #+nil
    (:module "matlisp-special"
 	    :pathname "special"
-	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas")
+	    :depends-on ("matlisp-base" #+nil"matlisp-classes" "matlisp-blas")
 	    :components ((:file "random")
 			 (:file "map")
 			 (:file "norm")

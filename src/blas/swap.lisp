@@ -54,15 +54,11 @@
        (declare (type ,sym ,x ,y)
 		(type ,(store-type sym) ,sto-x ,sto-y))
        (very-quickly
-	 (mod-dotimes (,idx (dimensions ,x))
-	   :with (linear-sums
-		  (,of-x (strides ,x) (head ,x))
-		  (,of-y (strides ,y) (head ,y)))
-	   :do (let-typed ((,y-val (t/store-ref ,sym ,sto-y ,of-y) :type ,(field-type sym)))
-		 (t/store-set ,sym
-			      (t/store-ref ,sym ,sto-x ,of-x) ,sto-y ,of-y)
-		 (t/store-set ,sym
-			      ,y-val ,sto-x ,of-x)))
+	 (iter (for-mod ,idx from 0 below (dimensions ,x) with-strides ((,of-x (strides ,x) (head ,x))
+									(,of-y (strides ,y) (head ,y))))
+	       (let-typed ((,y-val (t/store-ref ,sym ,sto-y ,of-y) :type ,(field-type sym)))
+		 (t/store-set ,sym (t/store-ref ,sym ,sto-x ,of-x) ,sto-y ,of-y)
+		 (t/store-set ,sym ,y-val ,sto-x ,of-x)))
 	 ,y))))
 ;;---------------------------------------------------------------;;
 (defmethod swap! :before ((x standard-tensor) (y standard-tensor))

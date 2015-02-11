@@ -35,7 +35,7 @@
 				   (hsym (gensym (string+ "head-" (symbol-name sym)))))
 			      `(:tensor (,gsym ,sym :type ,type)
 				:head (,hsym (head ,gsym) :type index-type)
-				:store (,(gensym (string+ "store-" (symbol-name sym))) (store ,gsym) :type ,(store-type type))
+				:store (,(gensym (string+ "store-" (symbol-name sym))) (t/store ,type ,gsym) :type ,(store-type type))
 				:strides (,(gensym (string+ "strides-" (symbol-name sym))) (strides ,gsym) :type index-store-vector)
 				:dimensions (,(gensym (string+ "dimensions-" (symbol-name sym))) (dimensions ,gsym) :type index-store-vector))))
 			tens))

@@ -96,6 +96,8 @@
 	   #:definline #:with-optimization #:very-quickly
 	   ;;
 	   #:memoizing-let #:defmem #:with-memoization
+	   ;;Loopy
+	   #:for-mod #:with-strides #:loop-order #:uplo
 	   ))
 
 (defpackage "MATLISP-DLIST"

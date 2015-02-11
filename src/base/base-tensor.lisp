@@ -13,7 +13,7 @@
 (defclass base-accessor ()
   ((dimensions :initarg :dimensions :type index-store-vector :documentation "Dimensions of the vector spaces in which the tensor's arguments reside.")))
 
-(declaim (ftype (function (base-accessor &optional index-type) (or index-store-vector index-type)) dimensions))
+(declaim (ftype (function (base-accessor &optional (or boolean index-type)) (or index-store-vector index-type)) dimensions))
 (definline dimensions (x &optional idx)
   (declare (type base-accessor x))
   (typecase idx
@@ -58,6 +58,8 @@
    (parent :initform nil :initarg :parent :type (or null tensor) :documentation "This slot is bound if the tensor is the view of another.")
    (memos :initform nil :documentation "Memoized attributes."))
   (:documentation "Basic tensor class."))
+
+(defclass dense-tensor (tensor) ())
 ;;I have no idea what this does, or why we want it (inherited from standard-matrix.lisp)
 (defmethod make-load-form ((tensor tensor) &optional env)
   "
@@ -137,7 +139,7 @@
 			 (and (= (length (closer-mop:class-direct-superclasses (find-class x))) 2))))
 		(mapcar #'class-name (apply #'intersection (mapcar #'closer-mop:class-direct-subclasses (mapcar #'find-class `(tensor ,accessor))))))
        (let ((cl (intern (format nil "~{~a~^ ~}" (remove nil (list field accessor store))))))
-	 (compile-and-eval `(defclass ,cl (tensor ,accessor) ()))
+	 (compile-and-eval `(defclass ,cl (,(if (equal (list accessor store) '(stride-accessor simple-array)) 'dense-tensor 'tensor) ,accessor) ()))
 	 (compile-and-eval `(deft/method t/field-type (sym ,cl) () ',field))
 	 (case store
 	   (simple-array (compile-and-eval `(deft/method t/store-type (sym ,cl) (&optional (size '*))

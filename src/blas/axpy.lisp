@@ -57,11 +57,9 @@
 	       (,sto-y (store ,y)))
 	   (declare (type ,(store-type sym) ,@(unless apy? `(,sto-x)) ,sto-y))
 	   (very-quickly
-	     (mod-dotimes (,idx (dimensions ,y))
-	       :with (linear-sums
-		      ,@(unless apy? `((,of-x (strides ,x) (head ,x))))
-		      (,of-y (strides ,y) (head ,y)))
-	       :do (t/store-set ,sym (t/f+ ,(field-type sym)
+	     (iter (for-mod ,idx from 0 below (dimensions ,y) with-strides (,@(unless apy? `((,of-x (strides ,x) (head ,x))))
+									    (,of-y (strides ,y) (head ,y))))
+		   (t/store-set ,sym (t/f+ ,(field-type sym)
 					   ,@(if apy?
 						 `(,a)
 						 `((t/f* ,(field-type sym)

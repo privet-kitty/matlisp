@@ -19,8 +19,8 @@
    (cond
      ((eq type 'single-float) "s")
      ((eq type 'double-float) "d")
-     ((tree-equal type '(complex single-float)) "c")
-     ((tree-equal type '(complex double-float)) "z")
+     ((equal type '(complex single-float)) "c")
+     ((equal type '(complex double-float)) "z")
      (t "error: unknown BLAS type."))
    name))
 
@@ -65,7 +65,7 @@
 
 (definline call-fortran? (x lb)
   (declare (type stride-accessor x))
-  (> (size x) lb))
+  (> (total-size x) lb))
 
 (defmacro with-rowm (&rest body)
   `(let ((*default-stride-ordering* :row-major))

@@ -1,9 +1,10 @@
 (in-package #:matlisp)
 
+;;The scheme for this iterator was obtained from FEMLISP.
 (defmacro-clause (FOR-MOD idx FROM initial BELOW dimensions &optional WITH-STRIDES strides LOOP-ORDER order UPLO ul)
   (check-type idx symbol)
   (let ((ul (or ul :ul))
-	(order (or order (and ul (case ul (:u :col-major) (:l :row-major))) *default-stride-ordering*)))
+	(order (or order (and ul (case ul (:u :col-major) (:l :row-major))) matlisp::*default-stride-ordering*)))
     (binding-gensyms (#.(gensym) gy)
       (with-gensyms (dims init count)
 	`(progn
@@ -23,11 +24,11 @@
 	   ;;
 	   (initially (assert (ziprm (= length) (,dims ,init ,@(when strides (mapcar #'(lambda (x) (gy (first x))) strides)))) nil "Rank mismatch."))
 	   (after-each
-	    (unless
+	    (unless		
 		(very-quickly
-		  ;;For some odd reason loop does a better job here!		  
+		  ;;For some odd reason loop does a better job here!
 		  (,@(ecase order
-		       (:row-major `(loop :for ,count :of-type index-type :from (1- (length ,idx)) :downto 0))
+			    (:row-major `(loop :for ,count :of-type index-type :from (1- (length ,idx)) :downto 0))
 		       (:col-major `(loop :for ,count :of-type index-type :from 0 :below (length ,idx)))) :do
 		     (if ,(recursive-append
 			   (ecase ul
@@ -51,15 +52,14 @@
 					(declare (ignore ref ten))
 					type))
 			ref-decls))
-	 (ssyms (mapcar #'(lambda (x y) (when y `(,(gensym) (store ,(car x))))) tsyms types))
+	 (ssyms (mapcar #'(lambda (x y) (when y `(,(gensym) (slot-value ,(car x) 'store)))) tsyms types))
 	 (osyms (mapcar #'(lambda (y) (when y (gensym))) types)))
     `(let-typed (,@(mapcar #'(lambda (x y) (if y (append x `(:type ,y)) x)) tsyms types))
        (let-typed (,@(remove-if #'null (mapcar #'(lambda (x y) (when y (append x `(:type ,(store-type y))))) ssyms types)))
-	 (mod-dotimes (,idx ,dims ,@(when loop-ordering-p `(:loop-order ,loop-order)) :uplo? ,uplo?)
-	   :with (linear-sums
-		  ,@(remove-if #'null (mapcar #'(lambda (of ten typ) (when typ `(,of (strides ,(car ten)) (head ,(car ten)))))
-					      osyms tsyms types)))
-	   :do (symbol-macrolet (,@(mapcar #'(lambda (ref sto ten of typ) (if typ
+	 (iter (for-mod ,idx from 0 below ,dims with-strides (,@(remove-if #'null (mapcar #'(lambda (of ten typ) (when typ `(,of (strides ,(car ten)) (head ,(car ten)))))
+									     osyms tsyms types)))
+			,@(when loop-ordering-p `(loop-order ,loop-order)) uplo ,uplo?)
+	       (symbol-macrolet (,@(mapcar #'(lambda (ref sto ten of typ) (if typ
 									      (list ref `(the ,(field-type typ) (t/store-ref ,typ ,(car sto) ,of)))
 									      (list ref `(ref ,(car ten) ,idx))))
 					   rsyms ssyms tsyms osyms types))

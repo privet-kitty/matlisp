@@ -26,16 +26,13 @@
     >
     >
 ")
-  (:method :before ((func function) (x standard-tensor) (y standard-tensor))
+  (:method :before ((func function) (x base-tensor) (y base-tensor))
 	   (assert (very-quickly (lvec-eq (dimensions x) (dimensions y))) nil 'tensor-dimension-mismatch)))
 
-(defmethod mapsor! ((func function) (x standard-tensor) (y standard-tensor))
+(defmethod mapsor! ((func function) (x base-tensor) (y base-tensor))
   (let ((clx (class-name (class-of x)))
 	(cly (class-name (class-of y))))
-    (assert (and
-	     (member clx *tensor-type-leaves*)
-	     (member cly *tensor-type-leaves*))
-	    nil 'tensor-abstract-class :tensor-class (list clx cly))
+    (assert (and (tensor-leafp clx) (tensor-leafp cly)) nil 'tensor-abstract-class :tensor-class (list clx cly))
     (compile-and-eval
      `(defmethod mapsor! ((func function) (x ,clx) (y ,cly))
 	(dorefs (idx (dimensions x))
@@ -134,10 +131,8 @@
 		,@(when init-type
 			`((type ,init-type ,init))))
        (very-quickly
-	 (mod-dotimes (,idx (dimensions ,ten))
-	   :with (linear-sums
-		  (,of (strides ,ten)))
-	   :do (setf ,init (,@(if (symbolp func)
+	 (iter (for-mod ,idx from 0 below (dimensions ,ten) with-strides ((,of (strides ,ten))))
+	       (setf ,init (,@(if (symbolp func)
 				  `(,func)
 				  `(funcall ,funcsym)) ,init ,(recursive-append
 							       (when key
@@ -166,12 +161,12 @@
 	     (error 'tensor-error :message "Can't find slice-increment in tensor's attributes")))))))
 
 (definline peek-tensor! (x &optional (step 1))
-  (if-let (s (gethash 'slice-increment (attributes x)))
+  (if-let (s (gethash 'slice-increment (memos x)))
     (progn (incf (slot-value x 'head) (* step s)) x)
     (error 'tensor-error :message "Can't find slice-increment in tensor's attributes" :tensor x)))
 
 (definline peek-tensor~ (x &optional (step 1))
-  (if-let (s (gethash 'slice-increment (attributes x)))
+  (if-let (s (gethash 'slice-increment (memos x)))
     (let ((ret (subtensor~ x nil)))
       (incf (slot-value ret 'head) (* step s)) ret)
     (error 'tensor-error :message "Can't find slice-increment in tensor's attributes" :tensor x)))

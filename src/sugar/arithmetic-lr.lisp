@@ -221,13 +221,10 @@
 				       :collect (if (< i (order a)) '(nil nil) 0))))
 	     (rbstr (subseq (strides ret) (order a)))
 	     (sto-b (store b)))
-	(mod-dotimes (idx (dimensions b))
-	  :with (linear-sums
-		 (of-b (strides b) (head b))
-		 (of-r rbstr (head ret)))
-	  :do (progn
-		(setf (slot-value ret-a 'head) of-r)
-		(axpy! (t/store-ref ,(cl b) sto-b of-b) a ret-a)))
+	(iter (for-mod idx from 0 below (dimensions b) with-strides ((of-b (strides b) (head b))
+								     (of-r rbstr (head ret))))
+	      (setf (slot-value ret-a 'head) of-r)
+	      (axpy! (t/store-ref ,(cl b) sto-b of-b) a ret-a))
 	ret))))
 
 (definline t^ (&rest objs)
