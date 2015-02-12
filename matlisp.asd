@@ -78,6 +78,7 @@
 			 ;;
 			 (:file "blas-helpers" :depends-on ("base-tensor" "stride-accessor" "permutation"))
 			 (:file "einstein" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))
+			 (:file "slice")
 			 ))
    #+nil
    (:module "matlisp-classes"

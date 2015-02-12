@@ -239,25 +239,14 @@
 ;;        `(t/axpy! ,(cl x) alpha x y))))
 
 
-;; (defgeneric store-ref (tensor idx)
-;;   (:documentation  "Generic serial read access to the store.")
-;;   (:method ((tensor tensor) idx)
-;;     (let ((clname (class-name (class-of tensor))))
-;;       (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
-;;       (compile-and-eval
-;;        `(defmethod store-ref ((tensor ,clname) idx)
-;; 	  (t/store-ref ,clname (store tensor) idx))))
-;;     (store-ref tensor idx)))
+(defgeneric store-ref (tensor idx)
+  (:documentation  "Generic serial read access to the store."))
+(define-tensor-method store-ref ((tensor tensor) idx)
+  `(t/store-ref ,(cl tensor) (t/store ,(cl tensor) tensor) idx))
 
-;; (defgeneric (setf store-ref) (value tensor idx)
-;;   (:method (value (tensor tensor) idx)
-;;     (let ((clname (class-name (class-of tensor))))
-;;       (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
-;;       (compile-and-eval
-;;        `(defmethod (setf store-ref) (value (tensor ,clname) idx)
-;; 	  (t/store-set ,clname value (store tensor) idx)
-;; 	  (t/store-ref ,clname (store tensor) idx))))
-;;     (setf (store-ref tensor idx) value)))
+(defgeneric (setf store-ref) (value tensor idx))
+(define-tensor-method (setf store-ref) (value (tensor tensor) idx)
+  `(t/store-set ,(cl tensor) value (t/store ,(cl tensor) tensor) idx))
 
 ;;
 (defgeneric store-size (tensor)

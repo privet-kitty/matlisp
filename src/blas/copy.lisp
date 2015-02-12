@@ -83,33 +83,25 @@
        ,y)))
 
 ;;
-#+nil
-(deft/method t/copy! ((clx coordinate-sparse-tensor) (cly compressed-sparse-matrix)) (x y)
-  (using-gensyms (decl (x y) (rstd cstd rdat key value r c s? v vi vr vd i col-stop row))
+(deft/method (t/copy! #'(lambda (x y) (hash-table-storep x))) ((clx stride-accessor) (cly graph-accessor)) (x y)
+  (using-gensyms (decl (x y) (rstd cstd rdat key value r c ii jj s? v vi vr vd i col-stop row))
     `(let (,@decl)
        (declare (type ,clx ,x) (type ,cly ,y))
        (let ((,cstd (aref (strides ,x) 1))
 	     (,rstd (aref (strides ,x) 0))
-	     (,rdat (make-array (if (transpose? ,y) (nrows ,x) (ncols ,x)) :initial-element nil)))
-	 (if (transpose? ,y)
-	     (loop :for ,key :being :the :hash-keys :of (store ,x)
-		:using (hash-value ,value)
-		:do (multiple-value-bind (,c ,r) (floor (the index-type ,key) ,cstd)
-		      (multiple-value-bind (,r ,s?) (floor (the index-type ,r) ,rstd)
-			(when (zerop ,s?)
-			  (push (cons ,c `(t/strict-coerce (,(field-type clx) ,(field-type cly)) ,value)) (aref ,rdat ,r))))))
-	     (loop :for ,key :being :the :hash-keys :of (store ,x)
-		:using (hash-value ,value)
-		:do (multiple-value-bind (,c ,r) (floor (the index-type ,key) ,cstd)
-		      (multiple-value-bind (,r ,s?) (floor (the index-type ,r) ,rstd)
-			(when (zerop ,s?)
-			  (push (cons ,r (t/coerce ,(field-type cly) ,value)) (aref ,rdat ,c)))))))
-	 (let-typed ((,vi (neighbour-start ,y) :type index-store-vector)
-		     (,vr (neighbour-id ,y) :type index-store-vector)
-		     (,vd (store ,y) :type ,(store-type cly)))
+	     (,rdat (make-array (if (slot-value ,y 'transposep) (nrows ,x) (ncols ,x)) :initial-element nil)))
+	 (loop :for ,key :being :the :hash-keys :of (t/store ,clx ,x)
+	    :using (hash-value ,value)		
+	    :do (letv* ((,c ,r (floor (the index-type ,key) ,cstd) :type index-type index-type)
+			(,r ,s? (floor (the index-type ,r) ,rstd) :type index-type index-type)
+			(,ii ,jj (if (slot-value ,y 'transposep) (values ,c ,r) (values ,r ,c)) :type index-type index-type))
+		  (when (zerop ,s?) (push (cons ,ii `(t/strict-coerce (,(field-type clx) ,(field-type cly)) ,value)) (aref ,rdat ,jj)))))
+	 (let-typed ((,vi (fence ,y) :type index-store-vector)
+		     (,vr (δ-i ,y) :type index-store-vector)
+		     (,vd (t/store ,cly ,y) :type ,(store-type cly)))
 	   (setf (aref ,vi 0) 0)
 	   (very-quickly
-	     (loop :for ,i :from 0 :below (ncols ,x)
+	     (loop :for ,i :from 0 :below (length ,rdat)
 		:with ,col-stop := 0
 		:do (let ((,row (sort (aref ,rdat ,i) #'(lambda (x y) (< (the index-type x) (the index-type y))) :key #'car)))
 		      (loop :for (,r . ,v) :in ,row
@@ -199,7 +191,7 @@
 (defgeneric tricopy! (a b uplo?)
   (:documentation "Copy upper order, lower order, or diagonal."))
 
-(define-tensor-method tricopy! ((x standard-tensor :x) (b standard-tensor :x t) uplo?)
+(define-tensor-method tricopy! ((a dense-tensor :x) (b dense-tensor :x t) uplo?)
   `(ecase uplo?
      (:u
       (dorefs (idx (dimensions b) :uplo? :u)
@@ -222,7 +214,7 @@
 	   :do (setf (t/store-ref ,(cl b) sto.b of.b) (t/store-ref ,(cl a) sto.a of.a))))))
   'b)
 
-(define-tensor-method tricopy! ((a t) (b standard-tensor :output) uplo?)
+(define-tensor-method tricopy! ((a t) (b dense-tensor :x) uplo?)
   `(let ((a (t/coerce ,(field-type (cl b)) a)))
      (ecase uplo?
        (:u

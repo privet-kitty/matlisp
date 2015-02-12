@@ -27,7 +27,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(defun range (start end &optional (h 1d0))
+(defun range (start end &optional (h 1))
   (let ((quo (ceiling (if (> start end) (- start end) (- end start)) h)))
     (if (= quo 0) nil
 	(let* ((ret (zeros quo 'real-tensor))

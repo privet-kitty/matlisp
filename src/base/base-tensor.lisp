@@ -55,11 +55,11 @@
 ;;
 (defclass tensor (base-tensor base-accessor)
   ((store :initarg :store :documentation "Storage for the tensor.")
-   (parent :initform nil :initarg :parent :type (or null tensor) :documentation "This slot is bound if the tensor is the view of another.")
    (memos :initform nil :documentation "Memoized attributes."))
   (:documentation "Basic tensor class."))
 
-(defclass dense-tensor (tensor) ())
+(defclass dense-tensor (tensor) ()
+  ((parent :initform nil :initarg :parent :type (or null tensor) :documentation "This slot is bound if the tensor is the view of another.")))
 ;;I have no idea what this does, or why we want it (inherited from standard-matrix.lisp)
 (defmethod make-load-form ((tensor tensor) &optional env)
   "

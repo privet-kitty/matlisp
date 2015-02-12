@@ -5,7 +5,7 @@
 (deft/method t/zeros (class stride-accessor) (dims &optional initial-element)
   (with-gensyms (astrs adims sizs)
     `(letv* ((,adims (coerce ,dims 'index-store-vector) :type index-store-vector)
-	     (,astrs ,sizs (make-stride ,adims) :type index-store-vector index-type))
+	     (,astrs ,sizs (,(if (hash-table-storep class) 'make-stride-cmj 'make-stride) ,adims) :type index-store-vector index-type))
        (make-instance ',class
 		      :dimensions ,adims
 		      :head 0 :strides ,astrs
@@ -66,7 +66,7 @@
     A generic version of @func{zeros}.
 ")
   (:method ((dims cons) (dtype t) &optional initial-element)
-    ;;(assert (member dtype *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class dtype)
+    ;;(assert (tensor-leafp dtype) nil 'tensor-abstract-class :tensor-class dtype)
     (compile-and-eval
      `(defmethod zeros-generic ((dims cons) (dtype (eql ',dtype)) &optional initial-element)
 	(if initial-element
