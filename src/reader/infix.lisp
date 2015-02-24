@@ -291,10 +291,10 @@
 ;;
 (eval-every
   (defparameter *tensor-symbol*
-    '((#\D matlisp::real-tensor)
-      (#\Z matlisp::complex-tensor)
-      (#\Q matlisp::rational-tensor)
-      (#\B matlisp::boolean-tensor))))
+    `((#\D ,(matlisp:tensor 'cl:double-float))
+      (#\Z ,(matlisp:tensor '(cl:complex cl:double-float)))
+      (#\Q ,(matlisp:tensor 'cl:rational))
+      (#\B ,(matlisp:tensor 'cl:bit)))))
 
 (defun tensor-reader (stream subchar arg)
   (assert (null arg) nil "given arg where none was required.")
@@ -307,6 +307,7 @@
 	     `(matlisp::zeros (list ,@expr) ',cl))))))
 
 (defun permutation-cycle-reader (stream subchar arg)
+  (declare (ignore subchar))
   (assert (null arg) nil "given arg where none was required.")
   (ignore-characters *blank-characters* stream)
   (ecase (peek-char nil stream t nil t)

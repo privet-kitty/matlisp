@@ -26,21 +26,21 @@
     >
     >
 ")
-  (:method :before ((func function) (x base-tensor) (y base-tensor))
-	   (assert (very-quickly (lvec-eq (dimensions x) (dimensions y))) nil 'tensor-dimension-mismatch)))
+  (:method :before ((func function) (x tensor) (y tensor))
+     (assert (very-quickly (lvec-eq (dimensions x) (dimensions y))) nil 'tensor-dimension-mismatch)))
 
-(defmethod mapsor! ((func function) (x base-tensor) (y base-tensor))
-  (let ((clx (class-name (class-of x)))
-	(cly (class-name (class-of y))))
-    (assert (and (tensor-leafp clx) (tensor-leafp cly)) nil 'tensor-abstract-class :tensor-class (list clx cly))
-    (compile-and-eval
-     `(defmethod mapsor! ((func function) (x ,clx) (y ,cly))
-	(dorefs (idx (dimensions x))
-		((ref-x x :type ,clx)
-		 (ref-y y :type ,cly))
-		(setf ref-y (funcall func (lvec->list idx) ref-x ref-y)))
-	y)))
-  (mapsor! func x y))
+(define-tensor-method mapsor! ((func function) (x dense-tensor :x) (y dense-tensor :y))
+  `(dorefs (idx (dimensions x))
+     ((ref-x x :type ,(cl x))
+      (ref-y y :type ,(cl y)))
+     (setf ref-y (funcall func idx ref-x ref-y)))
+  'y)
+
+(define-tensor-method mapsor! ((func function) (x (eql nil)) (y dense-tensor :y))
+  `(dorefs (idx (dimensions y))
+     ((ref-y y :type ,(cl y)))
+     (setf ref-y (funcall func idx ref-y)))
+  'y)
 
 (definline mapsor (func x &optional output-type)
   (let ((ret (zeros (dimensions x) (or output-type (class-of x)))))
@@ -62,9 +62,10 @@
     `(let (,@decl)
        (declare (type ,type ,tensor))
        (very-quickly (dorefs (,idx (dimensions ,tensor))
-			     ((,ref ,tensor :type ,type))
-			     (setf ,ref (let-typed ((,x ,ref :type ,(field-type type))) ,@body))))
+		       ((,ref ,tensor :type ,type))
+		       (setf ,ref (let-typed ((,x ,ref :type ,(field-type type))) ,@body))))
        ,tensor)))
+
 ;;
 (defun check-dims (axlst tensors)
   (let ((axlst (if (numberp axlst) (make-list (length tensors) :initial-element axlst) axlst)))
@@ -72,7 +73,7 @@
 	  (for axis in axlst)
 	  (with dims = nil)
 	  (cond
-	    ((typep x 'standard-tensor)
+	    ((typep x 'dense-tensor)
 	     (let-typed ((xdims (dimensions x) :type index-store-vector))
 			(assert (< axis (order x)) nil 'tensor-dimension-mismatch)
 			(if (null dims)
@@ -87,7 +88,7 @@
 	  (finally (return (values dims strides slices))))))
 
 (defun mapslice (axis func tensor &rest more-tensors)
-  (multiple-value-bind (d.axis strides slices) (check-dims axis (cons tensor more-tensors))
+  (letv* ((d.axis strides slices (check-dims axis (cons tensor more-tensors))))
     (loop :for i :from 0 :below d.axis
        :collect (prog1 (apply func (mapcar #'copy slices))
 		  (when (< i (1- d.axis))
@@ -96,16 +97,16 @@
 		       :do (when slc (incf (slot-value slc 'head) std))))))))
 
 (defun mapslice~ (axis func tensor &rest more-tensors)
-  (multiple-value-bind (d.axis strides slices) (check-dims axis (cons tensor more-tensors))
+  (letv* ((d.axis strides slices (check-dims axis (cons tensor more-tensors))))
    (loop :for i :from 0 :below d.axis
-       :collect (prog1 (apply func slices)
-		  (when (< i (1- d.axis))
-		    (loop :for slc :in slices
-		       :for std :in strides
-		       :do (when slc (incf (slot-value slc 'head) std))))))))
+      :collect (prog1 (apply func slices)
+		 (when (< i (1- d.axis))
+		   (loop :for slc :in slices
+		      :for std :in strides
+		      :do (when slc (incf (slot-value slc 'head) std))))))))
 
 (defun mapslicec~ (axis func tensor &rest more-tensors)
-  (multiple-value-bind (d.axis strides slices) (check-dims axis (cons tensor more-tensors))
+  (letv* ((d.axis strides slices (check-dims axis (cons tensor more-tensors))))
     (loop :for i :from 0 :below d.axis
        :do (prog1 (apply func slices)
 	     (when (< i (1- d.axis))
@@ -250,11 +251,11 @@
 ;;
 
 (defun meshgrid (a b)
-  (declare (type base-vector a b))
-  (let ((x (zeros (list (dims a 0) (dims b 0)) (class-of a)))
-	(y (zeros (list (dims a 0) (dims b 0)) (class-of a))))
-    (ger! 1 a (ones (dims b 0) (class-of b)) x)
-    (ger! 1 (ones (dims a 0) (class-of a)) b y)
+  (declare (type tensor-vector a b))
+  (let ((x (zeros (list (dimensions a 0) (dimensions b 0)) (class-of a)))
+	(y (zeros (list (dimensions a 0) (dimensions b 0)) (class-of a))))
+    (ger! 1 a (ones (dimensions b 0) (class-of b)) x)
+    (ger! 1 (ones (dimensions a 0) (class-of a)) b y)
     (values x y)))
 
 (defmacro with-coordinates ((&rest syms) vector &body code)

@@ -1,7 +1,7 @@
 (in-package #:matlisp)
 
 (deft/generic (t/blas-gemv! #'subtypep) sym (alpha A lda x st-x beta y st-y transp))
-(deft/method t/blas-gemv! (sym blas-numeric-tensor) (alpha A lda x st-x beta y st-y transp)
+(deft/method (t/blas-gemv! #'blas-tensor-typep) (sym dense-tensor) (alpha A lda x st-x beta y st-y transp)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (alpha A lda x st-x beta y st-y transp) (m n))
       `(let* (,@decl
@@ -23,7 +23,7 @@
 ;;
 (deft/generic (t/gemv! #'subtypep) sym (alpha A x beta y transp))
 
-(deft/method t/gemv! (sym standard-tensor) (alpha A x beta y transp)
+(deft/method t/gemv! (sym dense-tensor) (alpha A x beta y transp)
   (using-gensyms (decl (alpha A x beta y transp))
    `(let (,@decl)
       (declare (type ,sym ,A ,x ,y)
@@ -68,30 +68,21 @@
      :T                alpha * A^T * x + beta * y
      :C                alpha * A^H * x + beta * y
 ")
-  (:method :before (alpha (A standard-tensor) (x standard-tensor)
-		    beta (y standard-tensor)
-		    &optional (job :n))
-    (assert (member job '(:n :t :c)) nil 'invalid-value
-	    :given job :expected `(member job '(:n :t :c))
-	    :message "GEMV!: Given an unknown job.")
-    (assert (not (eq x y)) nil 'invalid-arguments
-	    :message "GEMV!: x and y cannot be the same vector")
-    (assert (and
-	     (tensor-vectorp x) (tensor-vectorp y) (tensor-matrixp A)
-	     (= (dimensions x 0)
-		(dimensions A (if (member job '(:t :c)) 0 1)))
-	     (= (dimensions y 0)
-		(dimensions A (if (member job '(:t :c)) 1 0))))
-	    nil 'tensor-dimension-mismatch)))
+  (:method :before (alpha (A dense-tensor) (x dense-tensor) beta (y dense-tensor) &optional (job :n))
+    (assert (and (tensor-vectorp x) (tensor-vectorp y) (tensor-matrixp A)
+		 (= (dimensions x 0) (dimensions A (ecase job (:n 1) ((:t :c) 0))))
+		 (= (dimensions y 0) (dimensions A (ecase job (:n 0) ((:t :c) 1)))))
+	    nil 'tensor-dimension-mismatch)
+    (assert (not (eq x y)) nil 'invalid-arguments :message "GEMV!: x and y cannot be the same vector")))
 
-(define-tensor-method gemv! (alpha (A standard-tensor :input) (x standard-tensor :input) beta (y standard-tensor :output) &optional (job :n))
+(define-tensor-method gemv! (alpha (A dense-tensor :x) (x dense-tensor :x) beta (y dense-tensor :x t) &optional (job :n))
   `(let ((alpha (t/coerce ,(field-type (cl x)) alpha))
 	 (beta (t/coerce ,(field-type (cl x)) beta))
 	 (cjob (aref (symbol-name job) 0)))
      (declare (type ,(field-type (cl x)) alpha beta)
 	      (type character cjob))
      ,(recursive-append
-       (when (subtypep (cl x) 'blas-numeric-tensor)
+       (when (blas-tensor-typep (cl x))
 	 `(if (call-fortran? A (t/l2-lb ,(cl a)))
 	      (with-columnification (((A cjob)) ())
 		(multiple-value-bind (lda opa) (blas-matrix-compatiblep A cjob)
@@ -128,11 +119,8 @@
      :C                alpha * A^H * x + beta * y
 "))
 
-(defmethod gemv (alpha (A standard-tensor) (x standard-tensor)
-		 beta (y standard-tensor) &optional (job :n))
+(defmethod gemv (alpha (A dense-tensor) (x dense-tensor) beta (y dense-tensor) &optional (job :n))
   (gemv! alpha A x beta (copy y) job))
 
-(defmethod gemv (alpha (A standard-tensor) (x standard-tensor)
-		 (beta (eql nil)) (y (eql nil)) &optional (job :n))
-  (let ((ret (zeros (ecase job (:n (nrows A)) ((:t :c) (ncols A))) (class-of A))))
-    (gemv! alpha A x 1 ret job)))
+(defmethod gemv (alpha (A dense-tensor) (x dense-tensor) (beta (eql nil)) (y (eql nil)) &optional (job :n))
+  (gemv! alpha A x 1 (zeros (dimensions A (ecase job (:n 0) ((:t :c) 1))) (ziprm (cclass-max class-of) A)) job))

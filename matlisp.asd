@@ -64,7 +64,6 @@
 			 (:file "loopy" :depends-on ("base-tensor"))
 			 ;;
 			 (:file "generic/copy" :depends-on ("base-tensor" "loopy"))
-			 (:file "generic/swap" :depends-on ("base-tensor"))
 			 (:file "generic/ref" :depends-on ("base-tensor"))
 			 (:file "print" :depends-on ("base-tensor" "generic/ref"))
 			 ;;
@@ -74,11 +73,11 @@
 			 (:file "stride-accessor" :depends-on ("tensor-template"))
 			 (:file "graph-accessor" :depends-on ("tensor-template"))
 			 ;;
-			 (:file "permutation" :depends-on ("base-tensor" "generic/copy" "generic/swap"))
+			 (:file "permutation" :depends-on ("base-tensor" "generic/copy"))
 			 ;;
 			 (:file "blas-helpers" :depends-on ("base-tensor" "stride-accessor" "permutation"))
 			 (:file "einstein" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))
-			 (:file "slice")
+			 (:file "slice" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))
 			 ))
    #+nil
    (:module "matlisp-classes"
@@ -94,33 +93,21 @@
 	    :pathname "blas"
 	    :depends-on ("matlisp-base")
 	    :components ((:file "maker")
-			 #+nil
-			 ((:file "copy"
-				 :depends-on ("maker"))
-			  (:file "dot"
-				 :depends-on ("maker"))
-			  (:file "swap")
-			  (:file "axpy"
-				 :depends-on ("maker" "copy"))
-			  (:file "scal"
-				 :depends-on ("copy" "maker"))
-			  (:file "realimag"
-				 :depends-on ("copy"))
-			  (:file "trans"
-				 :depends-on ("scal" "copy"))
-			  (:file "sum"
-				 :depends-on ("dot" "copy"))
-			  (:file "gemv"
-				 :depends-on ("copy"))
-			  (:file "ger"
-				 :depends-on ("copy"))
-			  (:file "gemm"
-				 :depends-on ("copy"))
-			  (:file "trsm"))))
-   #+nil
+			 (:file "copy" :depends-on ("maker"))
+			 (:file "dot" :depends-on ("maker"))
+			 (:file "axpy" :depends-on ("maker" "copy"))
+			 (:file "scal" :depends-on ("maker" "copy"))
+			 (:file "realimag" :depends-on ("copy"))
+			 (:file "transpose" :depends-on ("scal" "copy"))
+			 (:file "swap")
+			 (:file "sum" :depends-on ("dot" "copy"))
+			 (:file "gemv" :depends-on ("copy"))
+			 (:file "ger" :depends-on ("copy"))
+			 (:file "gemm" :depends-on ("copy"))
+			 (:file "trsm")))
    (:module "matlisp-lapack"
 	    :pathname "lapack"
-	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas")
+	    :depends-on ("matlisp-base" "matlisp-blas")
 	    :components ((:file "lu")
 			 (:file "chol")
 			 (:file "eig")
@@ -129,24 +116,20 @@
 			 (:file "schur")
 			 (:file "svd")
 			 (:file "syl" :depends-on ("schur"))))
-   #+nil
    (:module "matlisp-special"
 	    :pathname "special"
 	    :depends-on ("matlisp-base" #+nil"matlisp-classes" "matlisp-blas")
 	    :components ((:file "random")
 			 (:file "map")
 			 (:file "norm")
-			 (:file "seq")))
-   #+nil
-   (:module "matlisp-sugar"
-	    :pathname "sugar"
-	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas")
-	    :components ((:file "arithmetic")
+			 (:file "seq")
+			 (:file "arithmetic")
 			 (:file "oneseye")))
-   #+nil
    (:module "matlisp-reader"
 	    :pathname "reader"
+	    :depends-on ("matlisp-base" "matlisp-lapack" "matlisp-blas" "matlisp-special")
 	    :components ((:file "infix")
+			 #+nil
 			 (:file "loadsave")))
    (:module "matlisp-graph"
 	    :pathname "graph"

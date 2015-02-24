@@ -118,7 +118,7 @@
   (:export #:deft/generic #:deft/method #:remt/method))
 
 (defpackage "MATLISP-INFIX"
-  (:use #:common-lisp #:iterate #:optima #:matlisp-conditions #:matlisp-utilities)
+  (:use #:common-lisp #:iterate #:matlisp-conditions #:matlisp-utilities)
   (:import-from :λ-reader #:λ)
   (:export #:test-infix #:string->prefix))
 
@@ -141,12 +141,37 @@
   (:documentation "Fortran foreign function interface"))
 
 (defpackage "MATLISP"
-  (:use #:common-lisp #:iterate #:optima #:named-readtables
-	#:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template)
+  (:use #:common-lisp #:iterate #:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template)
+  (:nicknames :m)
+  ;;Shadow iterate:sum
+  (:shadow :sum :conjugate :realpart :imagpart)
+  (:export
+   ;;Tweakable
+   #:*default-sparse-store-increment* #:*default-sparsity* #:*max-sparse-size* #:*default-stride-ordering* #:*default-tensor-type*
+   #:*check-after-initializing?* #:*default-rcond* #:*default-uplo* #:*real-l1-fcall-lb* #:*real-l2-fcall-lb* #:*real-l3-fcall-lb*
+   #:*complex-l1-fcall-lb* #:*complex-l2-fcall-lb* #:*complex-l3-fcall-lb*
+   ;;
+   #:pick-random #:shuffle! #:permute! #:permute
+   #:inv #:compose #:sort-permute
+   ;;
+   #:tensor #:dimensions #:total-size #:order #:ref
+   #:tensor-typep #:tensor-matrixp #:tensor-vectorp #:tensor-squarep
+   #:tensor-vector #:tensor-matrix #:tensor-square-matrix
+   ;;
+   #:einstein-sum #:for-mod #:with-strides #:loop-order #:uplo #:dorefs 
+   #:subtensor~ #:slice~ #:suptensor~ #:reshape! #:matrixify~ #:tensor-append
+   ;;
+   #:copy! #:copy #:swap! #:swap
+   )
+  (:documentation "MATLISP routines"))
+
+(defpackage "MATLISP-USER"
+  (:nicknames :mu)
+  (:use #:common-lisp #:iterate #:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template)
   (:import-from :λ-reader #:λ)
   ;;Shadow iterate:sum
   (:shadow :sum)
-  ;;Let's keep everything in house for now.
+  ;;Let's keep everything in house for now.   
   #+nil(:export #:index-type #:index-array #:allocate-index-store #:make-index-store
 	   ;;Standard-tensor
 	   #:standard-tensor
@@ -162,7 +187,7 @@
 	   #:ref #:store-ref
 	   ;;Type checking
 	   #:tensor-typep #:tensor-vectorp #:tensor-matrixp #:tensor-squarep)
-  (:documentation "MATLISP routines"))
+  (:documentation "MATLISP internals"))
 
 ;;Transitioning to using the tensor-datastructures; eventually move things back to :matlisp
 

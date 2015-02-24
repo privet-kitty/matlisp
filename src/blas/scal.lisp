@@ -28,7 +28,7 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
 (in-package #:matlisp)
 
 (deft/generic (t/scdi! #'subtypep) sym (x y &key scal? numx?))
-(deft/method t/scdi! (sym standard-tensor) (x y &key (scal? t) (numx? nil))
+(deft/method t/scdi! (sym dense-tensor) (x y &key (scal? t) (numx? nil))
   (using-gensyms (decl (x y))
     (with-gensyms (sto-x sto-y of-x of-y idx)
       `(let (,@decl)
@@ -57,15 +57,14 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
   =======
   X <- alpha .* X
 ")
-  (:method :before ((x standard-tensor) (y standard-tensor))
-	   (assert (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)) nil
-		   'tensor-dimension-mismatch)))
+  (:method :before ((x dense-tensor) (y dense-tensor))
+     (assert (very-quickly (lvec-eq (dimensions x) (dimensions y) #'=)) nil 'tensor-dimension-mismatch)))
 
-(define-tensor-method scal! ((x standard-tensor :input) (y standard-tensor :output))
-  `(t/scdi! ,(cl x) x y :scal? t :numx? nil)
+(define-tensor-method scal! ((x dense-tensor :x) (y dense-tensor :x t))
+  `(t/scdi! ,(cl y) x y :scal? t :numx? nil)
   'y)
 
-(define-tensor-method scal! ((x t) (y standard-tensor :output))
+(define-tensor-method scal! ((x t) (y dense-tensor :x))
   `(let ((x (t/coerce ,(field-type (cl y)) x)))
      (declare (type ,(field-type (cl y)) x))
      (unless (t/f= ,(field-type (cl y)) x (t/fid* ,(field-type (cl y))))
@@ -90,14 +89,12 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
 ")
   (:method ((alpha number) (x number))
     (* alpha x))
-  (:method (alpha x)
-     (scal! alpha (copy x)))
-  ;;TODO: There is an issue here when x is not coerceable into the tensor class of alpha
-  (:method ((alpha standard-tensor) (x t))
+  (:method (alpha (x dense-tensor))
+    (scal! alpha (copy x (when (complexp alpha) (complexified-type (class-name (class-of x)))))))
+  ;;TODO: There is an issue here when x is not coerceable into the tensor class of alpha.
+  (:method ((alpha dense-tensor) (x t))
     ;;We assume commutation of course.
-    (scal! x (copy alpha)))
-  (:method ((alpha complex) (x real-numeric-tensor))
-    (scal! alpha (copy x 'complex-tensor))))
+    (scal! x (copy alpha (when (complexp x) (complexified-type alpha))))))
 
 ;;These should've been auto-generated.
 (defgeneric div! (alpha x)
@@ -113,15 +110,14 @@ s  Purpose
 
   Yes the calling order is twisted.
 ")
-  (:method :before ((x standard-tensor) (y standard-tensor))
-	   (assert (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)) nil
-		   'tensor-dimension-mismatch)))
+  (:method :before ((x dense-tensor) (y dense-tensor))
+     (assert (very-quickly (lvec-eq (dimensions x) (dimensions y) #'=)) nil 'tensor-dimension-mismatch)))
 
-(define-tensor-method div! ((x standard-tensor :input) (y standard-tensor :output))  
+(define-tensor-method div! ((x dense-tensor :x) (y dense-tensor :x t))
   `(t/scdi! ,(cl x) x y :scal? nil :numx? nil)
   'y)
 
-(define-tensor-method div! ((x t) (y standard-tensor :output))
+(define-tensor-method div! ((x t) (y dense-tensor :x))
   `(let ((x (t/coerce ,(field-type (cl y)) x)))     
      (declare (type ,(field-type (cl y)) x))
      (unless (t/f= ,(field-type (cl y)) x (t/fid* ,(field-type (cl y))))
@@ -142,19 +138,19 @@ s  Purpose
 ")
   (:method ((alpha number) (x number))
     (/ x alpha))
-  (:method (alpha x)
-     (div! alpha (copy x)))
+  (:method (alpha (x dense-tensor))
+    (div! alpha (copy x (when (complexp alpha) (complexified-type x)))))
   ;;TODO: There is an issue here when x is not coerceable into the tensor class of alpha
-  (:method ((alpha standard-tensor) (x t))
-    (div! alpha (copy! x (zeros (dimensions alpha) (class-of alpha))))))
+  (:method ((alpha dense-tensor) (x t))
+    (div! alpha (copy! x (zeros (dimensions alpha) (when (complexp alpha) (complexified-type x)))))))
 
 ;;Diagonal scaling.
 (defgeneric scald! (x m &optional axis)
-  (:method :before ((x standard-tensor) (m standard-tensor) &optional (axis 0))
-	   (declare (type index-type axis))
-	   (assert (and (tensor-vectorp x) (= (dimensions x 0) (dimensions m axis))) nil 'tensor-dimension-mismatch)))
+  (:method :before ((x dense-tensor) (m dense-tensor) &optional (axis 0))
+     (declare (type index-type axis))
+     (assert (and (tensor-vectorp x) (= (dimensions x 0) (dimensions m axis))) nil 'tensor-dimension-mismatch)))
 
-(define-tensor-method scald! ((x standard-tensor :input) (m standard-tensor :output) &optional (axis 0))
+(define-tensor-method scald! ((x dense-tensor :x) (m dense-tensor :x t) &optional (axis 0))
   `(let-typed ((sto-m (store m) :type ,(store-type (cl m)))
 	       (sto-x (store x) :type ,(store-type (cl x)))
 	       (axis (modproj axis (order m))))

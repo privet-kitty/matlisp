@@ -28,7 +28,7 @@
 (in-package #:matlisp)
 
 (deft/generic (t/lapack-potrf! #'subtypep) sym (A lda uplo))
-(deft/method t/lapack-potrf! (sym blas-numeric-tensor) (A lda uplo)
+(deft/method (t/lapack-potrf! #'blas-tensor-typep) (sym dense-tensor) (A lda uplo)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (A lda uplo))
       `(let* (,@decl)
@@ -62,13 +62,11 @@
   [2] INFO = T: successful
 	     i:  U(i,i) is exactly zero.
 ")
-  (:method :before ((a standard-tensor) &optional (uplo :l))
-	   (assert (tensor-square-matrixp a) nil 'tensor-dimension-mismatch
-		   :message "Expected square matrix.")
-	   (assert (member uplo '(:l :u)) nil 'invalid-arguments
-		   :given uplo :expected `(member uplo '(:l :u)))))
+  (:method :before ((a dense-tensor) &optional (uplo :l))
+     (assert (typep a 'tensor-square-matrix) nil 'tensor-dimension-mismatch :message "Expected square matrix.")
+     (assert (member uplo '(:l :u)) nil 'invalid-arguments :given uplo :expected `(member uplo '(:l :u)))))
 
-(define-tensor-method potrf! ((a blas-numeric-tensor :output) &optional (uplo *default-uplo*))
+(define-tensor-method potrf! ((a dense-tensor :x t) &optional (uplo *default-uplo*))
   `(with-columnification (() (A))
      (let ((info (t/lapack-potrf! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) (char-upcase (aref (symbol-name uplo) 0)))))
        (unless (= info 0)
@@ -118,14 +116,11 @@
 		 but the factor U is exactly singular.
 		 Solution could not be computed.
 ")
-  (:method :before ((A standard-tensor) (B standard-tensor) &optional (uplo :l))
-	   (assert (and (tensor-square-matrixp A) (<= (order B) 2)
-			(= (nrows A) (nrows B)))
-		   nil 'tensor-dimension-mismatch)
-	   (assert (member uplo '(:l :u)) nil 'invalid-value
-		   :given uplo :expected `(member uplo '(:u :l)))))
+  (:method :before ((A dense-tensor) (B dense-tensor) &optional (uplo :l))
+     (assert (and (typep A 'tensor-square-matrix) (<= (order B) 2) (= (dimensions A 0) (dimensions B 0))) nil 'tensor-dimension-mismatch)
+     (assert (member uplo '(:l :u)) nil 'invalid-value :given uplo :expected `(member uplo '(:u :l)))))
 
-(define-tensor-method potrs! ((A blas-numeric-tensor :input) (B blas-numeric-tensor :output) &optional (uplo *default-uplo*))
+(define-tensor-method potrs! ((A dense-tensor :x) (B dense-tensor :x t) &optional (uplo *default-uplo*))
   `(if (tensor-vectorp B)
        (potrs! A (suptensor~ B 2) uplo)
        (with-columnification (((A #\C)) (B))
@@ -136,30 +131,14 @@
 	   (unless (= info 0) (error "POTRS returned ~a. the ~:*~a'th argument had an illegal value." (- info))))))
   'B)
 ;;
-(defgeneric chol (a &optional uplo)
-  (:documentation
-   "
-  Syntax
-  ======
-  (CHOL a &optional uplo)
-
-  Purpose
-  =======
-  Computes the Cholesky decomposition of A.
-
-  This functions is an interface to POTRF!
-"))
-
-(defmethod chol ((a blas-numeric-tensor) &optional (uplo *default-uplo*))
+(defun chol (a &optional (uplo *default-uplo*))
+  (declare (type (and tensor-square-matrix (satisfies blas-tensorp)) a))
   (let ((l (copy a)))
     (restart-case (potrf! l uplo)
       (increment-diagonal-and-retry (value)
 	(copy! a l) (axpy! value nil (diag~ l))
 	(potrf! l uplo)))
-    (let ((diag (diag l 1)))
-      (tricopy! 0d0 l (ecase uplo (:u :l) (:l :u)))
-      (tricopy! diag l :d))
-    l))
+    (tricopy! 0d0 l (ecase uplo (:u :lo) (:l :uo)))))
 ;;
 
 ;; (let* ((a #i(a := randn([10, 10]), a + a' + 20 * eye([10, 10])))

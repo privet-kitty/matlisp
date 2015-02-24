@@ -28,7 +28,7 @@
 (in-package #:matlisp)
 
 (deft/generic (t/blas-copy! #'subtypep) sym (x st-x y st-y))
-(deft/method t/blas-copy! (sym dense-tensor) (x st-x y st-y)
+(deft/method (t/blas-copy! #'blas-tensor-typep) (sym dense-tensor) (x st-x y st-y)
   (let ((ncp? (null st-x)) (ftype (field-type sym)))
     (using-gensyms (decl (x y) (sto-x))
       `(let (,@decl)
@@ -60,10 +60,12 @@
 									(,of-y (strides ,y) (head ,y))))
 	       (t/store-set ,cly
 			    ;;Coercion messes up optimization in SBCL, so we specialize.
-			    ,(if (real-subtype (field-type cly))
-				 `(the ,(field-type cly) (complex (t/coerce ,(real-subtype (field-type cly)) (t/store-ref ,clx ,sto-x ,of-x)) (t/fid+ ,(real-subtype (field-type cly)))))
+			    ,(if (and (subtypep (field-type clx) 'cl:real) (real-subtype (field-type cly)))
+				 `(the ,(field-type cly) (complex (t/strict-coerce (,(field-type clx) ,(real-subtype (field-type cly)))
+										   (t/store-ref ,clx ,sto-x ,of-x))
+								  (t/fid+ ,(real-subtype (field-type cly)))))
 				 (recursive-append
-				  (unless (eq clx cly) `(t/strict-coerce (,(field-type clx) ,(field-type cly)) ))
+				  (unless (eql clx cly) `(t/strict-coerce (,(field-type clx) ,(field-type cly))))
 				  `(t/store-ref ,clx ,sto-x ,of-x)))
 			    ,sto-y ,of-y)))
 	   ,y)))
@@ -83,6 +85,7 @@
        ,y)))
 
 ;;
+#+nil
 (deft/method (t/copy! #'(lambda (x y) (hash-table-storep x))) ((clx stride-accessor) (cly graph-accessor)) (x y)
   (using-gensyms (decl (x y) (rstd cstd rdat key value r c ii jj s? v vi vr vd i col-stop row))
     `(let (,@decl)
@@ -95,7 +98,9 @@
 	    :do (letv* ((,c ,r (floor (the index-type ,key) ,cstd) :type index-type index-type)
 			(,r ,s? (floor (the index-type ,r) ,rstd) :type index-type index-type)
 			(,ii ,jj (if (slot-value ,y 'transposep) (values ,c ,r) (values ,r ,c)) :type index-type index-type))
-		  (when (zerop ,s?) (push (cons ,ii `(t/strict-coerce (,(field-type clx) ,(field-type cly)) ,value)) (aref ,rdat ,jj)))))
+		  (if (zerop ,s?)
+		      (push (cons ,ii `(t/strict-coerce (,(field-type clx) ,(field-type cly)) ,value)) (aref ,rdat ,jj))
+		      (error "strides of hash-table "))))
 	 (let-typed ((,vi (fence ,y) :type index-store-vector)
 		     (,vr (δ-i ,y) :type index-store-vector)
 		     (,vd (t/store ,cly ,y) :type ,(store-type cly)))
@@ -167,15 +172,29 @@
 ;;
 
 ;;
-(defmethod copy! :before ((x base-tensor) (y base-tensor))
+(defmethod copy! :before ((x tensor) (y tensor))
   (assert (very-quickly (lvec-eq (dimensions x) (dimensions y) '=)) nil 'tensor-dimension-mismatch))
+
+(define-tensor-method copy! ((x array) (y tensor :y t))
+  `(let-typed ((sto-y (store y) :type ,(store-type (cl y)))
+	       (lst (make-list (array-rank x)) :type cons))
+     (iter (for-mod idx from 0 below (dimensions y) with-strides ((of-y (strides y) (head y))))
+	   (t/store-set ,(cl y) (t/coerce ,(field-type (cl y)) (apply #'aref x (lvec->list! idx lst))) sto-y of-y))
+     y))
+
+(define-tensor-method copy! ((x tensor :x t) (y array))
+  `(let-typed ((sto-x (store x) :type ,(store-type (cl x)))
+	       (lst (make-list (array-rank y)) :type cons))
+     (iter (for-mod idx from 0 below (dimensions x) with-strides ((of-x (strides x) (head x))))
+	   (setf (apply #'aref y (lvec->list! idx lst)) (t/store-ref ,(cl x) sto-x of-x)))
+     y))
 
 #+nil
 (defmethod copy! :before ((a base-tensor) (b compressed-sparse-matrix))
   (assert (<= (store-size a) (store-size b)) nil 'tensor-insufficient-store))
 (define-tensor-method copy! ((x dense-tensor :x) (y dense-tensor :y t))
   (recursive-append
-   (when (and (eql (cl x) (cl y)) (blas-tensorp (cl y)))
+   (when (and (eql (cl x) (cl y)) (blas-tensor-typep (cl y)))
      `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl y) 1)) (blas-copyablep x y)))
 	(t/blas-copy! ,(cl y) x (first strd) y (second strd))))
    `(t/copy! (,(cl x) ,(cl y)) x y))
@@ -183,7 +202,7 @@
 
 (define-tensor-method copy! ((x t) (y dense-tensor :y t))
   (recursive-append
-   (when (blas-tensorp (cl y))
+   (when (blas-tensor-typep (cl y))
      `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl y) 1)) (consecutive-storep y)))
 	(t/blas-copy! ,(cl y) (t/coerce ,(field-type (cl y)) x) nil y strd)))
    `(t/copy! (t ,(cl y)) x y)))
@@ -193,16 +212,11 @@
 
 (define-tensor-method tricopy! ((a dense-tensor :x) (b dense-tensor :x t) uplo?)
   `(ecase uplo?
-     (:u
-      (dorefs (idx (dimensions b) :uplo? :u)
-	      ((refa a :type ,(cl b))
-	       (refb b :type ,(cl b)))
-	      (setf refb refa)))
-     (:l
-      (dorefs (idx (dimensions b) :uplo? :l)
-	      ((refa a :type ,(cl b))
-	       (refb b :type ,(cl b)))
-	      (setf refb refa)))
+     ,@(iter (for op in '(:u :uo :l :lo))
+	     (collect `(,op (dorefs (idx (dimensions b) :uplo? ,op)
+				    ((refa a :type ,(cl a))
+				     (refb b :type ,(cl b)))
+				    (setf refb refa)))))
      (:d
       (let-typed ((ss.a (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (+ x y))) (strides a)) :type index-type)
 		  (ss.b (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (+ x y))) (strides b)) :type index-type)
@@ -217,14 +231,10 @@
 (define-tensor-method tricopy! ((a t) (b dense-tensor :x) uplo?)
   `(let ((a (t/coerce ,(field-type (cl b)) a)))
      (ecase uplo?
-       (:u
-	(dorefs (idx (dimensions b) :uplo? :u)
-		((refb b :type ,(cl b)))
-		(setf refb a)))
-       (:l
-	(dorefs (idx (dimensions b) :uplo? :l)
-		((refb b :type ,(cl b)))
-		(setf refb a)))
+       ,@(iter (for op in '(:u :uo :l :lo))
+	       (collect `(,op (dorefs (idx (dimensions b) :uplo? ,op)
+				((refb b :type ,(cl b)))
+				(setf refb a)))))              
        (:d
 	(let-typed ((ss.b (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (+ x y))) (strides b)) :type index-type)
 		    (sto.b (store b) :type ,(store-type (cl b))))
@@ -246,9 +256,10 @@
 		      (loop :for i :from 0 :below (aref (dimensions arr) n)
 			 :collect (mtree arr (append idx (list i))))))))
        (mtree tensor nil)))
-    ((or (not type) (subtypep type 'dense-tensor))
-     (let ((ret (zeros (dimensions tensor) (or type (class-of tensor)))))
-       (copy! tensor ret)))
+    ((or (not type) (consp type) (subtypep type 'dense-tensor))
+     (copy! tensor (zeros (dimensions tensor) (cond ((null type) (type-of tensor))
+						    ((symbolp type) type)
+						    (t (apply #'tensor type))))))
     (t (error "don't know how to copy ~a into ~a." (class-name (class-of tensor)) type))))
 
 #+nil

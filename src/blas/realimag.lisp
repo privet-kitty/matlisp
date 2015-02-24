@@ -28,11 +28,11 @@
 
 (in-package #:matlisp)
 
-(definline tensor-realpart~ (tensor)
+(definline realpart~ (tensor)
   "
   Syntax
   ======
-  (tensor-realpart~ tensor)
+  (realpart~ tensor)
  
   Purpose
   =======
@@ -42,20 +42,45 @@
   If TENSOR is a scalar, returns its real part.
 "
   (etypecase tensor
-    ((or real-tensor sreal-tensor) tensor)
-    ((or complex-tensor scomplex-tensor) (with-no-init-checks
-					   (make-instance (if (typep tensor 'complex-tensor) 'real-tensor 'sreal-tensor)
-							  :parent-tensor tensor :store (store tensor)
-							  :dimensions (dimensions tensor)
-							  :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (the index-store-vector (strides tensor)))
-							  :head (the index-type (* 2 (head tensor))))))
-    (number (cl:realpart tensor))))
+    (number (cl:realpart tensor))
+    (dense-tensor (if (eql (realified-type tensor) (type-of tensor)) tensor
+		      (with-no-init-checks
+			  (make-instance (realified-type (type-of tensor))
+					 :parent-tensor tensor :store (store tensor)
+					 :dimensions (dimensions tensor)
+					 :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (the index-store-vector (strides tensor)))
+					 :head (the index-type (* 2 (head tensor)))))))))
 
-(definline tensor-imagpart~ (tensor)
+(definline imagpart~ (tensor)
   "
   Syntax
   ======
-  (tensor-realpart~ tensor)
+  (imagpart~ tensor)
+ 
+  Purpose
+  =======
+  Returns a new tensor object which points to the imaginary part of the TENSOR, if
+  it is complex valued, otherwise returns NIL.
+
+  Store is shared with TENSOR.
+
+  If TENSOR is a scalar, returns its imaginary part.
+"
+  (etypecase tensor
+    (number (cl:imagpart tensor))
+    (dense-tensor (if (eql (realified-type tensor) (type-of tensor)) nil
+		      (with-no-init-checks
+			  (make-instance (realified-type (type-of tensor))
+					 :parent-tensor tensor :store (store tensor)
+					 :dimensions (dimensions tensor)
+					 :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (the index-store-vector (strides tensor)))
+					 :head (1+ (the index-type (* 2 (head tensor))))))))))
+
+(definline realpart (tensor)
+  "
+  Syntax
+  ======
+  (realpart tensor)
  
   Purpose
   =======
@@ -65,45 +90,24 @@
   If TENSOR is a scalar, returns its real part.
 "
   (etypecase tensor
-    ((or real-tensor sreal-tensor) nil)
-    ((or complex-tensor scomplex-tensor) (with-no-init-checks
-					   (make-instance (if (typep tensor 'complex-tensor) 'real-tensor 'sreal-tensor)
-							  :parent-tensor tensor :store (store tensor)
-							  :dimensions (dimensions tensor)
-							  :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (the index-store-vector (strides tensor)))
-							  :head (the index-type (1+ (* 2 (head tensor)))))))
-    (number (realpart tensor))))
+    (number (cl:realpart tensor))
+    (dense-tensor (copy (realpart~ tensor)))))
 
-(definline tensor-realpart (tensor)
+(definline imagpart (tensor)
   "
   Syntax
   ======
-  (tensor-realpart tensor)
+  (realpart tensor)
  
   Purpose
   =======
-  Returns a copy of the real part of tensor.
+  Returns a new tensor object which points to  the real part of TENSOR.
+  Store is shared with TENSOR.
 
-  If \"tensor\" is a scalar, returns its real part.
-
-  See IMAG, REALPART, IMAGPART
-"
-  (copy (tensor-realpart~ tensor)))
-
-(definline tensor-imagpart (tensor)
-  "
-  Syntax
-  ======
-  (tensor-imagpart matrix)
- 
-  Purpose
-  =======
-  Returns a copy of the imaginary part of \"matrix\".
-
-  If \"matrix\" is a scalar, returns its imaginary part.
-
-  See IMAG, REALPART, IMAGPART
+  If TENSOR is a scalar, returns its real part.
 "
   (etypecase tensor
-    ((or real-tensor sreal-tensor) (zeros (dims tensor) (class-of tensor)))
-    (t (copy (tensor-imagpart~ tensor)))))
+    (number (cl:imagpart tensor))
+    (dense-tensor (if-let (ip (imagpart~ tensor))
+		    (copy ip)
+		    (zeros (dimensions tensor) (type-of tensor))))))

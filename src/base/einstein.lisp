@@ -1,4 +1,4 @@
-(in-package :matlisp)
+(in-package #:matlisp)
 
 (defun has-sym (lst sym)
   (if (atom lst) (eql lst sym)

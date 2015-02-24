@@ -2,7 +2,7 @@
 
 ;;
 (deft/generic (t/blas-trsm! #'subtypep) sym (side uplo transA diagA alpha A lda B ldb))
-(deft/method t/blas-trsm! (sym blas-numeric-tensor) (side uplo transA diagA alpha A lda B ldb)
+(deft/method (t/blas-trsm! #'blas-tensor-typep) (sym dense-tensor) (side uplo transA diagA alpha A lda B ldb)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (side uplo transA diagA alpha A lda B ldb))
       `(let* (,@decl)
@@ -19,7 +19,7 @@
 	 ,B))))
 
 (deft/generic (t/blas-trsv! #'subtypep) sym (uplo transA diagA A lda b st-b))
-(deft/method t/blas-trsv! (sym blas-numeric-tensor) (uplo transA diagA A lda b st-b)
+(deft/method (t/blas-trsv! #'blas-tensor-typep) (sym dense-tensor) (uplo transA diagA A lda b st-b)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (uplo transA diagA A lda b st-b))
       `(let* (,@decl)

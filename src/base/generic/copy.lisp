@@ -44,30 +44,6 @@
 (defmethod copy! :before ((x tensor) (y array))
   (assert (equal (array-dimensions y) (dimensions x t)) nil 'dimension-mismatch))
 
-(defmethod copy! ((x array) (y tensor))
-  (let ((clname (class-name (class-of y))))
-    (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
-    (compile-and-eval
-     `(defmethod copy! ((x array) (y ,clname))
-	(let-typed ((sto-y (store y) :type (simple-array ,(store-element-type clname)))
-		    (lst (make-list (array-rank x)) :type cons))
-	  (iter (for-mod idx from 0 below (dimensions y) with-strides ((of-y (strides y) (head y))))
-		(t/store-set ,clname (t/coerce ,(field-type clname) (apply #'aref x (lvec->list! idx lst))) sto-y of-y)))
-	y))
-    (copy! x y)))
-
-(defmethod copy! ((x tensor) (y array))
-  (let ((clname (class-name (class-of x))))
-    (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
-    (compile-and-eval
-     `(defmethod copy! ((x ,clname) (y array))
-	(let-typed ((sto-x (store x) :type (simple-array ,(store-element-type clname)))
-		    (lst (make-list (array-rank y)) :type cons))
-	  (iter (for-mod idx from 0 below (dimensions x) with-strides ((of-x (strides x) (head x))))
-		(setf (apply #'aref y (lvec->list! idx lst)) (t/store-ref ,clname sto-x of-x))))
-	y))
-    (copy! x y)))
-
 (defmethod copy! ((x cons) (y tensor))
   ;;You seriously weren't expecting efficiency were you :) ?
   (let ((arr (make-array (list-dimensions x) :initial-contents x)))
@@ -117,3 +93,22 @@
      (let ((ret (zeros (array-dimensions arr) type)))
        (copy! arr ret)))
     (t (error "don't know how to copy a list to type ~a" type))))
+;;
+
+(defgeneric swap! (x y)
+  (:documentation
+"
+  Sytnax
+  ======
+  (SWAP! x y)
+
+  Purpose
+  =======
+  Given tensors X,Y, performs:
+
+              X <-> Y
+
+  and returns Y.
+
+  X, Y must have the same dimensions.
+"))

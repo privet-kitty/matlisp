@@ -29,7 +29,7 @@
 
 ;;
 (deft/generic (t/lapack-gesvd! #'subtypep) sym (A lda u ldu v ldv s))
-(deft/method t/lapack-gesvd! (sym blas-numeric-tensor) (A lda u ldu v ldv s)
+(deft/method (t/lapack-gesvd! #'blas-tensor-typep) (sym dense-tensor) (A lda u ldu v ldv s)
   (let* ((ftype (field-type sym)) (rtype (field-type (realified-type sym)))
 	 (complex? (subtypep ftype 'cl:complex)))
     (using-gensyms (decl (A lda u ldu v ldv s) (lwork xxx xxr))
@@ -102,15 +102,15 @@
   :NV             SIGMA, V
   :UV             SIGMA, U, V
   ")
-  (:method :before ((a base-tensor) &optional (job :nn))
-	   (assert (member job '(:nn :un :nv :uv)) nil 'invalid-arguments)))
+  (:method :before ((a tensor) &optional (job :nn))
+     (assert (member job '(:nn :un :nv :uv)) nil 'invalid-arguments)))
 
-(define-tensor-method svd ((a blas-numeric-tensor :input) &optional (job :nn))
+(define-tensor-method svd ((a dense-tensor :input) &optional (job :nn))
   `(destructuring-bind (ujob vjob) (split-job job)
-     (let ((u (when (char= ujob #\U) (with-colm (zeros (list (nrows a) (nrows a)) ',(cl a)))))
-	   (v (when (char= vjob #\V) (with-colm (zeros (list (ncols a) (ncols a)) ',(cl a)))))
+     (let ((u (when (char= ujob #\U) (with-colm (zeros (list (dimensions a 0) (dimensions a 0)) ',(cl a)))))
+	   (v (when (char= vjob #\V) (with-colm (zeros (list (dimensions a 1) (dimensions a 1)) ',(cl a)))))
 	   (s (zeros (lvec-min (dimensions a)) ',(realified-type (cl a)))))
-       (let ((info (t/lapack-gesvd! ,(cl a) (with-colm (copy a)) (nrows a) u (and u (nrows u)) v (and v (nrows v)) s)))
+       (let ((info (t/lapack-gesvd! ,(cl a) (with-colm (copy a)) (dimensions a 0) u (and u (dimensions u 0)) v (and v (dimensions v 0)) s)))
 	 (unless (= info 0)
 	   (if (< info 0)
 	       (error "GESVD: Illegal value in the ~:r argument." (- info))
@@ -122,4 +122,4 @@
 
 ;; (letv* ((a (randn '(10 10)))
 ;; 	(s u v (svd a :uv)))
-;;   (norm #i(a - u * diag(s, 2) * v')))
+;;   (norm (t- a (t* u (diag s 2) (transpose v)))))

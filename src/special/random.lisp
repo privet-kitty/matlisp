@@ -1,6 +1,6 @@
 (in-package #:matlisp)
 
-(declaim (ftype (function () double-float) draw-standard-normal draw-standard-normal-marsaglia draw-standard-exponential))
+(declaim (ftype (function () double-float) draw-standard-normal draw-standard-exponential))
 
 (definline draw-standard-exponential ()
   "Return a random variable from the Exponential(1) distribution, which has density exp(-x)."
@@ -26,23 +26,18 @@
 			      (plusp (+ (expt v 2) (* 4 (expt u 2) (log u))))))
 	       (return (/ v u)))))))
 
-;;Not thread safe, obviously
-(let ((prev nil))
-  (defun draw-standard-normal-marsaglia ()
-    (if prev
-	(prog1 prev
-	  (setf prev nil))
-	(very-quickly
-	  (loop
-	     :do (let* ((x (1- (random 2d0)))
-			(y (1- (random 2d0)))
-			(s (+ (* x x) (* y y))))
-		   (declare (type double-float x y s))
-		   (when (<= s 1d0)
-		     (let ((mult (sqrt (/ (* -2 (log s)) s))))
-		       (declare (type double-float mult))
-		       (setf prev (* y mult))
-		       (return (* x mult))))))))))
+(declaim (ftype (function () (complex double-float)) draw-standard-normal-marsaglia))
+(definline draw-standard-normal-marsaglia ()
+  (very-quickly
+    (loop :do
+       (let* ((z (complex (1- (random 2d0)) (1- (random 2d0))))
+	      (s (abs z)))
+	 (declare (type (complex double-float) z)
+		  (type double-float s))
+	 (when (<= s 1)
+	   (let ((mult (/ (* -4 (log s)) s)))
+	     (declare (type double-float mult))
+	     (return (* z mult))))))))
 
 ;;
 (macrolet ((generate-rand (func clause)
@@ -52,10 +47,10 @@
 		   (func! (intern (string+ (symbol-name func) "!"))))
 	       `(eval-every
 		  (defun ,func! (tensor)
-		    (declare (type #.(tensor 'double-float) tensor))
+		    (declare (type ,(tensor 'double-float) tensor))
 		    (very-quickly
 		      (dorefs (idx (dimensions tensor))
-			      ((ref tensor :type #.(tensor 'double-float)))
+			      ((ref tensor :type ,(tensor 'double-float)))
 			      (setf ref ,clause)))
 		    tensor)
 		  (defun ,func (&optional dims)

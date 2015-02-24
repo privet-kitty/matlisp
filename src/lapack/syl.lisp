@@ -1,7 +1,7 @@
 (in-package #:matlisp)
 ;;
 (deft/generic (t/lapack-trsyl! #'subtypep) sym (op.A op.B sgn A ld.a B ld.b C ld.c))
-(deft/method t/lapack-trsyl! (sym blas-numeric-tensor) (op.A op.B sgn A ld.a B ld.b C ld.c)
+(deft/method (t/lapack-trsyl! #'blas-tensor-typep) (sym dense-tensor) (op.A op.B sgn A ld.a B ld.b C ld.c)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (op.A op.B sgn A ld.a B ld.b C ld.c))
       `(let (,@decl)
@@ -30,29 +30,15 @@
     first two alphabets maps to op A, op B; whilst the third one controls
     the sign in the equation (oh dear! which year have we landed in.).
 ")
-  (:method :before ((A base-tensor) (B base-tensor) (C base-tensor) &optional job)
-	   (declare (ignore job))
-	   (assert (and (tensor-square-matrixp A)
-			(tensor-square-matrixp B)
-			(= (nrows A) (nrows C))
-			(= (ncols B) (ncols C)))
-		   nil 'tensor-dimension-mismatch))
-  (:method :before ((A real-numeric-tensor) (B real-numeric-tensor) (C real-numeric-tensor) &optional (job :nnp))
-	   (declare (ignore A B C))
-	   (destructuring-bind (job.a job.b sgn) (split-job job)
-	     (assert (and (member job.a '(#\N #\T))
-			  (member job.b '(#\N #\T))
-			  (member sgn '(#\N #\P)))
-		     nil 'invalid-arguments)))
-  (:method :before ((A complex-numeric-tensor) (B complex-numeric-tensor) (C complex-numeric-tensor) &optional (job :nnp))
-	   (declare (ignore A B C))
-	   (destructuring-bind (job.a job.b sgn) (split-job job)
-	     (assert (and (member job.a '(#\N #\C))
-			  (member job.b '(#\N #\C))
-			  (member sgn '(#\N #\P)))
-		     nil 'invalid-arguments))))
+  (:method :before ((A tensor) (B tensor) (C tensor) &optional (job :nnp))	   
+     (destructuring-bind (job.a job.b sgn) (split-job job)       
+       (assert (and (typep A 'tensor-square-matrix) (typep B 'tensor-square-matrix)
+		    (= (dimensions A (ecase job.a (#\N 0) ((#\C #\T) 1))) (dimensions C 0))
+		    (= (dimensions B (ecase job.b (#\N 1) ((#\C #\T) 0))) (dimensions C 1))
+		    (ziprm (or char=) (sgn sgn) (#\N #\P)))
+	       nil 'tensor-dimension-mismatch))))
 
-(define-tensor-method trsyl! ((A blas-numeric-tensor :input) (B blas-numeric-tensor :input) (C blas-numeric-tensor :output) &optional (job :nnp))
+(define-tensor-method trsyl! ((A dense-tensor :x) (B dense-tensor :x) (C dense-tensor :x t) &optional (job :nnp))
   `(destructuring-bind (op.a op.b sgn) (split-job job)
      (with-columnification (((A #\C) (B #\C)) (C))
        (letv* ((scale info (t/lapack-trsyl! ,(cl a) op.a op.b sgn
@@ -78,8 +64,8 @@
     Computes the solution to the Sylvester equation:
 	    A X + X B = C
     using Schur decomposition."
-  (letv* ((l.a t.a u.a (schur A) :type nil real-tensor real-tensor)
-	  (l.b t.b u.b (schur B) :type nil real-tensor real-tensor)
+  (letv* ((l.a t.a u.a (schur A) :type nil tensor tensor)
+	  (l.b t.b u.b (schur B) :type nil tensor tensor)
 	  ;;We can't use infix-dispatch-table just yet :(
 	  (ucu (gemm 1 u.a (gemm 1 c u.b nil nil :nn) nil nil :cn)))
     (trsyl! t.a t.b ucu)
@@ -88,5 +74,5 @@
 ;; (letv* ((a (randn '(10 10)))
 ;; 	(b (randn '(10 10)))
 ;; 	(x (randn '(10 10)))
-;; 	(c #i(a * x + x * b)))
+;; 	(c (t+ (t* a x) (t* x b))))
 ;;   (norm (t- (syl a b c) x)))

@@ -32,10 +32,6 @@
 (defclass blas-numeric-tensor (numeric-tensor) ())
 
 
-
-(defun blas-tensorp)
-
-
 ;;Real tensor
 (defclass real-blas-tensor (real-numeric-tensor blas-numeric-tensor) ())
 (deft/method t/l1-lb (sym real-blas-tensor) ()

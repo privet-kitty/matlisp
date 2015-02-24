@@ -29,7 +29,7 @@
 
 ;;
 (deft/generic (t/lapack-getrf! #'subtypep) sym (A lda ipiv))
-(deft/method t/lapack-getrf! (sym blas-numeric-tensor) (A lda ipiv)
+(deft/method (t/lapack-getrf! #'blas-tensor-typep) (sym dense-tensor) (A lda ipiv)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (A lda ipiv))
       `(let* (,@decl)
@@ -73,11 +73,10 @@
   [3] INFO = T: successful
 	     i:  U(i,i) is exactly zero.
 ")
-  (:method :before ((A standard-tensor))
-	   (assert (tensor-matrixp A)
-		   nil 'tensor-dimension-mismatch)))
+  (:method :before ((A dense-tensor))
+     (assert (tensor-matrixp A) nil 'tensor-dimension-mismatch)))
 
-(define-tensor-method getrf! ((A blas-numeric-tensor :output))
+(define-tensor-method getrf! ((A dense-tensor :x t))
   `(let ((upiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type ',(matlisp-ffi::%ffc->lisp :integer))))
      (declare (type (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*)) upiv))
      (with-columnification (() (A))
@@ -86,12 +85,12 @@
 	   (if (< info 0)
 	       (error "GETRF: the ~a'th argument had an illegal value." (- info))
 	       (warn 'singular-matrix :message "GETRF: U(~a, ~:*~a) is exactly zero. The factorization has been completed, but the factor U is exactly singular, and division by zero will occur if it is used to solve a system of equations." :position info)))))
-     (setf (gethash 'getrf (attributes A)) upiv)
+     (setf (gethash 'getrf (memos A)) upiv)
      (values A (with-no-init-checks (make-instance 'permutation-pivot-flip :store (pflip.f->l upiv) :size (length upiv))))))
 
 ;;
 (deft/generic (t/lapack-getrs! #'subtypep) sym (A lda B ldb ipiv transp))
-(deft/method t/lapack-getrs! (sym blas-numeric-tensor) (A lda B ldb ipiv transp)
+(deft/method (t/lapack-getrs! #'blas-tensor-typep) (sym dense-tensor) (A lda B ldb ipiv transp)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (A lda B ldb ipiv transp))
       `(let* (,@decl)
@@ -134,17 +133,17 @@
 		 but the factor U is exactly singular.
 		 Solution could not be computed.
 ")
-  (:method :before ((A standard-tensor) (B standard-tensor) &optional (job :n) ipiv)
-	   (declare (type (or null permutation) ipiv) (ignore job))
-	   (assert (and (tensor-matrixp A) (tensor-matrixp B)
-			(= (dimensions A 0) (dimensions A 1) (dimensions B 0))
-			(or (not ipiv) (<= (permutation-size ipiv) (dimensions A 0))))
-		   nil 'tensor-dimension-mismatch)))
+  (:method :before ((A dense-tensor) (B dense-tensor) &optional (job :n) ipiv)
+     (declare (type (or null permutation) ipiv) (ignore job))
+     (assert (and (tensor-matrixp A) (tensor-matrixp B)
+		  (= (dimensions A 0) (dimensions A 1) (dimensions B 0))
+		  (or (not ipiv) (<= (permutation-size ipiv) (dimensions A 0))))
+	     nil 'tensor-dimension-mismatch)))
 
-(define-tensor-method getrs! ((A blas-numeric-tensor :input) (B blas-numeric-tensor :output) &optional (job :n) ipiv)
+(define-tensor-method getrs! ((A dense-tensor :x) (B dense-tensor :x t) &optional (job :n) ipiv)
   `(let ((upiv (if ipiv
 		   (pflip.l->f (store (copy ipiv 'permutation-action)))
-		   (or (gethash 'getrf (attributes A)) (error "Cannot find permutation for the PLU factorisation of A."))))
+		   (or (gethash 'getrf (memos A)) (error "Cannot find permutation for the PLU factorisation of A."))))
 	 (cjob (aref (symbol-name job) 0)))
      (declare (type (simple-array (signed-byte 32) (*)) upiv))
      (with-columnification (((A #\C)) (B))
@@ -157,7 +156,7 @@
      B))
 ;;
 (deft/generic (t/lapack-getri! #'subtypep) sym (A lda ipiv))
-(deft/method t/lapack-getri! (sym blas-numeric-tensor) (A lda ipiv)
+(deft/method (t/lapack-getri! #'blas-tensor-typep) (sym dense-tensor) (A lda ipiv)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (A lda ipiv) (lwork xxx))
       `(let* (,@decl)
@@ -183,13 +182,13 @@
   =======
   Computes the inverse of A using the LU factorization returned by GETRF!
 ")
-  (:method :before ((A standard-tensor) &optional ipiv)
-	   (declare (type (or null permutation) ipiv))
-	   (assert (and (tensor-matrixp A) (tensor-squarep A) (or (not ipiv) (<= (permutation-size ipiv) (nrows A)))) nil 'tensor-dimension-mismatch)))
+  (:method :before ((A dense-tensor) &optional ipiv)
+     (declare (type (or null permutation) ipiv))
+     (assert (and (typep A 'tensor-square-matrix) (or (not ipiv) (<= (permutation-size ipiv) (dimensions A 0)))) nil 'tensor-dimension-mismatch)))
 
-(define-tensor-method getri! ((a blas-numeric-tensor :output) &optional ipiv)
+(define-tensor-method getri! ((a dense-tensor :x t) &optional ipiv)
   `(let ((upiv (if ipiv (pflip.l->f (store (copy ipiv 'permutation-action)))
-		   (or (pophash 'getrf (attributes A)) (error "Cannot find permutation for the PLU factorisation of A.")))))
+		   (or (pophash 'getrf (memos A)) (error "Cannot find permutation for the PLU factorisation of A.")))))
      (declare (type (simple-array (signed-byte 32) (*)) upiv))
      (with-columnification (() (A))
        (let ((info (t/lapack-getri! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) upiv)))
@@ -199,9 +198,7 @@
 	       (error 'singular-matrix :message "GETRI: U(~a, ~:*~a) is exactly zero." :position info)))))
      A))
 ;;
-
-(defgeneric lu (a &optional split-lu?)
-  (:documentation
+(defun lu (a &optional (split-lu? t))
   "
   Syntax
   ======
@@ -215,9 +212,8 @@
 
   If SPLIT-LU? is T, then return (L, U, P), otherwise
   returns (LU, P).
-"))
-
-(defmethod lu ((a blas-numeric-tensor) &optional (split-lu? t))
+"
+  (declare (type (and tensor-square-matrix (satisfies blas-tensorp)) a))
   (multiple-value-bind (lu perm) (getrf! (copy a))
     (if (not split-lu?) (values lu perm)
 	(let* ((min.d (lvec-min (dimensions lu)))
@@ -225,11 +221,8 @@
 	       (u (tricopy! lu (zeros (list min.d (dimensions lu 1)) (class-of a)) :u)))
 	  (values l u perm)))))
 
-(defmethod inv ((a blas-numeric-tensor))
-  (getri! (getrf! (copy a))))
-
 ;; (let* ((a (randn '(10 10)))
 ;;        (x (randn '(10 5)))
-;;        (b #I(a * x)))
+;;        (b (t* a x)))
 ;;   (values (norm (t- x (getrs! (getrf! (copy a)) (copy b))))
 ;; 	  (norm (t- x (t* (getri! (getrf! (copy a))) b)))))

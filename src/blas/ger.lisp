@@ -2,7 +2,7 @@
 
 ;;
 (deft/generic (t/blas-ger! #'subtypep) sym (alpha x st-x y st-y A lda &optional conjp))
-(deft/method t/blas-ger! (sym blas-numeric-tensor) (alpha x st-x y st-y A lda &optional (conjp t))
+(deft/method (t/blas-ger! #'blas-tensor-typep) (sym dense-tensor) (alpha x st-x y st-y A lda &optional (conjp t))
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (alpha x st-x y st-y A lda) (m n))
       `(let* (,@decl
@@ -20,7 +20,7 @@
 
 ;;
 (deft/generic (t/ger! #'subtypep) sym (alpha x y A &optional conjp))
-(deft/method t/ger! (sym standard-tensor) (alpha x y A &optional (conjp t))
+(deft/method t/ger! (sym dense-tensor) (alpha x y A &optional (conjp t))
   (using-gensyms (decl (alpha A x y))
    `(let (,@decl)
       (declare (type ,sym ,A ,x ,y)
@@ -56,7 +56,7 @@
 
   If conjugate-p is nil, then op(y) = y^T, else op(y) = y^H.
 ")
-  (:method :before (alpha (x standard-tensor) (y standard-tensor) (A standard-tensor) &optional conjugate-p)
+  (:method :before (alpha (x dense-tensor) (y dense-tensor) (A dense-tensor) &optional conjugate-p)
     (declare (ignore conjugate-p))
     (assert (and
 	     (tensor-vectorp x) (tensor-vectorp y) (tensor-matrixp A)
@@ -64,11 +64,11 @@
 	     (= (dimensions y 0) (dimensions A 1)))
 	    nil 'tensor-dimension-mismatch)))
 
-(define-tensor-method ger! (alpha (x standard-tensor :input) (y standard-tensor :input) (A standard-tensor :output) &optional (conjugate-p t))
+(define-tensor-method ger! (alpha (x dense-tensor :input) (y dense-tensor :input) (A dense-tensor :output) &optional (conjugate-p t))
   `(let ((alpha (t/coerce ,(field-type (cl x)) alpha)))
      (declare (type ,(field-type (cl x)) alpha))
      ,(recursive-append
-       (when (subtypep (cl x) 'blas-numeric-tensor)
+       (when (blas-tensor-typep (cl x))
 	 `(if (call-fortran? A (t/l2-lb ,(cl a)))
 	      (with-columnification (() (A))		  
 		(if conjugate-p 
@@ -112,10 +112,8 @@
   If conjugate-p is nil, then op(y) = y^T, else op(y) = y^H.
 "))
 
-(defmethod ger (alpha (x standard-tensor) (y standard-tensor)
-		(A standard-tensor) &optional conjugate-p)
+(defmethod ger (alpha (x dense-tensor) (y dense-tensor) (A dense-tensor) &optional conjugate-p)
   (ger! alpha x y (copy A) conjugate-p))
 
-(defmethod ger (alpha (x standard-tensor) (y standard-tensor)
-		(A (eql nil)) &optional conjugate-p)
+(defmethod ger (alpha (x dense-tensor) (y dense-tensor) (A (eql nil)) &optional conjugate-p)
   (ger! alpha x y (zeros (append (dims x) (dims y))) conjugate-p))

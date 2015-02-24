@@ -13,7 +13,7 @@
 (defclass base-accessor ()
   ((dimensions :initarg :dimensions :type index-store-vector :documentation "Dimensions of the vector spaces in which the tensor's arguments reside.")))
 
-(declaim (ftype (function (base-accessor &optional (or boolean index-type)) (or index-store-vector index-type)) dimensions))
+(declaim (ftype (function (base-accessor &optional (or boolean index-type)) (or index-store-vector index-type list)) dimensions))
 (definline dimensions (x &optional idx)
   (declare (type base-accessor x))
   (typecase idx
@@ -54,12 +54,17 @@
   (:documentation "Graph store via Adjacency lists; only works for matrices."))
 ;;
 (defclass tensor (base-tensor base-accessor)
-  ((store :initarg :store :documentation "Storage for the tensor.")
+  ((store :initarg :store :reader store :documentation "Storage for the tensor.")
    (memos :initform nil :documentation "Memoized attributes."))
   (:documentation "Basic tensor class."))
 
-(defclass dense-tensor (tensor) ()
+(defclass dense-tensor (tensor)
   ((parent :initform nil :initarg :parent :type (or null tensor) :documentation "This slot is bound if the tensor is the view of another.")))
+
+(definline orphanize (x)
+  (declare (type dense-tensor))
+  (setf (slot-value x 'parent) nil)
+  x)
 ;;I have no idea what this does, or why we want it (inherited from standard-matrix.lisp)
 (defmethod make-load-form ((tensor tensor) &optional env)
   "
@@ -123,9 +128,9 @@
        :do (unless (= (aref dims i) (aref dims 0)) (return nil))
        :finally (return t))))
 
-(deftype tensor-vector () `(and standard-tensor (satisfies tensor-vectorp)))
-(deftype tensor-matrix () `(and standard-tensor (satisfies tensor-matrixp)))
-(deftype tensor-square-matrix () `(and standard-tensor (satisfies tensor-matrixp) (satisfies tensor-squarep)))
+(deftype tensor-vector () `(and tensor (satisfies tensor-vectorp)))
+(deftype tensor-matrix () `(and tensor (satisfies tensor-matrixp)))
+(deftype tensor-square-matrix () `(and tensor (satisfies tensor-matrixp) (satisfies tensor-squarep)))
 ;;
 (with-memoization ()
   (defmem tensor (field &optional accessor store)
@@ -152,5 +157,5 @@
   (let ((supclass (mapcar #'class-name (closer-mop:class-direct-superclasses (find-class class)))))
     (append
      (list (field-type class))
-     (remove 'tensor supclass)
+     (set-difference supclass '(tensor dense-tensor))
      (when (member 'stride-accessor supclass) (list (first (ensure-list (store-type class))))))))

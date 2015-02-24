@@ -46,7 +46,8 @@
 ;; 	      (:& :integer) ,st-y))))))
 
 (deft/generic (t/dot #'subtypep) sym (x y &optional conjp num-y?))
-(deft/method t/dot (sym standard-tensor) (x y &optional (conjp t) (num-y? nil))
+
+(deft/method t/dot (sym dense-tensor) (x y &optional (conjp t) (num-y? nil))
   (using-gensyms (decl (x y) (sto-x sto-y of-x of-y stp-x stp-y dot))
     `(let (,@decl)
        (declare (type ,sym ,x ,@(unless num-y? `(,y)))
@@ -71,6 +72,7 @@
 			,of-x (+ ,of-x ,stp-x)
 			,@(unless num-y? `(,of-y (+ ,of-y ,stp-y))))))
 	 ,dot))))
+
 ;;---------------------------------------------------------------;;
 (defgeneric dot (x y &optional conjugate-p)
   (:documentation
@@ -101,26 +103,23 @@
   as (* (CONJUGATE X) Y) if CONJUAGTE-P and (* X Y)
   otherwise.
 ")
-  (:method :before ((x standard-tensor) (y standard-tensor) &optional (conjugate-p t))
+  (:method :before ((x tensor) (y tensor) &optional (conjugate-p t))
     (declare (ignore conjugate-p))
-    (unless (and (tensor-vectorp x) (tensor-vectorp y) (= (aref (the index-store-vector (dimensions x)) 0) (aref (the index-store-vector (dimensions y)) 0)))
-      (error 'tensor-dimension-mismatch))))
+    (assert (and (tensor-vectorp x) (tensor-vectorp y) (= (dimensions x 0) (dimensions y 0))) nil 'tensor-dimension-mismatch)))
 
 (defmethod dot ((x number) (y number) &optional (conjugate-p t))
   (if conjugate-p
       (* (conjugate x) y)
       (* x y)))
 
-(define-tensor-method dot ((x standard-tensor :input) (y standard-tensor :input) &optional (conjugate-p t))
+(define-tensor-method dot ((x dense-tensor :x) (y dense-tensor :x) &optional (conjugate-p t))
   `(if conjugate-p
-       ;;Please do your checks before coming here.
        (t/dot ,(cl x) x y t)
        (t/dot ,(cl x) x y nil)))
 
-(define-tensor-method dot ((x standard-tensor :input) (y t) &optional (conjugate-p t))
+(define-tensor-method dot ((x dense-tensor :x) (y t) &optional (conjugate-p t))
   `(let ((y (t/coerce ,(field-type (cl x)) y)))
      (declare (type ,(field-type (cl x)) y))
-     (if conjugate-p
-	 ;;Please do your checks before coming here.
+     (if conjugate-p	 
 	 (t/dot ,(cl x) x y t t)
 	 (t/dot ,(cl x) x y nil t))))

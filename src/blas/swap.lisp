@@ -27,14 +27,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(deft/generic (t/blas-swap-func #'subfieldp) sym ())
-(deft/method t/blas-swap-func (sym real-tensor) ()
-  'dswap)
-(deft/method t/blas-swap-func (sym complex-tensor) ()
-  'zswap)
 ;;
 (deft/generic (t/blas-swap! #'subtypep) sym (x st-x y st-y))
-(deft/method t/blas-swap! (sym blas-numeric-tensor) (x st-x y st-y)
+(deft/method (t/blas-swap! #'blas-tensor-typep) (sym dense-tensor) (x st-x y st-y)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (x y))
       `(let (,@decl)
@@ -46,7 +41,7 @@
 	 ,y))))
   
 (deft/generic (t/swap! #'subtypep) sym (x y))
-(deft/method t/swap! (sym standard-tensor) (x y)
+(deft/method t/swap! (sym dense-tensor) (x y)
   (using-gensyms (decl (x y) (idx sto-x sto-y of-x of-y y-val))
     `(let* (,@decl
 	    (,sto-x (store ,x))
@@ -61,26 +56,13 @@
 		 (t/store-set ,sym ,y-val ,sto-x ,of-x)))
 	 ,y))))
 ;;---------------------------------------------------------------;;
-(defmethod swap! :before ((x standard-tensor) (y standard-tensor))
+(defmethod swap! :before ((x dense-tensor) (y dense-tensor))
   (assert (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)) nil
 	  'tensor-dimension-mismatch))
 
-(defmethod swap! ((x standard-tensor) (y standard-tensor))
-  (let ((clx (class-name (class-of x)))
-	(cly (class-name (class-of y))))
-    (assert (and (member clx *tensor-type-leaves*)
-		 (member cly *tensor-type-leaves*))
-	    nil 'tensor-abstract-class :tensor-class (list clx cly))
-    (if (eq clx cly)
-	(progn
-	  (compile-and-eval
-	   `(defmethod swap! ((x ,clx) (y ,cly))
-	      ,(recursive-append
-		(when (subtypep clx 'blas-numeric-tensor)
-		  `(if-let (strd (and (call-fortran? x (t/l1-lb ,clx)) (blas-copyablep x y)))
-		     (t/blas-swap! ,clx x (first strd) y (second strd))))
-		`(t/swap! ,clx x y))
-	      y))
-	  (swap! x y))
-	;;It is silly to swap a real vector with a complex one, no?
-	(error "Don't know how to swap ~a and ~a." clx cly))))
+(define-tensor-method swap! ((x dense-tensor :x t) (y dense-tensor :x t))
+  (recursive-append
+   (when (blas-tensor-typep (cl y))
+     `(if-let (strd (and (call-fortran? x (t/l1-lb ,clx)) (blas-copyablep x y)))
+	(t/blas-swap! ,clx x (first strd) y (second strd)))))
+  `(t/swap! ,(cl y) x y))

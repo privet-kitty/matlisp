@@ -158,7 +158,6 @@
 
 (deft/method t/strict-coerce ((from rational) (to rational)) (val)
   val)
-
 ;;
 ;; (deft/method t/strict-coerce ((from fixnum) (to (complex fixnum))) (val)
 ;;  `(coerce ,val ',to))

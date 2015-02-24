@@ -40,18 +40,17 @@
 "
   (declare (type list idx)
 	   (type stride-accessor tensor))
-  (very-quickly
-    (loop :for cidx :of-type index-type :in idx
-       :for i :of-type index-type := 0 :then (1+ i)
-       :for d :across (dimensions tensor)
-       :for s :across (strides tensor)
-       :with sto-idx :of-type index-type := (head tensor)
-       :do (progn
-	     (assert (< (1- (- d)) cidx d) nil 'tensor-index-out-of-bounds :argument i :index cidx :dimension d)
-	     (incf sto-idx (the index-type (* s (if (< cidx 0) (mod cidx d) cidx)))))
-       :finally (progn
-		  (assert (= (1+ i) (order tensor)) nil 'tensor-index-rank-mismatch :index-rank (1+ i) :rank (order tensor))
-		  (return sto-idx)))))
+  (loop :for cidx :of-type index-type :in idx
+     :for i :of-type index-type := 0 :then (1+ i)
+     :for d :across (dimensions tensor)
+     :for s :across (strides tensor)
+     :with sto-idx :of-type index-type := (head tensor)
+     :do (progn
+	   (assert (< (1- (- d)) cidx d) nil 'tensor-index-out-of-bounds :argument i :index cidx :dimension d)
+	   (incf sto-idx (the index-type (* s (if (< cidx 0) (mod cidx d) cidx)))))
+     :finally (progn
+		(assert (= (1+ i) (order tensor)) nil 'tensor-index-rank-mismatch :index-rank (1+ i) :rank (order tensor))
+		(return sto-idx))))
 
 ;;Stride makers.
 (macrolet ((defstride (fname col?)

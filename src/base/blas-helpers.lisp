@@ -1,5 +1,5 @@
 (in-package #:matlisp)
-   
+ 
 (defun consecutive-storep (tensor)
   (declare (type stride-accessor tensor))
   (with-memoization ((memos tensor))

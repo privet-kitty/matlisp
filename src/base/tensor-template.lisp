@@ -7,8 +7,9 @@
   (defun store-type (cl &optional (size '*)) (macroexpand-1 `(t/store-type ,cl ,size)))
   (defun linear-storep (cl) (eql (first (ensure-list (store-type cl))) 'simple-array))
   (defun hash-table-storep (x) (eql (store-type x) 'hash-table))
-  (defun clinear-storep (x) (and (linear-storep x) (real-subtype (field-type x))))
-  (defun blas-tensorp (type) (member (field-type type) '(single-float double-float (complex single-float) (complex double-float)) :test #'equal))
+  (defun clinear-storep (x) (and (subtypep x 'tensor) (linear-storep x) (real-subtype (field-type x))))
+  (defun blas-tensor-typep (type) (member (field-type type) '(single-float double-float (complex single-float) (complex double-float)) :test #'equal))
+  (defun blas-tensorp (x) (blas-tensor-typep (class-name (class-of x))))
   (defun tensor-leafp (x)
     (let* ((x (etypecase x (class x) (symbol (find-class x)))))
       (and
@@ -35,7 +36,7 @@
 (deft/method t/field-type (sym tensor) () t)
 ;;This is useful for Eigenvalue decompositions
 (deft/generic (t/complexified-type #'subtypep) sym ())
-(eval-every (defun complexified-type (type) (macroexpand-1 `(t/complexified-type ,type))))
+(eval-every (defun complexified-type (type) (macroexpand-1 `(t/complexified-type ,(typecase type (symbol type) (class (class-name type)) (t (class-name (class-of type))))))))
 
 (deft/method t/complexified-type (sym tensor) ()
   (letv* (((type accessor &optional store) (tensor-load-form sym)))
@@ -46,7 +47,7 @@
 
 ;;Now we're just making up names
 (deft/generic (t/realified-type #'subtypep) sym ())
-(eval-every (defun realified-type (type) (macroexpand-1 `(t/realified-type ,type))))
+(eval-every (defun realified-type (type) (macroexpand-1 `(t/realified-type ,(typecase type (symbol type) (class (class-name type)) (t (class-name (class-of type))))))))
 
 (deft/method t/realified-type (sym tensor) ()
   (letv* (((type accessor &optional store) (tensor-load-form sym)))
@@ -159,16 +160,31 @@
        (locally ,@body))))
 ;;
 ;;A helper macro which takes of care of the class checking and stuff.
+(eval-every
+
 (defparameter *template-generated-methods* (make-hash-table :test 'equal))
 (definline lazy-coerce (x output-type-spec) (if (typep x output-type-spec) x (copy x output-type-spec)))
 (defun cclass-max (&rest lst)
-  (loop :for ele :in lst :with max :do
-     (when (or (null max) (and (coerceable? max ele) (or (not (coerceable? ele max))
-							 (and (blas-tensorp ele) (blas-tensorp max)
-							      (> (float-digits (coerce 0 (or (real-subtype ele) (field-type ele))))
-								 (float-digits (coerce 0 (or (real-subtype max) (field-type max)))))))))
-       (setf max ele))
-     :finally (return max)))
+  (iter (for ele in lst) (with max)
+	(when (or (null max) (and (coerceable? max ele) (or (not (coerceable? ele max))
+							    (and (blas-tensor-typep ele) (blas-tensor-typep max)
+								 (> (float-digits (coerce 0 (or (real-subtype (field-type ele)) (field-type ele))))
+								    (float-digits (coerce 0 (or (real-subtype (field-type max)) (field-type max)))))))))
+	  (setf max ele))
+	(finally (return max))))
+
+(cclass-max (tensor '(complex double-float)) (tensor '(complex double-float)))
+
+
+#+nil
+(defun cclass-max (&rest lst)
+  (iter (for ele in lst) (with max)
+	(when (or (null max) (and (coerceable? max ele) (or (not (coerceable? ele max))
+							    (and (blas-tensorp ele) (blas-tensorp max)
+								 (> (float-digits (coerce 0 (or (real-subtype ele) (field-type ele))))
+								    (float-digits (coerce 0 (or (real-subtype max) (field-type max)))))))))
+	  (setf max ele))
+	(finally (return max))))
 
 (defmacro define-tensor-method (name (&rest args) &body body)
   (let* ((keypos (or (position-if (lambda (x) (member x cl:lambda-list-keywords)) args) (length args)))
@@ -207,14 +223,14 @@
 						 dispatch-args))))
 	     (unless (find-method (function ,name) nil ,coerce-types nil)
 	       (let ((,xx (or (assoc ',dispatch-key (cdr (gethash ',name *template-generated-methods*)) :test #'equal) (error "Method table missing from *template-generated-methods*!"))))
-		 (format t "Compiling ~a method for dispatch ~s." ',name ,coerce-types)
+		 ;;(format t "Compiling ~a method for dispatch ~s." ',name ,coerce-types)
 		 (push (compile-and-eval
 			`(defmethod ,',name (,@(append (zip ',dispatch-sym ,coerce-types) ',(nthcdr keypos args)))
 			   ,@(macrolet ((cl (,xx) `(or (cdr (assoc (third (assoc ',,xx ,',generate-dispatch)) ,',generate-group-types)) (error "Can't find class of ~a" ',,xx))))
-			       (list ,@body))))
+				       (list ,@body))))
 		       (cdr ,xx))))
 	     (apply #',name (append (mapcar (lambda (,xx ,yy) (lazy-coerce ,xx ,yy)) (list ,@dispatch-sym) ,coerce-types)
-				    (list ,@(mapcar #'(lambda (x) (if (consp x) (first x) x)) (remove-if (lambda (x) (member x cl:lambda-list-keywords)) (nthcdr keypos args))))))))))))
+				    (list ,@(mapcar #'(lambda (x) (if (consp x) (first x) x)) (remove-if (lambda (x) (member x cl:lambda-list-keywords)) (nthcdr keypos args)))))))))))))
 ;;
 
 ;; (defgeneric testg (x &optional ele))
@@ -241,11 +257,11 @@
 
 (defgeneric store-ref (tensor idx)
   (:documentation  "Generic serial read access to the store."))
-(define-tensor-method store-ref ((tensor tensor) idx)
+(define-tensor-method store-ref ((tensor tensor :x) idx)
   `(t/store-ref ,(cl tensor) (t/store ,(cl tensor) tensor) idx))
 
 (defgeneric (setf store-ref) (value tensor idx))
-(define-tensor-method (setf store-ref) (value (tensor tensor) idx)
+(define-tensor-method (setf store-ref) (value (tensor tensor :x) idx)
   `(t/store-set ,(cl tensor) value (t/store ,(cl tensor) tensor) idx))
 
 ;;
@@ -258,17 +274,13 @@
   Purpose
   =======
   Returns the number of elements the store of the tensor can hold
-  (which is not necessarily equal to its vector length).")
-  (:method ((tensor tensor))
-    (let ((clname (class-name (class-of tensor))))
-      (assert (tensor-leafp (class-of tensor)) nil 'tensor-abstract-class)
-      (compile-and-eval
-       `(defmethod store-size ((tensor ,clname))
-	  (t/store-size ,clname (slot-value tensor 'store))))
-      (store-size tensor))))
+  (which is not necessarily equal to its vector length)."))
+(define-tensor-method store-size ((tensor tensor :x))
+  `(t/store-size ,(cl tensor) (slot-value tensor 'store)))
+
 ;;Blas
 (deft/generic (t/blas-lb #'subtypep) sym (i))
-(deft/method (t/blas-lb #'blas-tensorp) (sym dense-tensor) (i)
+(deft/method (t/blas-lb #'blas-tensor-typep) (sym dense-tensor) (i)
   (if (clinear-storep sym)
       (ecase i
 	(1 '*complex-l1-fcall-lb*)

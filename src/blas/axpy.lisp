@@ -28,7 +28,7 @@
 (in-package #:matlisp)
 
 (deft/generic (t/blas-axpy! #'subtypep) sym (a x st-x y st-y))
-(deft/method t/blas-axpy! (sym blas-numeric-tensor) (a x st-x y st-y)
+(deft/method (t/blas-axpy! #'blas-tensor-typep) (sym dense-tensor) (a x st-x y st-y)
   (let ((apy? (null x)) (ftype (field-type sym)))
     (using-gensyms (decl (a x y) (sto-x))
       `(let (,@decl)
@@ -37,16 +37,16 @@
 	 ,(recursive-append
 	   (when apy? `(with-field-element ,sym (,sto-x (t/fid* ,ftype))))
 	   `(ffuncall ,(blas-func "axpy" ftype)
-	      (:& :integer) (the index-type (size ,y))
+	      (:& :integer) (the index-type (total-size ,y))
 	      (:& ,(lisp->ffc ftype t)) (the ,(field-type sym) ,a)
-	      (:* ,(lisp->ffc ftype) ,@(unless apy? `(:+ (head ,x)))) ,(if apy? sto-x `(the ,(store-type sym) (store ,x)))
+	      (:* ,(lisp->ffc ftype) ,@(unless apy? `(:+ (head ,x)))) ,(if apy? sto-x `(t/store ,sym ,x))
 	      (:& :integer) (the index-type ,(if apy? 0 st-x))
-	      (:* ,(lisp->ffc ftype) :+ (head ,y)) (the ,(store-type sym) (store ,y))
+	      (:* ,(lisp->ffc ftype) :+ (head ,y)) (t/store ,sym ,y)
 	      (:& :integer) (the index-type ,st-y)))
 	 ,y))))
 
 (deft/generic (t/axpy! #'subtypep) sym (a x y))
-(deft/method t/axpy! (sym standard-tensor) (a x y)
+(deft/method t/axpy! (sym dense-tensor) (a x y)
   (let ((apy? (null x)))
     (using-gensyms (decl (a x y) (idx sto-x sto-y of-x of-y))
       `(let (,@decl)
@@ -54,7 +54,7 @@
 		  (type ,(field-type sym) ,a)
 		  ,@(when apy? `((ignore ,x))))
 	 (let (,@(unless apy? `((,sto-x (store ,x))))
-	       (,sto-y (store ,y)))
+	       (,sto-y (t/store ,sym ,y)))
 	   (declare (type ,(store-type sym) ,@(unless apy? `(,sto-x)) ,sto-y))
 	   (very-quickly
 	     (iter (for-mod ,idx from 0 below (dimensions ,y) with-strides (,@(unless apy? `((,of-x (strides ,x) (head ,x))))
@@ -90,24 +90,24 @@
     (assert (lvec-eq (dimensions x) (dimensions y) #'=) nil
 	    'tensor-dimension-mismatch)))
 
-(define-tensor-method axpy! (alpha (x standard-tensor :input) (y standard-tensor :output))
+(define-tensor-method axpy! (alpha (x dense-tensor :y) (y dense-tensor :y t))
   `(let ((alpha (t/coerce ,(field-type (cl x)) alpha)))
      (declare (type ,(field-type (cl x)) alpha))
      ,(recursive-append
-       (when (subtypep (cl x) 'blas-numeric-tensor)
-	 `(if-let (strd (and (call-fortran? x (t/l1-lb ,(cl x))) (blas-copyablep x y)))
-	    (t/blas-axpy! ,(cl x) alpha x (first strd) y (second strd))))
-       `(t/axpy! ,(cl x) alpha x y))
+       (when (blas-tensor-typep (cl y))
+	 `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl y) 1)) (blas-copyablep x y)))
+	    (t/blas-axpy! ,(cl y) alpha x (first strd) y (second strd))))
+       `(t/axpy! ,(cl y) alpha x y))
      y))
 
-(define-tensor-method axpy! (alpha x (y standard-tensor :output))
+(define-tensor-method axpy! (alpha x (y dense-tensor :x t))
   `(let ((alpha (t/coerce ,(field-type (cl y)) alpha)))
      (declare (type ,(field-type (cl y)) alpha))
      (when x (setq alpha (t/f* ,(field-type (cl y)) alpha (t/coerce ,(field-type (cl y)) x))))
      (unless (t/f= ,(field-type (cl y)) alpha (t/fid+ ,(field-type (cl y))))
        ,(recursive-append
-	 (when (subtypep (cl y) 'blas-numeric-tensor)
-	   `(if-let (strd (and (call-fortran? y (t/l1-lb ,(cl y))) (consecutive-storep y)))
+	 (when (blas-tensor-typep (cl y))
+	   `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl y) 1)) (consecutive-storep y)))
 	      (t/blas-axpy! ,(cl y) alpha nil nil y strd)))
 	 `(t/axpy! ,(cl y) alpha nil y)))
      y))
@@ -133,7 +133,6 @@
 
  X,Y must have the same dimensions.
 ")
-  (:method (alpha x (y standard-tensor))
-    (axpy! alpha x (copy y)))
-  (:method ((alpha complex) x (y real-numeric-tensor))
-    (axpy! alpha x (copy y 'complex-tensor))))
+  (:method (alpha x (y dense-tensor))
+    (axpy! alpha x (copy y (when (or (complexp alpha) (complexp x) (clinear-storep (type-of x)))
+			     (complexified-type (type-of y)))))))

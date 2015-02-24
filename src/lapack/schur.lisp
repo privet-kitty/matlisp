@@ -3,7 +3,7 @@
 ;; (permute!  '(jobvs sort select n a lda sdim w rwork vs ldvs work lwork bwork info) )
 ;;
 (deft/generic (t/lapack-gees! #'subtypep) sym (A lda vs ldvs wr wi))
-(deft/method t/lapack-gees! (sym blas-numeric-tensor) (A lda vs ldvs wr wi)
+(deft/method (t/lapack-gees! #'blas-tensor-typep) (sym dense-tensor) (A lda vs ldvs wr wi)
   (let* ((ftype (field-type sym)))
     (using-gensyms (decl (A lda vs ldvs wr wi) (lwork xxx))
       `(let (,@decl)
@@ -23,7 +23,7 @@
 									   ;;Flip rwork to the end in the case of {z,c}geev.
 									   (make-instance 'permutation-cycle
 											  :store (when (subtypep ftype 'cl:complex)
-												   (list (pidxv 12 11 10 9 8))))))))))))
+												   (list (idxv 12 11 10 9 8))))))))))))
 ;;
 (defgeneric schur (A &optional job)
   (:documentation "
@@ -34,12 +34,12 @@
     A = V * T * (V**H) .
     The matrix V is {orthogonal/unitary}, the matrix T is {quasi-upper triangular/pper triangular}
     for {real/complex} matrices respectively.")
-  (:method :before (A &optional (job :v))
-	   (assert (and (tensor-square-matrixp A) (member job '(:v :n))) nil 'invalid-arguments :message "argument is not a square matrix.")))
+  (:method :before ((A tensor) &optional (job :v))
+     (assert (and (typep A 'tensor-square-matrix) (member job '(:v :n))) nil 'invalid-arguments :message "argument is not a square matrix.")))
 
-(define-tensor-method schur ((A blas-numeric-tensor :input) &optional (job :v))
+(define-tensor-method schur ((A dense-tensor :x) &optional (job :v))
   `(let-typed ((tret (with-colm (copy A)))
-	       (vs (when (eq job :v) (with-colm (zeros (dims A) ',(cl a)))))
+	       (vs (when (eq job :v) (with-colm (zeros (dimensions A) ',(cl a)))))
 	       (wr (t/store-allocator ,(cl a) (dimensions a 0)) :type ,(store-type (cl a)))
 	       (wi (t/store-allocator ,(cl a) (dimensions a 0)) :type ,(store-type (cl a))))
       (let ((info (t/lapack-gees! ,(cl a)
@@ -52,8 +52,8 @@
 	      (error "GEES: (~a) the QR algorithm failed to compute all the eigenvalues." info))))
       (values-list (list*
 		    (make-instance ',(complexified-type (cl a))
-				   :dimensions (make-index-store (list (nrows A)))
-				   :strides (make-index-store (list 1))
+				   :dimensions (coerce (list (dimensions A 0)) 'index-store-vector)
+				   :strides (coerce (list 1) 'index-store-vector)
 				   :head 0
 				   :store (t/geev-output-fix ,(cl a) wr wi))
 		    tret
@@ -62,4 +62,4 @@
 
 ;; (letv* ((a (randn '(10 10)))
 ;; 	(s u q (schur a :v)))
-;;   (norm #i(a - q * u * q')))
+;;   (norm (t- a (t* q  u (transpose q)))))

@@ -2,7 +2,7 @@
 
 ;;
 (deft/generic (t/lapack-geqp! #'subtypep) sym (A lda jpvt tau))
-(deft/method t/lapack-geqp! (sym blas-numeric-tensor) (A lda jpvt tau)
+(deft/method (t/lapack-geqp! #'blas-tensor-typep) (sym dense-tensor) (A lda jpvt tau)
   (let* ((ftype (field-type sym)) (complex? (subtypep ftype 'cl:complex)))
     (using-gensyms (decl (A lda jpvt tau) (xxx xxr lwork))
       `(let (,@decl)
@@ -22,7 +22,7 @@
 	       (:& :integer :output) 0)))))))
 
 (deft/generic (t/lapack-geqr! #'subtypep) sym (A lda tau))
-(deft/method t/lapack-geqr! (sym blas-numeric-tensor) (A lda tau)
+(deft/method (t/lapack-geqr! #'blas-tensor-typep) (sym dense-tensor) (A lda tau)
   (let* ((ftype (field-type sym)))
     (using-gensyms (decl (A lda tau) (xxx lwork))
       `(let (,@decl)
@@ -38,7 +38,7 @@
 	     (:& :integer :output) 0))))))
 
 (deft/generic (t/lapack-orgqr! #'subtypep) sym (rank A lda tau))
-(deft/method t/lapack-orgqr! (sym blas-numeric-tensor) (rank A lda tau)
+(deft/method (t/lapack-orgqr! #'blas-tensor-typep) (sym dense-tensor) (rank A lda tau)
   (let* ((ftype (field-type sym)) (complex? (subtypep ftype 'cl:complex)))
     (using-gensyms (decl (A lda tau rank) (xxx lwork))
       `(let (,@decl)
@@ -54,7 +54,7 @@
 	     (:& :integer :output) 0))))))
 
 (deft/generic (t/lapack-ormqr! #'subtypep) sym (side trans rank A lda tau c ldc))
-(deft/method t/lapack-ormqr! (sym blas-numeric-tensor) (side trans rank A lda tau c ldc)
+(deft/method (t/lapack-ormqr! #'blas-tensor-typep) (sym dense-tensor) (side trans rank A lda tau c ldc)
   (let* ((ftype (field-type sym)) (complex? (subtypep ftype 'cl:complex)))
     (using-gensyms (decl (side trans A lda tau c ldc rank) (xxx lwork))
       `(let (,@decl)
@@ -72,7 +72,10 @@
 	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxx) (:& :integer) ,lwork
 	     (:& :integer :output) 0))))))
 ;;
-(defgeneric geqp! (a))
+(defgeneric geqp! (a)
+  (:method :before ((a dense-tensor))
+     (assert (tensor-matrixp a) nil 'tensor-not-matrix)))
+
 (define-tensor-method geqp! ((a blas-numeric-tensor :output))
   `(let-typed ((jpvt (make-array (dimensions a 1) :element-type ',(matlisp-ffi::%ffc->lisp :integer) :initial-element 0) :type (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*)))
 	       (tau (t/store-allocator ,(cl a) (lvec-min (dimensions a))) :type ,(store-type (cl a))))

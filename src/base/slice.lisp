@@ -35,11 +35,19 @@
   essentially the same as MATLAB except for the zero-based indexing.
 ")
   (:method :before ((tensor tensor) (subscripts list))
-	   (assert (or (null subscripts) (= (length subscripts) (order tensor))) nil 'tensor-index-rank-mismatch)))
+     (assert (or (null subscripts) (= (length subscripts) (order tensor))) nil 'tensor-index-rank-mismatch)))
 
-(defun (setf subtensor~) (value tensor subscripts)
-  (copy! value (subtensor~ tensor subscripts)))
+(defgeneric (setf subtensor~) (value tensor subscripts)
+  (:method :before (value (tensor tensor) (subscripts list))
+     (assert (or (null subscripts) (= (length subscripts) (order tensor))) nil 'tensor-index-rank-mismatch)))
 
+(definline slice~ (x axis &optional (idx 0) (preserve-rank? (when (= (order x) 1) t)))
+  (subtensor~ x
+	      (iter (for i from 0 below (order x))
+		    (with axis = (modproj axis (order x) nil 0))
+		    (collect (cond ((/= i axis) '(nil nil))
+				   (preserve-rank? (list idx (1+ idx)))
+				   (t idx))))))
 ;;Helper functions
 (definline parse-slice (subs dimensions)
   (declare (type index-store-vector dimensions))
@@ -83,14 +91,7 @@
 		(collect nd into dims)
 		(collect (* inc s) into stds))))
 	(finally (return (values hd dims stds)))))
-
-(definline slice~ (x axis &optional (idx 0) (preserve-rank? (when (= (order x) 1) t)))
-  (let* ((axis (modproj axis (order x) nil 0))
-	 (subs (iter (for i from 0 below (order x)) (collect (cond ((/= i axis) '(nil nil))
-								   (preserve-rank? (list idx (1+ idx)))
-								   (t idx))))))
-    (subtensor~ x subs)))
-
+;;
 (defmethod subtensor~ ((tensor dense-tensor) (subscripts list))
   (letv* ((hd dims stds (parse-slice-for-strides subscripts (dimensions tensor) (strides tensor))))
     (cond
@@ -102,39 +103,58 @@
 					 :head (head tensor)
 					 :dimensions (copy-seq (dimensions tensor))
 					 :strides (copy-seq (strides tensor))
-					 :store (store tensor)
-					 :parent-tensor tensor))))
+					 :store (slot-value tensor 'store)
+					 :parent tensor))))
       (t (with-no-init-checks
 	     (make-instance (class-of tensor)
 			    :head (+ hd (head tensor))
 			    :dimensions (coerce dims 'index-store-vector)
 			    :strides (coerce stds 'index-store-vector)
-			    :store (store tensor)
-			    :parent-tensor tensor))))))
+			    :store (slot-value tensor 'store)
+			    :parent tensor))))))
+
+(defmethod (setf subtensor~) (value (tensor dense-tensor) (subscripts list))
+  (letv* ((hd dims stds (parse-slice-for-strides subscripts (dimensions tensor) (strides tensor))))
+    (cond
+      ((not hd) (error "no place found inside ~a." subscripts))
+      ((not dims) (if subscripts
+		      (setf (store-ref tensor hd) value)
+		      (copy! value
+			     (with-no-init-checks
+				 (make-instance (class-of tensor)
+						:head (head tensor)
+						:dimensions (copy-seq (dimensions tensor))
+						:strides (copy-seq (strides tensor))
+						:store (slot-value tensor 'store)
+						:parent tensor)))))
+      (t (copy! value
+		(with-no-init-checks
+		    (make-instance (class-of tensor)
+				   :head (+ hd (head tensor))
+				   :dimensions (coerce dims 'index-store-vector)
+				   :strides (coerce stds 'index-store-vector)
+				   :store (slot-value tensor 'store)
+				   :parent tensor)))))))
 ;;
 (defgeneric suptensor~ (tensor ord &optional start)
   (:method :before ((tensor base-tensor) ord &optional (start 0))
-	   (declare (type index-type start))
-	   (let ((tord (order tensor)))
-	     (assert (and (< -1 start) (<= tord (order tensor)) (<= 0 start (- ord tord))) nil 'invalid-arguments))))
+     (declare (type index-type start))
+     (assert (<= 0 start (- ord (order tensor))) nil 'invalid-arguments)))
 
-(defmethod suptensor~ ((ten standard-tensor) ord &optional (start 0))
+(defmethod suptensor~ ((ten dense-tensor) ord &optional (start 0))
   (declare (type index-type ord start))
   (if (= (order ten) ord) ten
-      (let* ((tord (order ten)))
-	(with-no-init-checks
-	    (make-instance (class-of ten)
-			   :dimensions (make-index-store
-					(nconc (make-list start :initial-element 1)
-					       (lvec->list (dimensions ten))
-					       (make-list (- ord tord start) :initial-element 1)))
-			   :strides (make-index-store
-				     (nconc (make-list start :initial-element (size ten))
-					    (lvec->list (strides ten))
-					    (make-list (- ord tord start) :initial-element (size ten))))
-			   :head (head ten)
-			   :store (store ten)
-			   :parent-tensor ten)))))
+      (with-no-init-checks
+	  (make-instance (class-of ten)
+			 :dimensions (coerce (nconc (make-list start :initial-element 1)
+						    (lvec->list (dimensions ten))
+						    (make-list (- ord (order ten) start) :initial-element 1))
+					     'index-store-vector)
+			 :strides (coerce (nconc (make-list start :initial-element (total-size ten))
+						 (lvec->list (strides ten))
+						 (make-list (- ord (order ten) start) :initial-element (total-size ten)))
+					  'index-store-vector)
+			 :head (head ten) :store (slot-value ten 'store) :parent ten))))
 ;;
 (defgeneric reshape! (tensor dims)
   (:documentation "
@@ -142,7 +162,7 @@
   Reshapes the @arg{tensor} to the shape in @arg{dims}.
 
   This function expects all the strides to be of the same sign when
-  @arg{tensor} is subtype of standard-tensor.")
+  @arg{tensor} is subtype of dense-tensor.")
   (:method :before ((tensor dense-tensor) (dims cons))
 	   (assert (iter (for s in-vector (strides tensor))
 			 (unless (> (* s (strides tensor 0)) 0) (return nil))
@@ -153,8 +173,8 @@
 (definline matrixify~ (vec &optional (col-vector? t))
   (if (tensor-matrixp vec) vec (suptensor~ vec 2 (if col-vector? 0 1))))
 
-(defmethod reshape! ((ten standard-tensor) (dims cons))
-  (let ((idim (make-index-store dims)))
+(defmethod reshape! ((ten dense-tensor) (dims cons))
+  (let ((idim (t/store-allocator index-store-vector dims)))
     (setf (slot-value ten 'dimensions) idim
 	  (slot-value ten 'strides) (let ((strd (make-stride idim)))
 				      (when (< (strides ten 0) 0)

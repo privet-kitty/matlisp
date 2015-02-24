@@ -1,7 +1,7 @@
 (in-package :matlisp)
 
 (defgeneric norm (vec &optional n))
-(define-tensor-method norm ((vec numeric-tensor :input) &optional (n 2))
+(define-tensor-method norm ((vec dense-tensor :x) &optional (n 2))
   (let ((rtype (field-type (realified-type (cl vec)))))
     `(cond
        ((typep n 'real)
@@ -14,7 +14,7 @@
 	(tensor-foldl ,(cl vec) max vec (t/fid+ ,rtype) :init-type ,rtype :key cl:abs)))))
 
 (defgeneric tensor-max (vec &optional key))
-(define-tensor-method tensor-max ((vec standard-tensor :input) &optional key)
+(define-tensor-method tensor-max ((vec dense-tensor :x) &optional key)
   `(if key
        (let* ((ridx (make-list (order vec) :initial-element 0))
 	      (rval (funcall key (ref vec ridx))))
@@ -36,7 +36,7 @@
 	 (values rval ridx))))
 
 (defgeneric tensor-min (vec &optional key))
-(define-tensor-method tensor-min ((vec standard-tensor :input) &optional key)
+(define-tensor-method tensor-min ((vec dense-tensor :x) &optional key)
     `(if key
        (let* ((ridx (make-list (order vec) :initial-element 0))
 	      (rval (funcall key (ref vec ridx))))

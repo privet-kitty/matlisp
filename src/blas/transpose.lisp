@@ -47,17 +47,17 @@
   (copy! value (TRANSPOSE! tensor permutation)).
 
   NOTE: This will have side-effects even if copy! doesn't succeed."
-  (declare (type standard-tensor a))
+  (declare (type dense-tensor a))
   (if permutation
       (progn
 	(permute! (strides A) permutation)
 	(permute! (dimensions A) permutation))
-      (let-typed ((rnk (order A) :type index-type)
-		  (dim-A (dimensions A) :type index-store-vector)
-		  (strd-A (strides A) :type index-store-vector))
-		 (rotatef (aref dim-A (1- rnk)) (aref dim-A 0))
-		 (rotatef (aref strd-A (1- rnk)) (aref strd-A 0))))
-  (delete-attributes A))
+      (let-typed ((dims (dimensions A) :type index-store-vector)
+		  (strd (strides A) :type index-store-vector))
+	(rotatef (aref dims (1- (order A))) (aref dims 0))
+	(rotatef (aref strd (1- (order A))) (aref strd 0))))
+  (setf (slot-value A 'memos) nil)
+  A)
 
 (definline (setf transpose!) (value A &optional permutation)
   (copy! value (transpose! A permutation)))
@@ -80,16 +80,11 @@
 
   is basically the same as
   (copy! value (TRANSPOSE~ tensor permutation))"
-  (declare (type standard-tensor A))
-  (let ((displaced (let ((*check-after-initializing?* nil))
-		     (make-instance (class-of A) :store (store A)
-				    :dimensions (copy-seq (dimensions A))
-				    :strides (copy-seq (strides A))
-				    :parent-tensor A))))
-    (transpose! displaced permutation)))
+  (declare (type dense-tensor A))
+  (transpose! (subtensor~ A nil) permutation))
 
 (definline (setf transpose~) (value A &optional permutation)
-  (declare (type standard-tensor A))
+  (declare (type dense-tensor A))
   (copy! value (transpose~ A permutation)))
 
 (definline transpose (A &optional permutation)
@@ -108,12 +103,13 @@
   (setf (TRANSPOSE tensor permutation) value)
 
   is the same as (setf (transpose~ ..) ..)"
-  (declare (type standard-tensor A))
+  (declare (type dense-tensor A))
   (copy (transpose~ A permutation)))
 
 (definline (setf transpose) (value A &optional permutation)
-  (declare (type standard-tensor A))
-  (copy! value (transpose~ A permutation)))
+  (declare (type dense-tensor A))
+  (copy! value (transpose~ A permutation))
+  A)
 
 ;;This is a bit more complicated, now that we are no longer in S_2
 ;;Computing the inverse permutation is trivial in the cyclic representation,
@@ -124,14 +120,12 @@
      ,@(mapcar #'(lambda (mat) `(transpose! ,mat)) matlst)
      ,@body
      ,@(mapcar #'(lambda (mat) `(transpose! ,mat)) matlst)))
-
-
 ;;
-(definline mconjugate! (A)
+(definline conjugate! (A)
   "
   Syntax
   ======
-  (mconjugate! A)
+  (conjugate! A)
 
   Purpose
   =======
@@ -139,73 +133,45 @@
 
   (tensor-imagpart~ A) <- (- (tensor-imagpart~ A)) "
   (etypecase A
-    (real-numeric-tensor A)
-    (complex-numeric-tensor
-     (scal! -1d0 (tensor-imagpart~ A))
-     A)
-    (number (conjugate A))))
+    (cl:number (cl:conjugate A))
+    (dense-tensor (if (eql (realified-type A) (type-of A)) A
+		      (progn (scal! -1 (imagpart~ A)) A)))))
 
-(definline mconjugate (A)
+(definline conjugate (A)
   "
   Syntax
   ======
-  (mconjugate A)
+  (conjugate A)
 
   Purpose
   =======
-  Like mconjugate!, but non-destructive."
-  (etypecase A
-    (standard-tensor (mconjugate! (copy A)))
-    (number (cl:conjugate A))))
+  Like conjugate!, but non-destructive."
+  (typecase A
+    (cl:number (cl:conjugate A))
+    (t (conjugate! (copy A)))))
 
 ;;
-(defun htranspose! (A &optional permutation)
+(definline hconjugate! (A &optional permutation)
   "
    Syntax
    ======
-   (HTRANSPOSE! A [permutation])
+   (HCONJUGATE! A [permutation])
 
    Purpose
    =======
    Hermitian transpose of A (destructive).
 "
-  (declare (type standard-tensor A))
-  (transpose! A permutation)
-  (when (typep A 'complex-tensor)
-    (mconjugate! A))
-  A)
+  (declare (type dense-tensor A))
+  (conjugate! (transpose! A permutation)))
 
-(definline ctranspose! (A &optional permutation)
-  "
-   Syntax
-   ======
-   (CTRANSPOSE! A [permutation])
-
-   Purpose
-   =======
-   Conjugate transpose of A (destructive).
-"
-  (htranspose! A permutation))
-
-(definline htranspose (A &optional permutation)
+(definline hconjugate (A &optional permutation)
   "
   Syntax
   ======
-  (HTRANSPOSE A [permutation])
+  (HCONJUGATE A [permutation])
 
   Purpose
   =======
-  Like HTRANSPOSE!, but non-destructive."
-  (declare (type standard-tensor A))
-  (mconjugate! (copy (transpose~ A permutation))))
-
-(definline ctranspose (A &optional permutation)
-  "
-  Syntax
-  ======
-  (CTRANSPOSE A [permutation])
-
-  Purpose
-  =======
-  Like CTRANSPOSE!, but non-destructive."
-  (htranspose A permutation))
+  Like HCONJUGATE!, but non-destructive."
+  (declare (type dense-tensor A))
+  (hconjugate! (copy A) permutation))
