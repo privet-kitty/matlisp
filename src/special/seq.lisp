@@ -39,12 +39,12 @@
       ((or integer float) (type-of x))
       (ratio 'rational))))
 
-(defun range (start end &key (h 1) list-outputp)
+(defun range (start end &key (h 1) list-output?)
   (declare (type real start end h))
   (let ((quo (ceiling (if (> start end) (- start end) (- end start)) h))
 	(h (if (> start end) (- h) h)))
     (if (= quo 0) nil
-	(if (not list-outputp)
+	(if (not list-output?)
 	    (let* ((type (realtype-max (list h start end (+ h start) (- end h)))))
 	      (mapsor! (let ((ori (coerce start type)) (h (coerce h type)))
 			 (lambda (idx y) (declare (ignore idx y)) (prog1 ori (incf ori h))))
@@ -53,7 +53,7 @@
 	       :for ori := start :then (+ ori h)
 	       :collect ori)))))
 
-(defun linspace (start end &key (num-points (1+ (abs (- start end)))) list-outputp)
+(defun linspace (start end &key (num-points (1+ (abs (- start end)))) list-output?)
   (let* ((num-points (floor num-points))
 	 (h (/ (- end start) (1- num-points))))
-    (range start (+ h end) :h (abs h) :list-outputp list-outputp)))
+    (range start (+ h end) :h (abs h) :list-output? list-output?)))

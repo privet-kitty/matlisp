@@ -60,6 +60,7 @@
 (deft/generic (t/compute-store-size #'subtypep) sym (size))
 (deft/generic (t/store-size #'subtypep) sym (ele))
 (deft/generic (t/store-allocator #'subtypep) sym (size &optional initial-element))
+(deft/generic (t/total-size #'subtypep) sym (ele))
 ;;
 (deft/method (t/compute-store-size #'linear-storep) (sym tensor) (size)
   (if (clinear-storep sym) `(* 2 ,size) size))
@@ -69,7 +70,16 @@
 
 (deft/method (t/store-size #'hash-table-storep) (sym stride-accessor) (ele)
   `(hash-table-size ,ele))
+;;
+(deft/method t/total-size (sym dense-tensor) (ele)
+  `(lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (* x y))) (the index-store-vector (dimensions ,ele))))
 
+(deft/method (t/total-size #'hash-table-storep) (sym tensor) (ele)
+  `(hash-table-count (t/store ,sym ,ele)))
+
+(deft/method t/total-size (sym graph-accessor) (ele)
+  `(nth-value 1 (fence ,ele -1)))
+;;
 (deft/method t/store-allocator (sym index-store) (size &optional initial-element)
   `(the index-store (make-array ,size :element-type 'index-type ,@(when initial-element `(:initial-element ,initial-element)))))
 (deft/method t/store-allocator (sym index-store-vector) (size &optional initial-element)
@@ -145,8 +155,8 @@
       `(let (,@decl)
 	 (declare (type ,fty ,value))
 	 (if (t/f= ,fty ,value (t/fid+ ,fty))
-	     (progn (remhash ,(car idx) (the hash-table ,store)) (t/fid+ ,fty))
-	     (setf (gethash (the index-type ,(car idx)) (the hash-table ,store)) (the ,(field-type sym) ,value)))))))
+	     (progn (remhash ,idx (the hash-table ,store)) (t/fid+ ,fty))
+	     (setf (gethash (the index-type ,idx) (the hash-table ,store)) (the ,(field-type sym) ,value)))))))
 ;;
 (deft/generic (with-field-element #'subtypep) sym (decl &rest body))
 (defmacro with-field-elements (sym decls &rest body)
@@ -173,8 +183,7 @@
 	  (setf max ele))
 	(finally (return max))))
 
-(cclass-max (tensor '(complex double-float)) (tensor '(complex double-float)))
-
+;;(cclass-max (tensor '(complex double-float)) (tensor '(complex double-float)))
 
 #+nil
 (defun cclass-max (&rest lst)
@@ -230,7 +239,9 @@
 				       (list ,@body))))
 		       (cdr ,xx))))
 	     (apply #',name (append (mapcar (lambda (,xx ,yy) (lazy-coerce ,xx ,yy)) (list ,@dispatch-sym) ,coerce-types)
-				    (list ,@(mapcar #'(lambda (x) (if (consp x) (first x) x)) (remove-if (lambda (x) (member x cl:lambda-list-keywords)) (nthcdr keypos args)))))))))))))
+				    ,(if (find '&rest args)
+					 `(list* ,@(mapcar #'(lambda (x) (if (consp x) (first x) x)) (remove-if (lambda (x) (member x cl:lambda-list-keywords)) (butlast (nthcdr keypos args)))) ,(car (last args)))
+					 `(list ,@(mapcar #'(lambda (x) (if (consp x) (first x) x)) (remove-if (lambda (x) (member x cl:lambda-list-keywords)) (nthcdr keypos args))))))))))))))
 ;;
 
 ;; (defgeneric testg (x &optional ele))
@@ -277,6 +288,12 @@
   (which is not necessarily equal to its vector length)."))
 (define-tensor-method store-size ((tensor tensor :x))
   `(t/store-size ,(cl tensor) (slot-value tensor 'store)))
+
+(defmethod total-size ((x dense-tensor))
+  (t/total-size dense-tensor x))
+
+(define-tensor-method total-size ((obj tensor :x))
+  `(t/total-size ,(cl obj) obj))
 
 ;;Blas
 (deft/generic (t/blas-lb #'subtypep) sym (i))

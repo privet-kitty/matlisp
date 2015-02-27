@@ -29,10 +29,9 @@
 	 :do (assert (> (dimensions x i) 0) nil 'tensor-invalid-dimension-value :argument i :dimension (dimensions x i) :tensor x)))))
 
 (defgeneric total-size (obj)
-  (:method ((x base-accessor))
-    (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (* x y))) (the index-store-vector (dimensions x))))
   (:method ((obj sequence)) (length obj))
   (:method ((arr array)) (array-total-size arr)))
+
 ;;We use order (opposed to CL convention) so as not to cause confusion with matrix rank.
 (definline order (x)
   (declare (type base-accessor x))

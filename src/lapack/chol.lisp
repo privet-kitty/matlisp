@@ -76,7 +76,7 @@
   'A)
 ;;
 (deft/generic (t/lapack-potrs! #'subtypep) sym (A lda B ldb uplo))
-(deft/method t/lapack-potrs! (sym blas-numeric-tensor) (A lda B ldb uplo)
+(deft/method (t/lapack-potrs! #'blas-tensor-typep) (sym dense-tensor) (A lda B ldb uplo)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (A lda B ldb uplo))
       `(let* (,@decl)
@@ -141,7 +141,8 @@
     (tricopy! 0d0 l (ecase uplo (:u :lo) (:l :uo)))))
 ;;
 
-;; (let* ((a #i(a := randn([10, 10]), a + a' + 20 * eye([10, 10])))
-;;        (x (randn '(10 5)))
-;;        (b #i(a * x)))
-;;   (norm (t- x (potrs! (chol a) b))))
+#+nil
+(let* ((a #i(a := randn([10, 10]), a + a' + 20 * eye([10, 10])))
+       (x (randn '(10 5)))
+       (b #i(a * x)))
+  (norm (t- x (potrs! (chol a) b))))

@@ -83,7 +83,7 @@
 	      (type character cjob))
      ,(recursive-append
        (when (blas-tensor-typep (cl x))
-	 `(if (call-fortran? A (t/l2-lb ,(cl a)))
+	 `(if (call-fortran? A (t/blas-lb ,(cl a) 2))
 	      (with-columnification (((A cjob)) ())
 		(multiple-value-bind (lda opa) (blas-matrix-compatiblep A cjob)
 		  (t/blas-gemv! ,(cl a) alpha A lda

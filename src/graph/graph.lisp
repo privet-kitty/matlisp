@@ -80,20 +80,17 @@
 				    (setf cliques (let ((c (list (cons i δ-clique)))) (union cliques (union c cliques :test #'subsetp) :test #'subsetp)))
 				    (iter (for u in stack) (fib:insert-key (fib:node-key u fib) fib u) (finally (setf stack nil)))))
 		     (push i stack))))
-      (unless stack (values order cliques)))))
+      (unless stack (values (reverse order) cliques)))))
 
 ;;Naive-implementation, can't use graphfib because of non-monotonicity
-;;Use union-find/hash-table in place of list for sets.
+;;Use union-find/hash-table in place of list forc sets.
 (defun triangulate-graph (g &optional (heuristic :min-fill))
   (let* ((ag (graph->adlist g))
-	 (chordal-cover (make-array (length ag)))
 	 (ord (t/store-allocator index-store-vector (length ag))))
     (flet ((cliquify (u)
 	     (iter (for v in (aref ag u))
-		   (setf (aref ag v) (set-difference (union (aref ag v) (aref ag u)) (list u v))))
-	     (setf
-	      (aref chordal-cover u) (aref ag u)
-	      (aref ag u) t))
+		   (setf (aref ag v) (set-difference (aref ag v) (list u v))))
+	     (setf (aref ag u) t))
 	   (δ-size (i) (length (aref ag i)))
 	   (k-size (i) (iter main (for u* on (aref ag i))
 			     (iter (for v in (cdr u*)) (unless (find (car u*) (aref ag v)) (in main (counting t)))))))
@@ -102,15 +99,31 @@
 				     (unless (eql (aref ag i) t)
 				       (finding i minimizing (ecase heuristic (:min-fill (δ-size i)) (:min-size (k-size i)))))))
 	    (cliquify (aref ord i))))
-    (values ord (adlist->graph chordal-cover))))
+    ord))
 
+(defun chordal-cover (g order)
+  (declare (type graph-accessor g)
+	   (type index-store-vector order))
+  (let* ((cc (graph->adlist g))
+	 (vs (make-array (length cc) :initial-element nil)))
+    (iter (for i in-vector order)
+	  (iter (for j in (aref cc i))
+		(unless (aref vs j)
+		  (setf (aref cc j) (set-difference (union (aref cc j) (remove-if #'(lambda (x) (aref vs x)) (aref cc i))) (list j)))))
+	  (setf (aref vs i) t))
+    (adlist->graph cc)))
 
-#+nil
 (letv* ((ag (symmetrize! #((1) (2) (0 3) (4) (0))))
 	(g (adlist->graph ag)))
-  ;;(max-cardinality-search (nth-value 1 (triangulate-graph g :min-size)))
+  (max-cardinality-search (chordal-cover g (triangulate-graph g :min-size)))
   ;;(max-cardinality-search g)
-  (moralize! #(() (0) (0) (0) (2) (2))))
+  ;;(moralize! #(() (0) (0) (0) (2) (2)))
+  )
+
+(let* ((n 10)
+       (n-cycle (symmetrize! (coerce (append (mapcar #'list (range 1 n :list-output? t)) (list '(0))) 'vector)))
+       (g (adlist->graph n-cycle)))
+  (max-cardinality-search (chordal-cover g (triangulate-graph g :min-size))))
 
 ;;
 (defun dijkstra (g &optional start)

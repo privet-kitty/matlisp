@@ -17,7 +17,7 @@
     (":" |:|) (":=" :=)
     ("=" =) ("==" ==)
     ("," \,) ("." \.)
-    ("'" htranspose) (".'" transpose)))
+    ("'" hconjugate) (".'" transpose)))
 
 (defparameter *exponent-tokens* '(#\E #\S #\D #\F #\L))
 
@@ -95,15 +95,15 @@
 ;;
 (yacc:define-parser *linfix-parser*
   (:start-symbol expr)
-  (:terminals (⟼ ^ ./ / * .* @ ⊗ + - := = == |(| |)| [ ] |:| |.| |,| htranspose transpose id number))
-  (:precedence ((:left |.| htranspose transpose)
+  (:terminals (⟼ ^ ./ / * .* @ ⊗ + - := = == |(| |)| [ ] |:| |.| |,| hconjugate transpose id number))
+  (:precedence ((:left |.| hconjugate transpose)
 		(:right ^)
 		(:left ./ / * .* @ ⊗)
 		(:left + -)
 		(:left ⟼)
 		(:left := = ==)))
   (expr
-   (expr htranspose #'(lambda (a b) (list b a)))
+   (expr hconjugate #'(lambda (a b) (list b a)))
    (expr transpose #'(lambda (a b) (list b a)))
    (expr + expr #'(lambda (a b c) (list b a c)))
    (expr - expr #'(lambda (a b c) (list b a c)))
@@ -166,8 +166,8 @@
   ;;
   (term
    number lid
-   (htranspose id #'(lambda (a b) (declare (ignore a)) (list 'quote b)))
-   (htranspose |:| id #'(lambda (a b c) (declare (ignore a b)) (intern (symbol-name c) :keyword)))
+   (hconjugate id #'(lambda (a b) (declare (ignore a)) (list 'quote b)))
+   (hconjugate |:| id #'(lambda (a b c) (declare (ignore a b)) (intern (symbol-name c) :keyword)))
    list callable slice
    (- term)
    (/ term #'(lambda (a b) (list a nil b)))
@@ -225,7 +225,7 @@
 				       (== matlisp::tb==)
 				       (^ cl:expt)
 				       (transpose matlisp::transpose)
-				       (htranspose matlisp::htranspose)))
+				       (hconjugate matlisp::hconjugate)))
 
 (defun op-overload (expr)
   (labels ((walker (expr)

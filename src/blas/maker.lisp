@@ -9,7 +9,11 @@
        (make-instance ',class
 		      :dimensions ,adims
 		      :head 0 :strides ,astrs
-		      :store (t/store-allocator ,class ,sizs ,@(when initial-element `((t/coerce ,(field-type class) ,initial-element))))))))
+		      :store (t/store-allocator ,class
+						,(if (hash-table-storep class)
+						     `(cl:max (cl:ceiling (cl:* *default-sparsity* ,sizs)) (or ,initial-element 0))
+						     sizs)
+						,@(when initial-element `((t/coerce ,(field-type class) ,initial-element))))))))
 
 (deft/method t/zeros (class graph-accessor) (dims &optional nz)
   (with-gensyms (adims nnz)
