@@ -142,7 +142,7 @@
 			 (or (not (eql accessor 'stride-accessor)) (eql (first (ensure-list (store-type x))) store))
 			 (and (= (length (closer-mop:class-direct-superclasses (find-class x))) 2))))
 		(mapcar #'class-name (apply #'intersection (mapcar #'closer-mop:class-direct-subclasses (mapcar #'find-class `(tensor ,accessor))))))
-       (let ((cl (intern (format nil "~{~a~^ ~}" (remove nil (list field accessor store))))))
+       (let ((cl (intern (format nil "~{~a~^ ~}" (remove nil (list field accessor store))) (find-package "MATLISP"))))
 	 (compile-and-eval `(defclass ,cl (,(if (equal (list accessor store) '(stride-accessor simple-array)) 'dense-tensor 'tensor) ,accessor) ()))
 	 (compile-and-eval `(deft/method t/field-type (sym ,cl) () ',field))
 	 (case store
