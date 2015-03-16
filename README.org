@@ -74,7 +74,7 @@ The fortran libraries provided by matlisp earlier are now part of [[https://gith
 		 (c (randn 2))
 		 (f (zeros 2)))
              ;;#i(H @ b @ c)
-	     (einstein-sum real-tensor (i j k) (ref f i) (* (ref H i j k) (ref b j) (ref c k))))
+	     (einstein-sum #.(tensor 'double-float) (i j k) (ref f i) (* (ref H i j k) (ref b j) (ref c k))))
   #<|DOUBLE-FLOAT STRIDE-ACCESSOR SIMPLE-ARRAY| #(2)
   0.62586     -1.1128
   >
