@@ -4,7 +4,7 @@
   (declare (type stride-accessor tensor))
   (with-memoization ((memos tensor))
     (memoizing-let ((tensor tensor))
-      (letv* ((sort-std std-perm (very-quickly (sort-permute-base (copy-seq (the index-store-vector (strides tensor))) #'<)) :type index-store-vector index-store-vector)
+      (letv* ((sort-std std-perm (very-quickly (sort-index (the index-store-vector (copy-seq (strides tensor))) #'<)) :type index-store-vector index-store-vector)
 	      (perm-dims (very-quickly (apply-action! (copy-seq (the index-store-vector (dimensions tensor))) std-perm)) :type index-store-vector))
 	(very-quickly
 	  (loop

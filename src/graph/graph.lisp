@@ -5,21 +5,43 @@
   (iter (for i from 0 below (1- (length (fence g))))
 	(collect (δ-i g i t) result-type vector)))
 
-(defun adlist->graph (ag)
-  (let ((fe (t/store-allocator index-store-vector (1+ (length ag))))
-	(nv (t/store-allocator index-store-vector (iter (for ai in-vector ag) (summing (length ai))))))
+(defun adlist->graph (ag &optional type)
+  (let*-typed ((nnz (iter (for ai in-vector ag) (summing (length ai))))
+	       (ret (if type
+			(zeros (list (length ag) (length ag)) type nnz)
+			(make-instance 'graph-accessor :dimensions (idxv (length ag) (length ag))
+				       :fence (t/store-allocator index-store-vector (1+ (length ag)))
+				       :neighbours (t/store-allocator index-store-vector nnz))) :type graph-accessor)
+	       (fe (fence ret))
+	       (nv (δ-i ret)))
     (iter (for i from 0 below (length ag))
 	  (setf (aref ag i) (sort (aref ag i) #'(lambda (x y) (declare (type index-type x y)) (< x y))))
 	  (iter (for nj in (aref ag i))
 		(setf (aref nv (+ (aref fe i) j)) nj)
 		(counting t into j)
 		(finally (setf (aref fe (1+ i)) (+ (aref fe i) j)))))
-    (make-instance 'graph-accessor :dimensions (idxv (length ag) (length ag)) :fence fe :neighbours nv)))
+    ret))
+
+(defun order->tree (order &optional type)
+  (adlist->graph
+   (symmetrize!
+    (iter (for i from 0 below (length order))
+	  (collect (if (/= (aref order i) i) (list (aref order i))) result-type 'vector)))
+   type))
 
 (defun cliquep (g lst)
   (iter main (for u* on lst)
     (iter (for v in (cdr u*)) (or (δ-i g (car u*) v) (return-from main nil)))
     (finally (return-from main t))))
+
+(defun gnp (n p)
+  (let ((ret (zeros (list n n) '(index-type stride-accessor hash-table))))
+    (iter (for i from 0 below n)
+	  (iter (for j from (1+ i) below n)
+		(if (< (random 1d0) p)
+		    (setf (ref ret i j) 1
+			  (ref ret j i) 1))))
+    (copy ret '(index-type graph-accessor))))
 
 ;;Oh may we weep for sins!
 (defun moralize! (adg)
@@ -71,15 +93,15 @@
 	 (k (1- (length (fence g)))) (stack nil))
     (graphfib (g g :order (lambda (x y) (> x y)))
       (:init (i) (if (= i start) 1 0))
-      (:update (i w-i fib)	       
-	       (letv* ((li ri (fence g i))
-		       (δ-clique (iter (for j in-vector (δ-i g) from li below ri) (when (or (member j stack) (fib:node-existsp j fib)) (collect j)))))		 
-		 (if (cliquep g δ-clique)
-		     (iter (for j in-vector (δ-i g) from li below ri) (incf (fib:node-key j fib))
-			   (finally (setf (aref order (decf k)) i)
-				    (setf cliques (let ((c (list (cons i δ-clique)))) (union cliques (union c cliques :test #'subsetp) :test #'subsetp)))
-				    (iter (for u in stack) (fib:insert-key (fib:node-key u fib) fib u) (finally (setf stack nil)))))
-		     (push i stack))))
+      (:update (i w-i fib)
+	 (letv* ((li ri (fence g i))
+		 (δ-clique (iter (for j in-vector (δ-i g) from li below ri) (when (or (member j stack) (fib:node-existsp j fib)) (collect j)))))
+	   (if (cliquep g δ-clique)
+	       (iter (for j in-vector (δ-i g) from li below ri) (incf (fib:node-key j fib))
+		     (finally (setf (aref order (decf k)) i)
+			      (setf cliques (let ((c (list (cons i δ-clique)))) (union cliques (union c cliques :test #'subsetp) :test #'subsetp)))
+			      (iter (for u in stack) (fib:insert-key (fib:node-key u fib) fib u) (finally (setf stack nil)))))
+	       (push i stack))))
       (unless stack (values (reverse order) cliques)))))
 
 ;;Naive-implementation, can't use graphfib because of non-monotonicity
@@ -113,17 +135,50 @@
 	  (setf (aref vs i) t))
     (adlist->graph cc)))
 
+(defun tree-decomposition (g)
+  (letv* ((cliques (or (nth-value 1 (max-cardinality-search g)) (nth-value 1 (max-cardinality-search (chordal-cover g (triangulate-graph g))))))
+	  (k (length cliques)))
+    (values
+     (let ((ret (zeros (list k k) '(index-type stride-accessor hash-table))))
+       (iter (for cc on cliques)
+	     (iter (for cp in (cdr cc))
+		   (counting t into j)
+		   (if-let (int (intersection (car cc) cp))
+		     (setf (ref ret i (+ i j)) (- (length int))
+			   (ref ret (+ i j) i) (ref ret i (+ i j)))))
+	     (counting t into i))
+       (copy ret '(index-type))
+       (order->tree (dijkstra-prims (copy ret '(index-type graph-accessor)))))
+     (coerce cliques 'vector))))
+
+#+nil
 (letv* ((ag (symmetrize! #((1) (2) (0 3) (4) (0))))
 	(g (adlist->graph ag)))
-  (max-cardinality-search (chordal-cover g (triangulate-graph g :min-size)))
+    ;;(tree-decomposition (chordal-cover g (triangulate-graph g :min-size)))
   ;;(max-cardinality-search g)
-  ;;(moralize! #(() (0) (0) (0) (2) (2)))
+    ;;(moralize! #(() (0) (0) (0) (2) (2)))
+    ;;(values (copy tt '(index-type)) (dijkstra-prims tt))
+
+    ;;(tree-decomposition ag)  
+  (letv* ((tt ci (tree-decomposition g)))
+    (graph->adlist tt)
+    )
   )
 
-(let* ((n 10)
+#+nil
+(let* ((n 100)
        (n-cycle (symmetrize! (coerce (append (mapcar #'list (range 1 n :list-output? t)) (list '(0))) 'vector)))
        (g (adlist->graph n-cycle)))
-  (max-cardinality-search (chordal-cover g (triangulate-graph g :min-size))))
+  (letv* ((tt ci (time (tree-decomposition g))))
+    t
+    ))
+
+#+nil
+(let ((g (gnp 1000 0.1)))
+  (time (tree-decomposition g)))
+#+nil
+(let ((g (gnp 100 0.02)))
+  (map 'list #'length (nth-value 1 (tree-decomposition g))))
 
 ;;
 (defun dijkstra (g &optional start)
@@ -146,15 +201,32 @@
   (let* ((tree (t/store-allocator index-store-vector (dimensions g 0)))
 	 (start (or start (random (length tree)))))
     (setf (aref tree start) start)
-    (graphfib (g g :order (lambda (x y) (< x y)))
-      (:init (i) (if (= i start) -1 0))
+    (graphfib (g g :order (lambda (x y) (if (and x y) (< x y) (and x t))))
+      (:init (i) (if (= i start) 0 nil))
       (:update (i w-i fib)
 	 (letv* ((li ri (fence g i)))
-	   (iter (for j in-vector (δ-i g) from li below ri)		 
+	   (iter (for j in-vector (δ-i g) from li below ri)
 		 (when (fib:node-existsp j fib)
-		   (let ((w-ij (ref g i j)))
-		     (when (< w-ij (fib:node-key j fib))
+		   (let ((w-ij (ref g i j)) (k-j (fib:node-key j fib)))
+		     (when (or (not k-j) (< w-ij k-j))
 		       (setf (fib:node-key j fib) w-ij
 			     (aref tree j) i)))))))
       tree)))
+
+#+nil(defparameter *wiki-graph* (copy (let ((mat (zeros '(6 6) '(index-type stride-accessor hash-table))))
+				   (map nil #'(lambda (x)
+						(destructuring-bind (i j w) x
+						    (setf (ref mat i j) w
+							  (ref mat j i) w)))
+					'((0 1 7)
+					  (0 2 9)
+					  (0 5 14)
+					  (1 2 10)
+					  (1 3 15)
+					  (2 5 2)
+					  (2 3 11)
+					  (3 4 6)
+					  (4 5 9)))
+				   mat)
+				 '(index-type graph-accessor)))
 ;;

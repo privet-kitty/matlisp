@@ -46,7 +46,7 @@
     (dense-tensor (if (eql (realified-type tensor) (type-of tensor)) tensor
 		      (with-no-init-checks
 			  (make-instance (realified-type (type-of tensor))
-					 :parent-tensor tensor :store (store tensor)
+					 :parent tensor :store (store tensor)
 					 :dimensions (dimensions tensor)
 					 :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (the index-store-vector (strides tensor)))
 					 :head (the index-type (* 2 (head tensor)))))))))
@@ -71,7 +71,7 @@
     (dense-tensor (if (eql (realified-type tensor) (type-of tensor)) nil
 		      (with-no-init-checks
 			  (make-instance (realified-type (type-of tensor))
-					 :parent-tensor tensor :store (store tensor)
+					 :parent tensor :store (store tensor)
 					 :dimensions (dimensions tensor)
 					 :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (the index-store-vector (strides tensor)))
 					 :head (1+ (the index-type (* 2 (head tensor))))))))))

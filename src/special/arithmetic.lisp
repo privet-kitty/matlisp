@@ -60,19 +60,20 @@
 	;;Matrix, vector/matrix product
 	((tensor-matrix tensor-matrix) (gemm 1 a b nil nil))
 	((tensor-matrix tensor-vector) (gemv 1 a b nil nil :n))
-	((tensor-vector tensor-matrix) (gemv 1 b a nil nil :t))
+	((tensor-vector tensor-matrix) (gemv 1 b a nil nil :t))	
 	;;Permutation action. Left action permutes axis-0, right action permutes the last axis (-1).
 	((permutation base-tensor) (permute b a 0))
 	((tensor permutation) (permute a b -1))
 	;;The correctness of this depends on the left-right order in reduce (foldl).
-	((permutation permutation) (compose a b)))
+	((permutation permutation) (permutation* a b)))
       a))
 
+;;Make this a compiler macro.
 (defmacro tb*-opt (a b)
   (labels ((op (code)
 	     (when (consp code)
 	       (case (car code)
-		 (htranspose #\C)
+		 (ctranspose #\C)
 		 (transpose #\T)))))
     (if (or (op a) (op b))
 	(with-gensyms (ma mb)
@@ -83,6 +84,8 @@
 		(gemm 1 ,ma ,mb nil nil ,(intern (coerce (list (or (op a) #\N) (or (op b) #\N)) 'string) :keyword)))
 	       ((tensor-matrix tensor-vector) ;;The other case involves a complex conjugate.
 		(gemv 1 ,ma ,mb nil nil ,(intern (coerce (list (or (op a) #\N)) 'string) :keyword)))
+	       ((tensor-vector tensor-vecttor)
+		)
 	       ((t t)
 		(tb* ,(if (op a) `(,(car a) ,ma) ma) ,(if (op b) `(,(car b) ,mb) mb))))))
 	`(tb* ,a ,b))))
@@ -146,17 +149,17 @@
     ((number tensor) (scal a b))
     ((tensor number) (scal b a))
     ;;Matrix, vector/matrix product
-    ((vector vector) (dot a b nil))
+    ((tensor-vector tensor-vector) (dot a b nil))
     ((tensor-matrix tensor-matrix) (gemm 1 a b nil nil))
     ((tensor-matrix tensor-vector) (gemv 1 a b nil nil :n))
     ((tensor-vector tensor-matrix) (gemv 1 b a nil nil :t))
     ((tensor tensor) (gett! 1 a b 1 (zeros (append (butlast (dimensions a t)) (cdr (dimensions b t))) (class-of a))))
     ;;Permutation action on arguments. Left action unpermutes arguments, right action permutes them.
     ;;See tb* for comparison.
-    ((permutation tensor) (transpose b (inv a)))
+    ((permutation tensor) (transpose b (permutation/ a)))
     ((tensor permutation) (transpose a b))
     ;;The correctness of this depends on the left-right order in reduce (foldl).
-    ((permutation permutation) (compose a b))))
+    ((permutation permutation) (permutation* a b))))
 
 (definline t@ (&rest objs)
   (reduce #'tb@ objs))
@@ -166,19 +169,19 @@
   (cart-etypecase (b a)
     ((number number) (cl:/ b a))
     ((tensor number) (scal (cl:/ a) b))
-    (((eql nil) (or number permutation (and base-square-matrix blas-numeric-tensor)))
-     (inv a))
+    (((eql nil) (or number permutation (and tensor-square-matrix (satisfies blas-tensorp))))
+     (permutation/ a))
     (((and tensor-matrix (satisfies blas-tensorp)) (and tensor-square-matrix (satisfies blas-tensorp)))
      (transpose (with-colm (getrs! (getrf! (copy a)) (transpose b) :t))))
-    (((and base-vector (satisfies blas-tensorp)) (and tensor-square-matrix (satisfies blas-tensorp)))
+    (((and tensor-vector (satisfies blas-tensorp)) (and tensor-square-matrix (satisfies blas-tensorp)))
      (let ((ret (copy b)))
        (with-colm (getrs! (getrf! (copy a)) (suptensor~ ret 2) :t))
        ret))
-    ((standard-tensor permutation)
-     (permute b (inv a) -1))
+    ((dense-tensor permutation)
+     (permute b (permutation/ a) -1))
     ;;The correctness of this depends on the left-right order in reduce (foldl).
     ((permutation permutation)
-     (compose b (inv a)))))
+     (permutation* b (permutation/ a)))))
 
 (definline tb\\ (b a)
   "Solve a x = b"
@@ -186,7 +189,7 @@
     ((number number) (cl:/ b a))
     ((tensor number) (scal (cl:/ a) b))
     (((eql nil) (or number permutation (and tensor-square-matrix (satisfies blas-tensorp))))
-     (inv a))
+     (permutation/ a))
     (((and tensor-matrix (satisfies blas-tensorp)) (and tensor-square-matrix (satisfies blas-tensorp)))
      (getrs! (getrf! (with-colm (copy a))) (copy b)))
     (((and tensor-vector (satisfies blas-tensorp)) (and tensor-square-matrix (satisfies blas-tensorp)))
@@ -194,10 +197,10 @@
        (getrs! (getrf! (with-colm (copy a))) (suptensor~ ret 2))
        ret))
     ((dense-tensor permutation)
-     (permute b (inv a) 0))
+     (permute b (permutation/ a) 0))
     ;;The correctness of this depends on the left-right order in reduce (foldl).
     ((permutation permutation)
-     (compose (inv a) b))))
+     (permutation* (permutation/ a) b))))
 
 ;;This conflicts semantically with Wedge product.
 (defgeneric tb^ (a b)

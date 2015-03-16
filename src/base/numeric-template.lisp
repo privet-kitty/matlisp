@@ -21,7 +21,7 @@
 (deft/method t/f= (ty number) (&rest nums)
  `(cl:= ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums)))
 
-;;
+;;add a chinese remainder theorem solver.
 (definline eeuclid (a b)
   (declare (type fixnum a b))
   (let ((ss 0) (s.pr 1)
@@ -109,6 +109,7 @@
 ;;       `(random ,num)))
 
 (deft/generic (t/coerce #'subtypep) ty (val))
+(deft/method t/coerce (ty t) (val) val)
 (deft/method t/coerce (ty number) (val)
   (if (and (consp ty) (eql (first ty) 'mod))
       `(mod (coerce ,val 'fixnum) ,(second ty))
@@ -157,7 +158,10 @@
  `(coerce ,val ',to))
 
 (deft/method t/strict-coerce ((from rational) (to rational)) (val)
-  val)
+  `(the rational ,val))
+
+(deft/method t/strict-coerce ((from index-type) (to index-type)) (val)
+  `(the index-type ,val))
 ;;
 ;; (deft/method t/strict-coerce ((from fixnum) (to (complex fixnum))) (val)
 ;;  `(coerce ,val ',to))

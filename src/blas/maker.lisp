@@ -69,10 +69,10 @@
   (:documentation "
     A generic version of @func{zeros}.
 ")
-  (:method ((dims cons) (dtype t) &optional initial-element)
+  (:method ((dims list) (dtype t) &optional initial-element)
     ;;(assert (tensor-leafp dtype) nil 'tensor-abstract-class :tensor-class dtype)
     (compile-and-eval
-     `(defmethod zeros-generic ((dims cons) (dtype (eql ',dtype)) &optional initial-element)
+     `(defmethod zeros-generic ((dims list) (dtype (eql ',dtype)) &optional initial-element)
 	(if initial-element
 	    (t/zeros ,dtype dims initial-element)
 	    (t/zeros ,dtype dims))))
@@ -106,8 +106,8 @@
   (with-no-init-checks
     (let ((type (etypecase type (standard-class (class-name type)) (symbol type) (list (apply #'tensor type)))))
       (etypecase dims
-	(cons (zeros-generic dims type initial-element))
+	(list (zeros-generic dims type initial-element))
 	(vector (zeros-generic (lvec->list dims) type initial-element))
 	(fixnum (zeros-generic (list dims) type initial-element))))))
 
-(declaim (ftype (function ((or cons vector fixnum) &optional t t) base-tensor) zeros))
+(declaim (ftype (function ((or list vector fixnum) &optional t t) t) zeros))

@@ -134,7 +134,8 @@
    (:module "matlisp-graph"
 	    :pathname "graph"
 	    :depends-on ("matlisp-base" #+nil"matlisp-classes" #+nil"matlisp-blas" #+nil"matlisp-lapack")
-	    :components ((:file "fibonacci")))))
+	    :components ((:file "fibonacci")
+			 (:file "graph")))))
 
 ;; (defclass f2cl-cl-source-file (asdf:cl-source-file)
 ;;   ())

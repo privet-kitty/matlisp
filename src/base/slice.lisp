@@ -116,17 +116,10 @@
 (defmethod (setf subtensor~) (value (tensor dense-tensor) (subscripts list))
   (letv* ((hd dims stds (parse-slice-for-strides subscripts (dimensions tensor) (strides tensor))))
     (cond
-      ((not hd) (error "no place found inside ~a." subscripts))
+      ((not hd) nil #+nil(error "no place found inside ~a." subscripts))
       ((not dims) (if subscripts
 		      (setf (store-ref tensor hd) value)
-		      (copy! value
-			     (with-no-init-checks
-				 (make-instance (class-of tensor)
-						:head (head tensor)
-						:dimensions (copy-seq (dimensions tensor))
-						:strides (copy-seq (strides tensor))
-						:store (slot-value tensor 'store)
-						:parent tensor)))))
+		      (copy! value (with-no-init-checks (subtensor~ tensor nil)))))
       (t (copy! value
 		(with-no-init-checks
 		    (make-instance (class-of tensor)

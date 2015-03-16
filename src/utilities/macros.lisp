@@ -169,16 +169,20 @@
 	(+ 1 X))
   @end lisp
   "
-  `(let (,@(mapcar #'(lambda (x) (subseq x 0 2)) bindings))
-     ,@(let ((types (remove-if #'null (mapcar #'(lambda (x) (destructuring-bind (s e &key (type t)) x
-							      (declare (ignore e))
-							      (unless (eql type t)
-								(if (null type)
-								    `(ignore ,s)
-								    `(type ,type ,s)))))
-					      bindings))))
-	    (when types `((declare ,@types))))
-     ,@body))
+  (destructuring-bind (decl body) (optima:match (first body)
+				    ((cons 'declare _) (list (first body) (rest body)))
+				    (_ (list nil body)))
+  
+    `(let (,@(mapcar #'(lambda (x) (subseq x 0 2)) bindings))
+       ,@(let ((types (remove-if #'null (mapcar #'(lambda (x) (destructuring-bind (s e &key (type t)) x
+								(declare (ignore e))
+								(unless (eql type t)
+								  (if (null type)
+								      `(ignore ,s)
+								      `(type ,type ,s)))))
+						bindings))))
+	      (when types `((declare ,@types ,@(cdr decl)))))
+       ,@body)))
 
 (defmacro let*-typed (bindings &rest body)
   "
@@ -195,17 +199,20 @@
 	(+ 1 X))
   @end lisp
   "
-  `(let* (,@(mapcar #'(lambda (x) (subseq x 0 2)) bindings))
-     ,@(let ((types (remove-if #'null
-			       (mapcar #'(lambda (x) (destructuring-bind (s e &key (type t)) x
-						       (declare (ignore e))
-						       (unless (eql type t)
-							 (if (null type)
-							     `(ignore ,s)
-							     `(type ,type ,s)))))
-				       bindings))))
-	    (when types `((declare ,@types))))
-     ,@body))
+  (destructuring-bind (decl body) (optima:match (first body)
+				    ((cons 'declare _) (list (first body) (rest body)))
+				    (_ (list nil body)))
+    `(let* (,@(mapcar #'(lambda (x) (subseq x 0 2)) bindings))
+       ,@(let ((types (remove-if #'null
+				 (mapcar #'(lambda (x) (destructuring-bind (s e &key (type t)) x
+							 (declare (ignore e))
+							 (unless (eql type t)
+							   (if (null type)
+							       `(ignore ,s)
+							       `(type ,type ,s)))))
+					 bindings))))
+	      (when types `((declare ,@types ,@(cdr decl)))))
+       ,@body)))
 
 (defmacro if-ret (form &rest else-body)
   "

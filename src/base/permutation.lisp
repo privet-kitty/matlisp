@@ -290,37 +290,35 @@
 (defmethod copy-generic ((pflip permutation-pivot-flip) (type (eql 'permutation-pivot-flip)))
   (with-no-init-checks (make-instance 'permutation-pivot-flip :store (copy-seq (store pflip)) :size (permutation-size pflip))))
 ;;
-(defgeneric inv (obj)
-  (:method ((obj number)) (/ obj)))
+(defun permutation/ (a)
+  (etypecase a
+    (permutation-action
+     (let*-typed ((sto (store obj) :type index-store-vector)
+		  (rsto (t/store-allocator index-store-vector (length sto)) :type index-store-vector))
+       (loop :for i :from 0 :below (length rsto)
+	  :for ele of-type index-type :across sto
+	  :do (setf (aref rsto ele) i))
+       (with-no-init-checks (make-instance 'permutation-action :store rsto :size (length rsto)))))
+    (permutation-cycle
+     (let ((sto (store obj)))
+       (with-no-init-checks
+	   (make-instance 'permutation-cycle
+			  :store (loop :for cyc :of-type index-store-vector :in sto
+				    :collect (reverse cyc))
+			  :size (permutation-size obj)))))
+    (permutation-pivot-flip (copy (permutation/ (copy flip 'permutation-action)) 'permutation-pivot-flip))))
 
-(defmethod inv ((obj permutation-action))
-  (let*-typed ((sto (store obj) :type index-store-vector)
-	       (rsto (t/store-allocator index-store-vector (length sto)) :type index-store-vector))
-    (loop :for i :from 0 :below (length rsto)
-       :for ele of-type index-type :across sto
-       :do (setf (aref rsto ele) i))
-    (with-no-init-checks (make-instance 'permutation-action :store rsto :size (length rsto)))))
-
-(defmethod inv ((obj permutation-cycle))
-  (let ((sto (store obj)))
-    (with-no-init-checks
-	(make-instance 'permutation-cycle
-		       :store (loop :for cyc :of-type index-store-vector :in sto
-				 :collect (reverse cyc))
-		       :size (permutation-size obj)))))
-
-(defmethod inv ((flip permutation-pivot-flip))
-  (copy (inv (copy flip 'permutation-action)) 'permutation-pivot-flip))
-
-;;Move this to t* or something of the sort.
-(defgeneric compose (a b)
-  (:method ((a permutation) (b permutation))
-    (let ((ret (idxn (max (permutation-size a) (permutation-size b)))))
-      (permute! ret b)
-      (permute! ret a)
-      (loop :for i :from (1- (length ret)) :downto 0
-	 :do (when (/= i (aref ret i)) (loop-finish))
-	 :finally (return (with-no-init-checks (make-instance 'permutation-action :store (subseq ret 0 (1+ i)) :size (1+ i))))))))
+(defun permutation* (a b)
+  (declare (type permutation a b))
+  (let ((ret (idxn (max (permutation-size a) (permutation-size b)))))
+    (permute! ret b) (permute! ret a)
+    (loop :for i :from (1- (length ret)) :downto 0
+       :do (when (/= i (aref ret i)) (loop-finish))
+       :finally (return (with-no-init-checks (make-instance 'permutation-action :store (subseq ret 0 (1+ i)) :size (1+ i)))))))
+;;
+(definline sort-permute (seq predicate &key (key #'matlisp-utilities:id))
+  (multiple-value-bind (seq perm) (sort-index seq predicate :key key)
+    (values seq (with-no-init-checks (make-instance 'permutation-action :store perm :size (length perm))))))
 
 ;;Uber-functional stuff
 ;;None of these are ever useful (I've found); neat things for showing off though :]
@@ -370,69 +368,3 @@
 ;;	(destructuring-bind (,@syms &rest rest) (multiple-value-list (apply ,func-b args))
 ;;	  (apply ,func-a (append (list ,@(permute! syms perm)) rest)))))))
 
-;;Back to practical matters.
-;;This function is ugly of-course, but is also very very quick!
-(definline sort-permute-base (seq predicate &key (key #'matlisp-utilities:id))
-  "
-  Sorts a lisp-vector in-place, by using the function @arg{predicate} as the
-  order. Also computes the permutation action which would sort the original
-  sequence @arg{seq} when applied.
-  "
-  (declare (type vector seq))
-  (let*-typed ((len (length seq) :type fixnum)
-	       (perm (idxn len) :type index-store-vector)
-	       (jobs (make-array len :adjustable t :fill-pointer 0)))
-	      (loop
-		 :for bounds := (cons 0 len) :then (unless (zerop (length jobs))
-						     (vector-pop jobs))
-		 :until (null bounds)
-		 :do (let*-typed ((below-idx (car bounds) :type fixnum)
-				  (above-idx (cdr bounds) :type fixnum)
-				  (piv (+ below-idx (floor (- above-idx below-idx) 2)) :type fixnum))
-				 (loop
-				    :with ele :=  (funcall key (aref seq piv))
-				    :with lbound :of-type fixnum := below-idx
-				    :with ubound :of-type fixnum := (1- above-idx)
-				    :until (progn
-					     (loop :for i :of-type fixnum :from lbound :to piv
-						:until (or (= i piv) (funcall predicate ele (funcall key (aref seq i))))
-						:finally (setq lbound i))
-					     (loop :for i :of-type fixnum :downfrom ubound :to piv
-						:until (or (= i piv) (funcall predicate (funcall key (aref seq i)) ele))
-						:finally (setq ubound i))
-					     (cond
-					       ((= ubound lbound piv)
-						(when (> (- piv below-idx) 1)
-						  (vector-push-extend (cons below-idx piv) jobs))
-						(when (> (- above-idx (1+ piv)) 1)
-						  (vector-push-extend (cons (1+ piv) above-idx) jobs))
-						t)
-					       ((< lbound piv ubound)
-						(rotatef (aref seq lbound) (aref seq ubound))
-						(rotatef (aref perm lbound) (aref perm ubound))
-						(incf lbound)
-						(decf ubound)
-						nil)
-					       ((= lbound piv)
-						(rotatef (aref seq piv) (aref seq (1+ piv)))
-						(rotatef (aref perm piv) (aref perm (1+ piv)))
-						(unless (= ubound (1+ piv))
-						  (rotatef (aref seq piv) (aref seq ubound))
-						  (rotatef (aref perm piv) (aref perm ubound)))
-						(incf piv)
-						(incf lbound)
-						nil)
-					       ((= ubound piv)
-						(rotatef (aref seq (1- piv)) (aref seq piv))
-						(rotatef (aref perm (1- piv)) (aref perm piv))
-						(unless (= lbound (1- piv))
-						  (rotatef (aref seq lbound) (aref seq piv))
-						  (rotatef (aref perm lbound) (aref perm piv)))
-						(decf piv)
-						(decf ubound)
-						nil)))))
-		 :finally (return (values seq perm)))))
-
-(definline sort-permute (seq predicate &key (key #'matlisp-utilities:id))
-  (multiple-value-bind (seq perm) (sort-permute-base seq predicate :key key)
-    (values seq (with-no-init-checks (make-instance 'permutation-action :store perm :size (length perm))))))

@@ -86,7 +86,7 @@
 	   ;;lvec
 	   #:lvec-foldl #:lvec-foldr #:lvec-max #:lvec-min #:lvec-eq
 	   #:lvec-map-foldl! #:lvec-map-foldr!
-	   #:lvec->list #:lvec->list! #:binary-search
+	   #:lvec->list #:lvec->list! #:binary-search #:sort-index
 	   ;;Macros
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:binding-gensyms #:values-n
 	   #:letv* #:let-typed #:let*-typed #:make-array-allocator #:ziprm
@@ -162,7 +162,8 @@
    #:subtensor~ #:slice~ #:suptensor~ #:reshape! #:matrixify~ #:tensor-append
    ;;
    #:copy! #:copy #:swap! #:swap
-   )
+   ;;
+   #:conjugate #:realpart #:realpart~ #:imagpart #:imagpart~)
   (:documentation "MATLISP routines"))
 
 (defpackage "MATLISP-USER"

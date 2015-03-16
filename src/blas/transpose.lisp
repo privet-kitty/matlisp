@@ -151,27 +151,29 @@
     (t (conjugate! (copy A)))))
 
 ;;
-(definline hconjugate! (A &optional permutation)
+(definline ctranspose! (A &optional permutation)
   "
    Syntax
    ======
-   (HCONJUGATE! A [permutation])
+   (CTRANSPOSE! A [permutation])
 
    Purpose
    =======
    Hermitian transpose of A (destructive).
 "
-  (declare (type dense-tensor A))
-  (conjugate! (transpose! A permutation)))
+  (typecase A
+    (cl:number (cl:conjugate A))
+    (t (conjugate! (transpose! A permutation)))))
 
-(definline hconjugate (A &optional permutation)
+(definline ctranspose (A &optional permutation)
   "
   Syntax
   ======
-  (HCONJUGATE A [permutation])
+  (CTRANSPOSE A [permutation])
 
   Purpose
   =======
-  Like HCONJUGATE!, but non-destructive."
-  (declare (type dense-tensor A))
-  (hconjugate! (copy A) permutation))
+  Like CTRANSPOSE!, but non-destructive."
+  (typecase A
+    (cl:number (cl:conjugate A))
+    (t (ctranspose! (copy A) permutation))))
