@@ -142,6 +142,7 @@
 
 (defpackage "MATLISP"
   (:use #:common-lisp #:iterate #:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template)
+  (:import-from :λ-reader #:λ)
   (:nicknames :m)
   ;;Shadow iterate:sum
   (:shadow :sum :conjugate :realpart :imagpart)

@@ -145,3 +145,28 @@ The fortran libraries provided by matlisp earlier are now part of [[https://gith
    * Provide seamless AD, Symbolic differentiation and numerical function calls, ala scmutils.
    * Symbolic stuff tends to fit in easily with the lisp-based BLAS routines.
      Port code from src/classes/symbolic-tensor.lisp
+
+* Emacs
+We currently use Unicode symbols, for certain function names and in the infix reader,
+;; Lisp
+(defun add-lisp-slime-hook (func)
+  (add-hook 'lisp-mode-hook func)
+  (add-hook 'slime-repl-mode-hook func))
+;;
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "M-SPC") 'insert-pair-paren)))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c \\") (lambda () (interactive (insert "λ"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c <right>") (lambda () (interactive (insert "→"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c <left>") (lambda () (interactive (insert "←"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c /") (lambda () (interactive (insert "⟼"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c *") (lambda () (interactive (insert "⊗"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c ^") (lambda () (interactive (insert "∧"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c .") (lambda () (interactive (insert "·"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c a") (lambda () (interactive (insert "δ"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c e") (lambda () (interactive (insert "∃"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c f") (lambda () (interactive (insert "∀"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c i") (lambda () (interactive (insert "∈"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c l") (lambda () (interactive (insert "…"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c o") (lambda () (interactive (insert "∘"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c p") (lambda () (interactive (insert "π"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c s") (lambda () (interactive (insert "σ"))))))
+

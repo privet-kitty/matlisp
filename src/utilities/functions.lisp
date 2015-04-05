@@ -86,7 +86,9 @@
   (maptree-if (if (eql keys t)
 		  #'(lambda (x) (declare (ignore x)) t)
 		  #'(lambda (x) (and (consp x) (member (car x) keys))))
-	      transformer tree))
+	      (if (or (eql keys t) (functionp transformer)) transformer
+		  (let ((alist (mapcar #'(lambda (x y) (cons x y)) keys transformer)))
+		    #'(lambda (x) (values (cons (cdr (assoc (car x) alist)) (cdr x)) #'mapcar))))  tree))
 
 (defun flatten (x)
   "
