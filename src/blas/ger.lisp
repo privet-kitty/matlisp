@@ -69,7 +69,7 @@
      (declare (type ,(field-type (cl x)) alpha))
      ,(recursive-append
        (when (blas-tensor-typep (cl x))
-	 `(if (call-fortran? A (t/l2-lb ,(cl a)))
+	 `(if (call-fortran? A (t/blas-lb ,(cl a) 2))
 	      (with-columnification (() (A))		  
 		(if conjugate-p 
 		    (t/blas-ger! ,(cl a)
@@ -116,4 +116,4 @@
   (ger! alpha x y (copy A) conjugate-p))
 
 (defmethod ger (alpha (x dense-tensor) (y dense-tensor) (A (eql nil)) &optional conjugate-p)
-  (ger! alpha x y (zeros (append (dims x) (dims y))) conjugate-p))
+  (ger! alpha x y (zeros (append (dimensions x t) (dimensions y t))) conjugate-p))

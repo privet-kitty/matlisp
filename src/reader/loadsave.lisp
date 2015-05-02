@@ -1,14 +1,6 @@
 (in-package #:matlisp)
 
-;;
-;; (defmacro apply* ((&rest funcl) expr)
-;;   (let ((syms (zip (mapcar #'gensym funcl) funcl))) 
-;;     `(multiple-value-bind (,@(mapcar #'car syms)) ,expr
-;;        (values ,@(mapcar #'(lambda (x) `(apply ,(second x) ,(first x))) syms)))))
-
-;; (apply* (#'(lambda (x) (+ x 1)) #'(lambda (x) (- x 1))) (values 1 2))
-
-(defun loadtxt (fname &key (type 'real-tensor) (delimiters '(#\Space #\Tab #\,)) (newlines '(#\Newline #\;)) (skip-rows 0))
+(defun loadtxt (fname &key (type *default-tensor-type*) (format :csv) (delimiters '(#\Space #\Tab #\,)) comments (newlines '(#\Newline #\;)) (skip-rows 0))
   (let* ((f-string (file->string fname))
 	 (*read-default-float-format* 'double-float))
     (multiple-value-bind (lns nrows) (split-seq #'(lambda (x) (member x newlines)) f-string)

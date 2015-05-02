@@ -98,7 +98,10 @@
 	(sum! x nil)))
   (:method ((x number) &optional axis preserve-rank?)
     (declare (ignore axis preserve-rank?))
-    x))
+    x)
+  (:method ((x sequence) &optional axis preserve-rank?)
+    (declare (ignore axis preserve-rank?))
+    (reduce #'+ x)))
 
 (defgeneric mean (x &optional axis preserve-rank?)
   (:method ((x dense-tensor) &optional (axis 0) (preserve-rank? nil))
@@ -121,4 +124,6 @@
 		axis))
 	(prod! x nil))))
 
-(definline normalize! (x) (scal! (/ (sum x nil)) x))
+(definline normalize! (x)
+  (let ((sum (sum x nil)))
+    (values (scal! (/ sum) x) sum)))

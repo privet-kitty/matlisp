@@ -13,11 +13,11 @@
    height="128"
    id="svg2"
    version="1.1"
-   inkscape:version="0.48.5 r10040"
+   inkscape:version="0.91 r13725"
    sodipodi:docname="logo.svg"
-   inkscape:export-filename="/home/neptune/devel/matlisp/logo.png"
-   inkscape:export-xdpi="900"
-   inkscape:export-ydpi="900">
+   inkscape:export-filename="/home/neptune/devel/matlisp/doc/logo.png"
+   inkscape:export-xdpi="360"
+   inkscape:export-ydpi="360">
   <defs
      id="defs4" />
   <sodipodi:namedview
@@ -27,16 +27,16 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="3.959798"
-     inkscape:cx="39.075747"
-     inkscape:cy="76.61771"
+     inkscape:zoom="1.979899"
+     inkscape:cx="6.516574"
+     inkscape:cy="128.72413"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
-     inkscape:window-width="1440"
-     inkscape:window-height="856"
+     inkscape:window-width="1366"
+     inkscape:window-height="727"
      inkscape:window-x="0"
-     inkscape:window-y="23"
+     inkscape:window-y="24"
      inkscape:window-maximized="1" />
   <metadata
      id="metadata7">
@@ -46,7 +46,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -87,7 +87,7 @@
          sodipodi:end="10.925167"
          sodipodi:start="4.6514858"
          transform="matrix(1.1477926,0,0,1.03322,-18.065435,915.43658)"
-         d="m 91.9569,19.195859 a 20.203051,21.465742 0 1 1 -0.191598,0.01339"
+         d="M 91.9569,19.195859 A 20.203051,21.465742 0 0 1 113.34918,39.264374 20.203051,21.465742 0 0 1 94.512052,62.041297 20.203051,21.465742 0 0 1 73.030253,42.081019 20.203051,21.465742 0 0 1 91.765302,19.209244"
          sodipodi:ry="21.465742"
          sodipodi:rx="20.203051"
          sodipodi:cy="40.621803"
@@ -136,7 +136,7 @@
          dy="-0.39920875">/(x - λ)</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:15.09293461px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Serif;-inkscape-font-specification:Serif"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15.09293461px;line-height:125%;font-family:Serif;-inkscape-font-specification:Serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        x="65.208275"
        y="1048.8611"
        id="text3842"
@@ -145,6 +145,6 @@
          sodipodi:role="line"
          id="tspan3844"
          x="65.208275"
-         y="1048.8611">Matlisp</tspan></text>
+         y="1048.8611">matlisp</tspan></text>
   </g>
 </svg>

@@ -303,8 +303,7 @@
      (let ((sto (store obj)))
        (with-no-init-checks
 	   (make-instance 'permutation-cycle
-			  :store (loop :for cyc :of-type index-store-vector :in sto
-				    :collect (reverse cyc))
+			  :store (loop :for cyc :of-type index-store-vector :in sto :collect (reverse cyc))
 			  :size (permutation-size obj)))))
     (permutation-pivot-flip (copy (permutation/ (copy flip 'permutation-action)) 'permutation-pivot-flip))))
 
