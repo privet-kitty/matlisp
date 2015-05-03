@@ -129,7 +129,7 @@
        (let ((,cstd (strides ,x 1))
 	     (,rstd (strides ,x 0)))
 	 (loop :for ,key :being :the :hash-keys :of (t/store ,clx ,x)
-	    :using (hash-value ,value)	
+	    :using (hash-value ,value)
 	    :do (letv* ((,c ,r (floor (the index-type ,key) ,cstd) :type index-type index-type)
 			(,r ,s? (floor (the index-type ,r) ,rstd) :type index-type index-type))
 		  (if (zerop ,s?)
@@ -258,7 +258,7 @@
        ,@(iter (for op in '(:u :uo :l :lo))
 	       (collect `(,op (dorefs (idx (dimensions b) :uplo? ,op)
 				((refb b :type ,(cl b)))
-				(setf refb a)))))              
+				(setf refb a)))))
        (:d
 	(let-typed ((ss.b (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (+ x y))) (strides b)) :type index-type)
 		    (sto.b (store b) :type ,(store-type (cl b))))

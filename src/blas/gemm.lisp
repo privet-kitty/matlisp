@@ -109,9 +109,9 @@
 	 (when (blas-tensor-typep (cl c))
 	   `(if (call-fortran? C (t/blas-lb ,(cl c) 3))
 		(with-columnification (((a joba) (b jobb)) (c))
-		  (multiple-value-bind (lda opa) (blas-matrix-compatiblep a joba)
-		    (multiple-value-bind (ldb opb) (blas-matrix-compatiblep b jobb)
-		      (t/blas-gemm! ,(cl a) alpha A lda B ldb beta C (or (blas-matrix-compatiblep c #\N) 0) joba opa opb))))))
+		  (letv* ((lda opa (blas-matrix-compatiblep a joba))
+			  (ldb opb (blas-matrix-compatiblep b jobb)))
+		    (t/blas-gemm! ,(cl a) alpha A lda B ldb beta C (or (blas-matrix-compatiblep c #\N) 0) joba opa opb)))))
 	 `(t/gemm! ,(cl a) alpha A B beta C joba jobb))))
   'C)
 ;;---------------------------------------------------------------;;
