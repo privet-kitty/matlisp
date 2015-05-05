@@ -188,7 +188,7 @@
 
 (define-tensor-method getri! ((a dense-tensor :x t) &optional ipiv)
   `(let ((upiv (if ipiv (pflip.l->f (store (copy ipiv 'permutation-action)))
-		   (or (pophash 'getrf (memos A)) (error "Cannot find permutation for the PLU factorisation of A.")))))
+		   (or (gethash 'getrf (memos A)) (error "Cannot find permutation for the PLU factorisation of A.")))))
      (declare (type (simple-array (signed-byte 32) (*)) upiv))
      (with-columnification (() (A))
        (let ((info (t/lapack-getri! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) upiv)))

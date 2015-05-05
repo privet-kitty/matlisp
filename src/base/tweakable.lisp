@@ -53,7 +53,7 @@
   determining the rank of a matrix (used in gelsy).
 ")
 
-(defparameter *default-uplo* :u
+(defparameter *default-uplo* :l
   "
   For routines which take symmetric (hermitian) matrices as
   arguments, this sets the default argument for UPLO.")

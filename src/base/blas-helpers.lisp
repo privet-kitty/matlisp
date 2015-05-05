@@ -80,6 +80,7 @@
 	(output-syms (mapcar #'(lambda (mat) (gensym (symbol-name mat))) output)))
     (with-gensyms (stack)
       `(let ((,stack nil))
+	 (declare (ignorable ,stack))
 	 (let (,@(mapcar #'(lambda (x sym) (destructuring-bind (mat job) x
 					     `(,sym (if (blas-matrix-compatiblep ,mat ,job) ,mat (with-colm (copy ,mat))))))
 			 input input-syms)

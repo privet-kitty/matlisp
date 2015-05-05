@@ -175,7 +175,7 @@
        (permutation (permutation/ a))
        (number (cl:/ a))
        (base-tensor (getri! (getrf! (copy a))))))
-    (((and tensor-matrix (satisfies blas-tensorp)) (and tensor-square-matrix (satisfies blas-tensorp)))
+    (((and tensor-matrix (satisfies blas-tensorp)) (and tensor-square-matrix (satisfies blas-tensorp)))     
      (transpose (with-colm (getrs! (getrf! (copy a)) (transpose b) :t))))
     (((and tensor-vector (satisfies blas-tensorp)) (and tensor-square-matrix (satisfies blas-tensorp)))
      (let ((ret (copy b)))

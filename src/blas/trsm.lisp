@@ -33,15 +33,12 @@
 	   (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,st-b)
 	 ,b))))
 ;;
-(defmacro inline-member (x lst &optional (test 'eql))
-  (with-gensyms (xx) `(let ((,xx ,x)) (or ,@(mapcar #'(lambda (l) `(,test ,xx ,l)) lst)))))
-
 (defgeneric trs! (alpha A b &optional solve uplo)
   (:method :before (alpha (A dense-tensor) (b dense-tensor) &optional (solve :nn) (uplo *default-uplo*))
      (destructuring-bind (joba diag &optional (side #\L sidep)) (split-job solve)
        (assert (and (inline-member joba (#\N #\T #\C) char=) (inline-member side (#\L #\R) char=) (inline-member diag (#\U #\N) char=)
 		    (inline-member uplo (:u :l))) nil 'invalid-arguments)
-       (assert (and (typep A 'tensor-square-matrix) (= (order b) (if sidep 2 1))
+       (assert (and (typep A 'tensor-square-matrix) (if sidep (tensor-matrixp b) (<= (order b) 2))
 		    (= (dimensions A 0) (dimensions B (ecase side (#\L 0) (#\R 1))))) nil 'tensor-dimension-mismatch))))
 
 (define-tensor-method trs! (alpha (A dense-tensor :x) (b dense-tensor :x) &optional  (solve :nn) (uplo *default-uplo*))
@@ -51,11 +48,11 @@
 	       (uplo (let ((c (aref (symbol-name uplo) 0)))
 		       (if (char= opa joba) c (ecase c (#\U #\L) (#\L #\U)))))
 	       (alpha (t/coerce ,(field-type (cl a)) alpha) :type ,(field-type (cl a))))
-	 (declare (type base-char opa upa))
+	 (declare (type base-char opa uplo))
 	 (if (tensor-vectorp b)
 	     (t/blas-trsv! ,(cl a) uplo opa diag a lda (scal! alpha b) (strides b 0))
 	     (with-columnification (() (b))
-	       (t/blas-trsm! ,(cl a) side uplo opa diag alpha a lda b (blas-matrix-compatiblep b)))))))
+	       (t/blas-trsm! ,(cl a) side uplo opa diag alpha a lda b (or (blas-matrix-compatiblep b) 0)))))))
   'B)
 
 #+nil

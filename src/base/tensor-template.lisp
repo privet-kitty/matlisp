@@ -173,7 +173,12 @@
 (eval-every
 
 (defparameter *template-generated-methods* (make-hash-table :test 'equal))
-(definline lazy-coerce (x output-type-spec) (if (typep x output-type-spec) x (copy x output-type-spec)))
+(definline lazy-coerce (x output-type-spec)
+  (if (typep x output-type-spec) x
+      (let ((ret (copy x output-type-spec)))
+	(when (slot-exists-p x 'memos) (iter (for (k v) in-hashtable (memos x)) (setf (gethash k (memos ret)) v)))
+	ret)))
+
 (defun cclass-max (&rest lst)
   (iter (for ele in lst) (with max)
 	(when (or (null max) (and (coerceable? max ele) (or (not (coerceable? ele max))

@@ -62,9 +62,9 @@
   [2] INFO = T: successful
 	     i:  U(i,i) is exactly zero.
 ")
-  (:method :before ((a dense-tensor) &optional (uplo :l))
+  (:method :before ((a dense-tensor) &optional (uplo *default-uplo*))
      (assert (typep a 'tensor-square-matrix) nil 'tensor-dimension-mismatch :message "Expected square matrix.")
-     (assert (member uplo '(:l :u)) nil 'invalid-arguments :given uplo :expected `(member uplo '(:l :u)))))
+     (assert (inline-member uplo (:l :u)) nil 'invalid-arguments :given uplo :expected `(member uplo '(:l :u)))))
 
 (define-tensor-method potrf! ((a dense-tensor :x t) &optional (uplo *default-uplo*))
   `(with-columnification (() (A))
@@ -116,9 +116,9 @@
 		 but the factor U is exactly singular.
 		 Solution could not be computed.
 ")
-  (:method :before ((A dense-tensor) (B dense-tensor) &optional (uplo :l))
+  (:method :before ((A dense-tensor) (B dense-tensor) &optional (uplo *default-uplo*))
      (assert (and (typep A 'tensor-square-matrix) (<= (order B) 2) (= (dimensions A 0) (dimensions B 0))) nil 'tensor-dimension-mismatch)
-     (assert (member uplo '(:l :u)) nil 'invalid-value :given uplo :expected `(member uplo '(:u :l)))))
+     (assert (inline-member uplo (:l :u)) nil 'invalid-value :given uplo :expected `(member uplo '(:u :l)))))
 
 (define-tensor-method potrs! ((A dense-tensor :x) (B dense-tensor :x t) &optional (uplo *default-uplo*))
   `(if (tensor-vectorp B)
@@ -131,6 +131,42 @@
 	   (unless (= info 0) (error "POTRS returned ~a. the ~:*~a'th argument had an illegal value." (- info))))))
   'B)
 ;;
+(deft/generic (t/lapack-potri! #'subtypep) sym (A lda uplo))
+(deft/method (t/lapack-potri! #'blas-tensor-typep) (sym dense-tensor) (A lda uplo)
+  (let ((ftype (field-type sym)))
+    (using-gensyms (decl (A lda uplo))
+      `(let* (,@decl)
+	 (declare (type ,sym ,A)
+		  (type index-type ,lda)
+		  (type character ,uplo))
+	 (ffuncall ,(blas-func "potri" ftype)
+	   (:& :character) ,uplo (:& :integer) (dimensions ,A 0)
+	   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
+	   (:& :integer :output) 0)))))
+
+(defgeneric potri! (A &optional uplo)
+  (:documentation "
+  Syntax
+  ======
+  (POTRI! a [:U :L])
+
+  Purpose
+  =======
+  Computes the inverse of using the pre-computed Cholesky at A.
+")
+  (:method :before ((A dense-tensor) &optional (uplo *default-uplo*))
+     (assert (and (typep A 'tensor-square-matrix)) nil 'tensor-dimension-mismatch)
+     (assert (inline-member uplo (:l :u)) nil 'invalid-value :given uplo :expected `(member uplo '(:u :l)))))
+
+(define-tensor-method potri! ((A dense-tensor :x t) &optional (uplo *default-uplo*))
+  `(with-columnification (() (A))
+     (let ((info (t/lapack-potri! ,(cl a)
+				  A (or (blas-matrix-compatiblep A #\N) 0)
+				  (aref (symbol-name uplo) 0))))
+       (unless (= info 0) (error "POTRI returned ~a. the ~:*~a'th argument had an illegal value." (- info)))))
+  'A)
+;;
+
 (defun chol (a &optional (uplo *default-uplo*))
   (declare (type (and tensor-square-matrix (satisfies blas-tensorp)) a))
   (let ((l (copy a)))

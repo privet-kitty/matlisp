@@ -57,6 +57,9 @@
   @end lisp
   "
   `(,r ,@(apply #'mapcar #'(lambda (&rest atoms) (cons m atoms)) (mapcar #'ensure-list args))))
+
+(defmacro inline-member (x lst &optional (test 'eql))
+  (with-gensyms (xx) `(let ((,xx ,x)) (or ,@(mapcar #'(lambda (l) `(,test ,xx ,l)) lst)))))
 ;;
 (defmacro cart-case ((&rest vars) &body cases)
   (let ((decl (zipsym vars)))

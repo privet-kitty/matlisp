@@ -113,6 +113,16 @@
     (declare (ignore axis preserve-rank?))
     x))
 
+(defun cov (x &optional (axis -1) bias)
+  (declare (type tensor-matrix x)
+	   (type index-type axis))
+  (let* ((d (dimensions x (ecase (modproj axis 2 nil) (0 1) (1 0))))
+	 (μ (mean x axis)) (δ (zeros d (type-of x))))
+    (scal! (/ (- (dimensions x axis) (if bias 0 1)))
+	   (iter (for xi slicing x along axis) (with ret = (zeros (list d d)))
+		 (ger! 1 (axpy! -1 μ (copy! xi δ)) δ ret)
+		 (finally (return (values ret μ)))))))
+
 (defgeneric prod (x &optional axis preserve-rank?)
   (:method ((x dense-tensor) &optional (axis 0) (preserve-rank? nil))
     (if axis

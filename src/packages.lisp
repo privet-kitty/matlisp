@@ -89,9 +89,9 @@
 	   #:lvec->list #:lvec->list! #:binary-search #:sort-index
 	   ;;Macros
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:binding-gensyms #:values-n
-	   #:letv* #:let-typed #:let*-typed #:make-array-allocator #:ziprm
+	   #:letv* #:let-typed #:let*-typed #:make-array-allocator #:ziprm #:inline-member
 	   #:define-constant #:eval-every
-	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase 
+	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase
 	   ;;
 	   #:definline #:with-optimization #:very-quickly
 	   ;;
@@ -159,7 +159,7 @@
    #:tensor-typep #:tensor-matrixp #:tensor-vectorp #:tensor-squarep
    #:tensor-vector #:tensor-matrix #:tensor-square-matrix
    ;;
-   #:einstein-sum #:for-mod #:with-strides #:loop-order #:uplo #:dorefs 
+   #:einstein-sum #:for-mod #:with-strides #:loop-order #:uplo #:dorefs
    #:subtensor~ #:slice~ #:suptensor~ #:reshape! #:matrixify~ #:tensor-append
    ;;
    #:copy! #:copy #:swap! #:swap
@@ -173,7 +173,7 @@
   (:import-from :λ-reader #:λ)
   ;;Shadow iterate:sum
   (:shadow :sum)
-  ;;Let's keep everything in house for now.   
+  ;;Let's keep everything in house for now.
   #+nil(:export #:index-type #:index-array #:allocate-index-store #:make-index-store
 	   ;;Standard-tensor
 	   #:standard-tensor
