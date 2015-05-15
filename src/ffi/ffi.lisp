@@ -26,7 +26,7 @@
 	       `(:pointer ,(%ffc->cffi (second type)))))))
       (ecase type
 	(:double-float :double)
-	(:single-float :single)
+	(:single-float :float)
 	(:character :char)
 	(:string :string)
 	(:integer :int32)

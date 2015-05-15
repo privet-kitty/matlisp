@@ -350,9 +350,10 @@
     (maptree '(memoizing-let defmem with-memoization)
 	     #'(lambda (x)
 		 (if (eq (first x) 'with-memoization) x
-		     (let ((id (gensym "memo-"))
-			   (def-p (eql (first x) 'defmem))
-			   (decl-p (and (consp (third x)) (eql (car (third x)) 'declare))))
+		     (let* ((id (gensym "memo-"))
+			    (def-p (eql (first x) 'defmem))
+			    (decl-p (let ((lst (nth (+ 2 (if def-p 1 0)) x)))
+				      (and (consp lst) (eql (car lst) 'declare)))))
 		       `(,(if def-p 'defun 'let) ,@(subseq x 1 (+ (if def-p 1 0) (if decl-p 3 2)))
 			  (letv* ((,args (list ',id ,@(if def-p
 							  (mapcar #'(lambda (x) (if (consp x) (car x) x)) (remove-if #'(lambda (x) (member x cl:lambda-list-keywords)) (third x)))

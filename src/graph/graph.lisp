@@ -155,7 +155,7 @@
 (letv* ((ag (symmetrize! #((1) (2) (0 3) (4) (0))))
 	(g (adlist->graph ag)))
     ;;(tree-decomposition (chordal-cover g (triangulate-graph g :min-size)))
-  ;;(max-cardinality-search g)
+    ;;(max-cardinality-search g)
     ;;(moralize! #(() (0) (0) (0) (2) (2)))
     ;;(values (copy tt '(index-type)) (dijkstra-prims tt))
 
@@ -182,22 +182,24 @@
 
 ;;
 (defun dijkstra (g &optional start)
+  (declare (type graph-accessor g))
   (let* ((tree (t/store-allocator index-store-vector (dimensions g 0)))
 	 (start (or start (random (length tree)))))
     (setf (aref tree start) start)
-    (graphfib (g g :order (lambda (x y) (or (and y (< x y)) x)))
+    (graphfib (g g :order (lambda (x y) (if (and x y) (< x y) (and x t))))
       (:init (i) (if (= i start) 0 nil))
       (:update (i d-i fib)
 	 (letv* ((li ri (fence g i)))
 	   (iter (for j in-vector (δ-i g) from li below ri)
 		 (when (fib:node-existsp j fib)
-		   (let ((d-j+ (+ d-i (ref g i j))))
-		     (when (< d-j+ (fib:node-key j fib))
+		   (let ((d-j+ (+ d-i (if (typep g 'base-tensor) (ref g i j) 1))) (k-j (fib:node-key j fib)))
+		     (when (or (not k-j) (< d-j+ k-j))
 		       (setf (fib:node-key j fib) d-j+
 			     (aref tree j) i)))))))
       tree)))
 
 (defun dijkstra-prims (g &optional start)
+  (declare (type graph-accessor g))
   (let* ((tree (t/store-allocator index-store-vector (dimensions g 0)))
 	 (start (or start (random (length tree)))))
     (setf (aref tree start) start)
@@ -207,7 +209,7 @@
 	 (letv* ((li ri (fence g i)))
 	   (iter (for j in-vector (δ-i g) from li below ri)
 		 (when (fib:node-existsp j fib)
-		   (let ((w-ij (ref g i j)) (k-j (fib:node-key j fib)))
+		   (let ((w-ij (if (typep g 'base-tensor) (ref g i j) 1)) (k-j (fib:node-key j fib)))
 		     (when (or (not k-j) (< w-ij k-j))
 		       (setf (fib:node-key j fib) w-ij
 			     (aref tree j) i)))))))
