@@ -26,17 +26,14 @@
   to)
 
 (defmethod copy! ((from array) (to array))
-  (let ((lst (make-list (array-rank to))))
-    (iter (for-mod idx from 0 below (array-dimensions to))
-	  (lvec->list! idx lst)
-	  (setf (apply #'aref to lst) (apply #'aref from lst))))
+  (iter (for-mod idx from 0 below (array-dimensions to) with-iterator ((:stride ((of-x (make-stride-rmj (coerce (array-dimensions to) 'index-store-vector)))))))
+	(setf (row-major-aref to of-x) (row-major-aref from of-x)))
   to)
 
 (defmethod copy! ((from t) (to array))
-  (let ((lst (make-list (array-rank to))))
-    (iter (for-mod idx from 0 below (array-dimensions to))
-	  (apply #'(setf aref) (list* from to (lvec->list! idx lst))))
-  to))
+  (iter (for-mod idx from 0 below (array-dimensions to) with-iterator ((:stride ((of-x (make-stride-rmj (coerce (array-dimensions to) 'index-store-vector)))))))
+	(setf (row-major-aref to of-x) from))
+  to)
 
 ;;
 (defmethod copy! :before ((x array) (y tensor))
@@ -106,7 +103,7 @@
   =======
   Given tensors X,Y, performs:
 
-              X <-> Y
+	      X <-> Y
 
   and returns Y.
 

@@ -38,13 +38,12 @@
       (very-quickly (binary-search i l r (δ-i tensor))))))
 
 (define-tensor-method ref ((x graph-accessor :x) &rest subscripts)
-  `(if-let (idx (graph-indexing (listify-subscripts subscripts) x))
+  `(if-let (idx (graph-indexing subscripts x))
      (values (t/store-ref ,(cl x) (t/store ,(cl x) x) (the index-type idx)) t)
      (values (t/fid+ (t/field-type ,(cl x))) nil)))
 
 (define-tensor-method (setf ref) (value (x graph-accessor :x) &rest subscripts)
-  `(letv* ((subscripts (listify-subscripts subscripts))
-	   ((r c) subscripts :type (index-type index-type))
+  `(letv* (((r c) subscripts :type (index-type index-type))
 	   (idx lb (graph-indexing subscripts x)))
      (when (slot-value x 'transposep) (rotatef r c))
      (unless idx

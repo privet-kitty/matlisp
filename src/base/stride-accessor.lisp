@@ -11,15 +11,7 @@
 (definline head (x)
   (declare (type stride-accessor x))
   (slot-value x 'head))
-
 ;;
-(definline listify-subscripts (subs)
-  (iter (for ele in subs)
-	(typecase ele
-	  (vector (appending (lvec->list ele) into lst))
-	  (list (appending ele into lst))
-	  (t (collect ele into lst)))
-	(finally (return lst))))
 
 (definline stride-indexing (idx tensor)
 "
@@ -95,7 +87,7 @@
 			    (assert (>= (the index-type (store-size tensor)) (the index-type (+ (the index-type (head tensor)) lidx)) 0) nil 'tensor-insufficient-store :store-size (store-size tensor) :max-idx (the index-type (+ (head tensor) lidx)) :tensor tensor)))))))))
 ;;
 (define-tensor-method ref ((x stride-accessor :x) &rest subscripts)
-  `(t/store-ref ,(cl x) (t/store ,(cl x) x) (stride-indexing (listify-subscripts subscripts) x)))
+  `(t/store-ref ,(cl x) (t/store ,(cl x) x) (stride-indexing subscripts x)))
 
 (define-tensor-method (setf ref) (value (x stride-accessor :x) &rest subscripts)
-  `(t/store-set ,(cl x) (t/coerce ,(field-type (cl x)) value) (t/store ,(cl x) x) (stride-indexing (listify-subscripts subscripts) x)))
+  `(t/store-set ,(cl x) (t/coerce ,(field-type (cl x)) value) (t/store ,(cl x) x) (stride-indexing subscripts x)))

@@ -2,7 +2,7 @@
 
 ;;This will only work if type is a dense-tensor
 (defun ones (dims &optional (type *default-tensor-type*))
-  (zeros dims type 1))
+  (the dense-tensor (zeros dims type 1)))
 
 (defun eye! (tensor)
   (tricopy! 1 (copy! 0 tensor) :d))

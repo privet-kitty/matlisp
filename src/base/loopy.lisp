@@ -1,58 +1,124 @@
 (in-package #:matlisp)
 
-;;The scheme for this iterator was obtained from FEMLISP.
-(defmacro-clause (FOR-MOD idx FROM initial BELOW dimensions &optional WITH-STRIDES strides LOOP-ORDER order UPLO ul)
-  (check-type idx symbol)
-  (let ((ul (or ul :ul))
-	(order (or order (case ul ((:u :uo) :col-major) ((:l :lo) :row-major)) matlisp::*default-stride-ordering*)))
-    (binding-gensyms (#.(gensym) gy)
-      (with-gensyms (dims init count)
-	`(progn
-	   (with ,dims = (coerce ,dimensions 'index-store-vector))
-	   (with ,init = (let ((,idx ,initial))
-			   (if (numberp ,idx)
-			       (t/store-allocator index-store-vector (length ,dims) ,idx)
-			       (coerce ,initial 'index-store-vector))))
-	   (with ,idx = (copy-seq ,init))
-	   (declare (type index-store-vector ,dims ,idx ,init))
-	   ;;
-	   ,@(when strides
-		   `(,@(mapcan #'(lambda (x) `((with ,(gy (first x)) = ,(second x))
-					       (with ,(first x) = (+ ,(or (third x) 0)
-								     ,@(unless (and (numberp initial) (zerop initial))
-									 `((iter (for ,(gy 'i) from 0 below (length ,init))
-										 (summing (the index-type (* (aref ,(gy (first x)) ,(gy 'i)) (aref ,init ,(gy 'i)))) into ,(gy 'ihead))
-										 (declare (type index-type ,(gy 'ihead) ,(gy 'i)))
-										 (finally (return ,(gy 'ihead))))))))))
-			       strides)
-		       (declare (type index-store-vector ,@(mapcar #'(lambda (x) (gy (first x))) strides))
-				(type index-type ,@(mapcar #'car strides)))))
-	   ;;
-	   (initially (assert (ziprm (= length) (,dims ,init ,@(when strides (mapcar #'(lambda (x) (gy (first x))) strides)))) nil "Rank mismatch."))
-	   (after-each
-	    (unless
-		(very-quickly
-		  ;;For some odd reason loop does a better job here!
-		  (,@(ecase order
-		       (:row-major `(loop :for ,count :of-type index-type :from (1- (length ,idx)) :downto 0))
-		       (:col-major `(loop :for ,count :of-type index-type :from 0 :below (length ,idx)))) :do
-		     (if ,(recursive-append
-			   (ecase ul
-			     (:ul nil)
-			     (:l `(or (and (> ,count 0) (= (aref ,idx ,count) (aref ,idx (1- ,count))))))
-			     (:lo `(or (and (> ,count 0) (= (aref ,idx ,count) (1- (aref ,idx (1- ,count)))))))
-			     (:u `(or (and (< ,count (1- (length ,idx))) (= (aref ,idx ,count) (aref ,idx (1+ ,count))))))
-			     (:uo `(or (and (< ,count (1- (length ,idx))) (= (aref ,idx ,count) (1- (aref ,idx (1+ ,count))))))))
-			   `(= (1+ (aref ,idx ,count)) (aref ,dims ,count)))
-			 (progn
-			   ,@(when strides (mapcar #'(lambda (x) `(decf ,(first x) (the index-type (* (aref ,(gy (first x)) ,count) (- (aref ,idx ,count) (aref ,init ,count)))))) strides))
-			   (setf (aref ,idx ,count) (aref ,init ,count)))
-			 (progn
-			   ,@(when strides (mapcar #'(lambda (x) `(incf ,(first x) (aref ,(gy (first x)) ,count))) strides))
-			   (incf (aref ,idx ,count))
-			   (return t)))))
-	      (finish))))))))
+(defmacro mod-update ((idx init dims &key order uplo) &rest body)
+  (let* ((uplo (or uplo :ul))
+	 (order (or order (case uplo ((:u :uo) :col-major) ((:l :lo) :row-major)) matlisp::*default-stride-ordering*)))
+    (assert (null (remove-if #'(lambda (x) (member (first x) '(:update :reset))) body)) nil 'invalid-arguments)
+    (using-gensyms (decl (idx init dims) (count))
+      `(let (,@decl)
+	 (declare (type index-store-vector ,idx ,dims))
+	 (loop :for ,count :of-type index-type
+	    ,@(ecase order
+		     (:row-major `(:from (1- (length ,idx)) :downto 0))
+		     (:col-major `(:from 0 :below (length ,idx)))) :do
+	    (if ,(recursive-append
+		  (ecase uplo
+		    (:ul nil)
+		    (:l `(or (and (> ,count 0) (= (aref ,idx ,count) (aref ,idx (1- ,count))))))
+		    (:lo `(or (and (> ,count 0) (= (aref ,idx ,count) (1- (aref ,idx (1- ,count)))))))
+		    (:u `(or (and (< ,count (1- (length ,idx))) (= (aref ,idx ,count) (aref ,idx (1+ ,count))))))
+		    (:uo `(or (and (< ,count (1- (length ,idx))) (= (aref ,idx ,count) (1- (aref ,idx (1+ ,count))))))))
+		  `(= (1+ (aref ,idx ,count)) (aref ,dims ,count)))
+		(progn
+		  ,@(mapcar #'(lambda (reset) `(let (,@(zip (second reset) (list count idx init dims))) ,@(cddr reset))) (remove-if-not #'(lambda (x) (eql (first x) :reset)) body))
+		  (setf (aref ,idx ,count) (aref ,init ,count)))
+		(progn
+		  ,@(mapcar #'(lambda (update) `(let (,@(zip (second update) (list count idx init dims))) ,@(cddr update))) (remove-if-not #'(lambda (x) (eql (first x) :update)) body))
+		  (incf (aref ,idx ,count))
+		  (return t))))))))
 
+(defgeneric for-mod-iterator (clause-name init dims args))
+(defmacro-clause (FOR-MOD idx FROM initial BELOW dimensions &optional WITH-ITERATOR updates LOOP-ORDER order UPLO ul)
+  (check-type idx symbol)
+  (binding-gensyms (gm gf)
+    (let ((iterables (mapcar #'(lambda (x) (for-mod-iterator (first x) (gm init) (gm dims) (second x))) updates)))
+      `(progn
+	 (with ,(gm dims) = (coerce ,dimensions 'index-store-vector))
+	 (with ,(gm init) = (let ((,(gm idx) ,initial))
+			      (if (numberp ,(gm idx))
+				  (t/store-allocator index-store-vector (length ,(gm dims)) ,(gm idx))
+				  (coerce ,(gm idx) 'index-store-vector))))
+	 (with ,idx = (copy-seq ,(gm init)))
+	 (declare (type index-store-vector ,(gm dims) ,idx ,(gm init)))
+	 (initially (assert (ziprm (= length) (,(gm init) ,(gm dims)))))
+	 ,@(mapcan #'first iterables)
+	 (after-each
+	  (unless
+	      (very-quickly (mod-update (,idx ,(gm init) ,(gm dims) :order ,order :uplo ,ul) ,@(mapcan #'cdr iterables)))
+	    (finish)))))))
+
+;;
+(defmethod for-mod-iterator ((clause-name (eql :stride)) init dims strides)
+  (binding-gensyms (gm gf)
+    (list `(,@(mapcan #'(lambda (x)
+			  `((with ,(gf (first x)) = ,(second x))
+			    (with ,(first x) = (+ ,(or (third x) 0)
+						  (loop :for ,(gm i) :of-type index-type :from 0 :below (length ,init)
+						     :summing (the index-type (* (aref ,(gf (first x)) ,(gm i)) (aref ,init ,(gm i)))) :of-type index-type)))))
+		      strides)
+	      (initially (assert (ziprm (= length) (,dims ,@(mapcar #'(lambda (x) (gf (first x))) strides)))))
+	      (declare (type index-store-vector ,@(mapcar #'(lambda (x) (gf (first x))) strides))
+		       (type index-type ,@(mapcar #'car strides))))
+	  `(:update (,(gm count) ,(gm idx) ,(gm init) ,(gm dims))
+		    (declare (ignore ,(gm idx) ,(gm init) ,(gm dims)))
+		    ,@(mapcar #'(lambda (x) `(incf ,(first x) (aref ,(gf (first x)) ,(gm count)))) strides))
+	  `(:reset (,(gm count) ,(gm idx) ,(gm init) ,(gm dims))
+		   (declare (ignore ,(gm dims)))
+		   ,@(mapcar #'(lambda (x) `(decf ,(first x) (the index-type (* (aref ,(gf (first x)) ,(gm count)) (- (aref ,(gm idx) ,(gm count)) (aref ,(gm init) ,(gm count))))))) strides)))))
+
+;;
+(defmethod for-mod-iterator ((clause-name (eql :general)) init dims body)
+  body)
+
+;;
+(with-memoization ((trivial-garbage:make-weak-hash-table :weakness :key-or-value :test 'equal))
+  (defmem minors-strides-precompute (dims std indices)
+    (let ((dims (coerce dims 'index-store-vector))
+	  (std (coerce std 'index-store-vector)))
+      (declare (type index-store-vector std))
+      (macrolet ((kernel (jj) `(the index-type (* (aref std ii) (modproj (the index-type ,jj) (aref dims ii))))))
+	(iter (for idx in indices)
+	      (if (cdr idx)
+		  (let ((sv (t/store-allocator index-store-vector (length idx) 0) :type index-store-vector))
+		    (iter (for i from 0 below (length sv))
+			  (for jj in idx) (declare (type index-type i jj))
+			  (setf (aref sv i) (kernel jj)))
+		    (summing (aref sv 0) into hd)
+		    (collect sv into stable result-type simple-vector))
+		  (summing (kernel (car idx)) into hd))
+	      (declare (type index-type hd ii))
+	      (counting t into ii)
+	      (finally (return (values (the index-type hd) stable))))))))
+
+(defun minors-check (dims-y stable)
+  (declare (type index-store-vector dims-y)
+	   (type vector stable))
+  (assert (= (length dims-y) (length stable)) nil 'tensor-index-rank-mismatch)
+  (assert (loop :for i :of-type index-type :from 0 :below (length stable)
+	     :do (unless (= (aref dims-y i) (length (aref stable i))) (return nil))
+	     :finally (return t)) nil 'tensor-dimension-mismatch))
+
+(defmethod for-mod-iterator ((clause-name (eql :minor)) init dims minors)
+  (binding-gensyms (gm gf)
+    (list `(,@(mapcan #'(lambda (x) `((with ,(first x) = (or ,(third x) 0))
+				      (with ,(gf (first x)) = ,(second x)))) minors)
+	      (initially ,@(mapcar #'(lambda (x) `(minors-check ,dims ,(gf (first x)))) minors))
+	      (declare (type simple-vector ,@(mapcar #'(lambda (x) (gf (first x))) minors))
+		       (type index-type ,@(mapcar #'first minors))))
+	  `(:update (,(gm count) ,(gm idx) ,(gm init) ,(gm dims))
+		    (declare (ignore ,(gm init) ,(gm dims)))
+		    (let-typed ((,(gm ii) (aref ,(gm idx) ,(gm count)) :type index-type))
+		      ,@(mapcar #'(lambda (x)
+				    `(let-typed ((,(gm vv) (aref ,(gf (first x)) ,(gm count)) :type index-store-vector))
+				       (incf ,(first x) (- (aref ,(gm vv) (1+ ,(gm ii))) (aref ,(gm vv) ,(gm ii)))))) minors)))
+	  `(:reset (,(gm count) ,(gm idx) ,(gm init) ,(gm dims))
+		   (declare (ignore ,(gm init) ,(gm dims)))
+		   (let-typed ((,(gm ii) (aref ,(gm idx) ,(gm count)) :type index-type))
+		     ,@(mapcar #'(lambda (x)
+				   `(let-typed ((,(gm vv) (aref ,(gf (first x)) ,(gm count)) :type index-store-vector))
+				      (incf ,(first x) (- (aref ,(gm vv) 0) (aref ,(gm vv) ,(gm ii)))))) minors))))))
+
+;;The scheme for this iterator was obtained from FEMLISP.
 (defmacro dorefs ((idx dims &key (loop-order *default-stride-ordering* loop-ordering-p) (uplo? :ul)) (&rest ref-decls) &rest body)
   (let* ((tsyms (zipsym (mapcar #'second ref-decls)))
 	 (rsyms (mapcar #'car ref-decls))
@@ -71,8 +137,8 @@
 					   (:uo `(append (make-list (1- (length ,dims)) :initial-element 0) (list 1)))
 					   (:lo `(append (list 1) (make-list (1- (length ,dims)) :initial-element 0)))
 					   (t 0))
-			  below ,dims with-strides (,@(remove-if #'null (mapcar #'(lambda (of ten typ) (when typ `(,of (strides ,(car ten)) (head ,(car ten)))))
-										osyms tsyms types)))
+			  below ,dims with-iterator ((:stride (,@(remove-if #'null (mapcar #'(lambda (of ten typ) (when typ `(,of (strides ,(car ten)) (head ,(car ten)))))
+											   osyms tsyms types)))))
 			  ,@(when loop-ordering-p `(loop-order ,loop-order)) uplo ,uplo?)
 		 (symbol-macrolet (,@(mapcar #'(lambda (ref sto ten of typ) (if typ
 										(list ref `(the ,(field-type typ) (t/store-ref ,typ ,(car sto) ,of)))

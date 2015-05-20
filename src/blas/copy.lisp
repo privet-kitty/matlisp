@@ -47,41 +47,30 @@
 ;;
 (deft/generic (t/copy! #'(lambda (a b) (strict-compare (list #'subtypep #'subtypep) a b))) (clx cly) (x y))
 (deft/method t/copy! ((clx dense-tensor) (cly dense-tensor)) (x y)
-  (using-gensyms (decl (x y) (sto-x sto-y of-x of-y idx))
-    `(let* (,@decl
-	    (,sto-x (t/store ,clx ,x))
-	    (,sto-y (t/store ,cly ,y)))
+  (using-gensyms (decl (x y) (ref-x ref-y idx))
+    `(let* (,@decl)
        (declare (type ,clx ,x)
-		(type ,cly ,y)
-		(type ,(store-type clx) ,sto-x)
-		(type ,(store-type cly) ,sto-y))
+		(type ,cly ,y))
        (very-quickly
-	 (iter (for-mod ,idx from 0 below (dimensions ,x) with-strides ((,of-x (strides ,x) (head ,x))
-									(,of-y (strides ,y) (head ,y))))
-	       (t/store-set ,cly
-			    ;;Coercion messes up optimization in SBCL, so we specialize.
-			    ,(if (and (subtypep (field-type clx) 'cl:real) (real-subtype (field-type cly)))
-				 `(the ,(field-type cly) (complex (t/strict-coerce (,(field-type clx) ,(real-subtype (field-type cly)))
-										   (t/store-ref ,clx ,sto-x ,of-x))
-								  (t/fid+ ,(real-subtype (field-type cly)))))
-				 (recursive-append
-				  (unless (eql clx cly) `(t/strict-coerce (,(field-type clx) ,(field-type cly))))
-				  `(t/store-ref ,clx ,sto-x ,of-x)))
-			    ,sto-y ,of-y)))
+	 (dorefs (,idx (dimensions ,y))
+		 ((,ref-x ,x :type ,clx)
+		  (,ref-y ,y :type ,cly))
+	   (setf ,ref-y ,(if (and (subtypep (field-type clx) 'cl:real) (real-subtype (field-type cly))) ;;Coercion messes up optimization in SBCL, so we specialize.
+			     `(the ,(field-type cly) (complex (t/strict-coerce (,(field-type clx) ,(real-subtype (field-type cly))) ,ref-x) (t/fid+ ,(real-subtype (field-type cly)))))
+			     (if (eql clx cly) ref-x `(t/strict-coerce (,(field-type clx) ,(field-type cly)) ,ref-x))))))
 	   ,y)))
 
 (deft/method t/copy! ((clx t) (cly dense-tensor)) (x y)
-  (using-gensyms (decl (x y) (sto-y of-y idx cx))
+  (using-gensyms (decl (x y) (ref-y idx cx))
     `(let* (,@decl
-	    (,sto-y (t/store ,cly ,y))
 	    (,cx (t/coerce ,(field-type cly) ,x)))
        (declare (type ,cly ,y)
-		(type ,(field-type cly) ,cx)
-		(type ,(store-type cly) ,sto-y))
+		(type ,(field-type cly) ,cx))
        ;;This should be safe
        (very-quickly
-	 (iter (for-mod ,idx from 0 below (dimensions ,y) with-strides ((,of-y (strides ,y) (head ,y))))
-	       (t/store-set ,cly ,cx ,sto-y ,of-y)))
+	 (dorefs (,idx (dimensions ,y))
+	   ((,ref-y ,y :type ,cly))
+	   (setf ,ref-y ,cx)))
        ,y)))
 
 ;;
@@ -199,17 +188,17 @@
   (assert (very-quickly (lvec-eq (dimensions x) (dimensions y) '=)) nil 'tensor-dimension-mismatch))
 
 (define-tensor-method copy! ((x array) (y tensor :y t))
-  `(let-typed ((sto-y (store y) :type ,(store-type (cl y)))
-	       (lst (make-list (array-rank x)) :type cons))
-     (iter (for-mod idx from 0 below (dimensions y) with-strides ((of-y (strides y) (head y))))
-	   (t/store-set ,(cl y) (t/coerce ,(field-type (cl y)) (apply #'aref x (lvec->list! idx lst))) sto-y of-y))
+  `(let-typed ((sto-y (store y) :type ,(store-type (cl y))))
+     (iter (for-mod idx from 0 below (dimensions y) with-iterator ((:stride ((of-y (strides y) (head y))
+									     (of-x (make-stride-rmj (coerce (array-dimensions x) 'index-store-vector)))))))
+	   (setf (t/store-ref ,(cl y) sto-y of-y) (t/coerce ,(field-type (cl y)) (row-major-aref x of-x))))
      y))
 
 (define-tensor-method copy! ((x tensor :x t) (y array))
-  `(let-typed ((sto-x (store x) :type ,(store-type (cl x)))
-	       (lst (make-list (array-rank y)) :type cons))
-     (iter (for-mod idx from 0 below (dimensions x) with-strides ((of-x (strides x) (head x))))
-	   (setf (apply #'aref y (lvec->list! idx lst)) (t/store-ref ,(cl x) sto-x of-x)))
+  `(let-typed ((sto-x (store x) :type ,(store-type (cl x))))
+     (iter (for-mod idx from 0 below (dimensions x) with-iterator ((:stride ((of-x (strides x) (head x))
+									     (of-y (make-stride-rmj (coerce (array-dimensions y) 'index-store-vector)))))))
+	   (setf (row-major-aref y of-y) (t/store-ref ,(cl x) sto-x of-x)))
      y))
 
 #+nil

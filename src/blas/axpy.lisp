@@ -48,25 +48,17 @@
 (deft/generic (t/axpy! #'subtypep) sym (a x y))
 (deft/method t/axpy! (sym dense-tensor) (a x y)
   (let ((apy? (null x)))
-    (using-gensyms (decl (a x y) (idx sto-x sto-y of-x of-y))
+    (using-gensyms (decl (a x y) (idx ref-x ref-y))
       `(let (,@decl)
 	 (declare (type ,sym ,@(unless apy? `(,x)) ,y)
 		  (type ,(field-type sym) ,a)
 		  ,@(when apy? `((ignore ,x))))
-	 (let (,@(unless apy? `((,sto-x (store ,x))))
-	       (,sto-y (t/store ,sym ,y)))
-	   (declare (type ,(store-type sym) ,@(unless apy? `(,sto-x)) ,sto-y))
-	   (very-quickly
-	     (iter (for-mod ,idx from 0 below (dimensions ,y) with-strides (,@(unless apy? `((,of-x (strides ,x) (head ,x))))
-									    (,of-y (strides ,y) (head ,y))))
-		   (t/store-set ,sym (t/f+ ,(field-type sym)
-					   ,@(if apy?
-						 `(,a)
-						 `((t/f* ,(field-type sym)
-							 ,a (t/store-ref ,sym ,sto-x ,of-x))))
-					   (t/store-ref ,sym ,sto-y ,of-y))
-				,sto-y ,of-y)))
-	   ,y)))))
+	 (very-quickly
+	   (dorefs (,idx (dimensions ,y))
+		   (,@(unless apy? `((,ref-x ,x :type ,sym)))
+		      (,ref-y ,y :type ,sym))
+		   (setf ,ref-y (t/f+ ,(field-type sym) ,@(if apy? `(,a) `((t/f* ,(field-type sym) ,a ,ref-x))) ,ref-y))))
+	 ,y))))
 ;;---------------------------------------------------------------;;
 (defgeneric axpy! (alpha x y)
   (:documentation

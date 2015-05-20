@@ -95,10 +95,7 @@
 	   ;;
 	   #:definline #:with-optimization #:very-quickly
 	   ;;
-	   #:memoizing-let #:defmem #:with-memoization
-	   ;;Loopy
-	   #:for-mod #:with-strides #:loop-order #:uplo
-	   ))
+	   #:memoizing-let #:defmem #:with-memoization))
 
 (defpackage "MATLISP-DLIST"
   (:use #:common-lisp #:matlisp-utilities #:iterate)

@@ -132,7 +132,7 @@
 		,@(when init-type
 			`((type ,init-type ,init))))
        (very-quickly
-	 (iter (for-mod ,idx from 0 below (dimensions ,ten) with-strides ((,of (strides ,ten))))
+	 (iter (for-mod ,idx from 0 below (dimensions ,ten) with-iterator ((:stride ((,of (strides ,ten) (head ,ten))))))
 	       (setf ,init (,@(if (symbolp func)
 				  `(,func)
 				  `(funcall ,funcsym)) ,init ,(recursive-append

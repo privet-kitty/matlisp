@@ -35,25 +35,21 @@
       `(let (,@decl)
 	 (declare (type ,sym ,x ,y))
 	 (ffuncall ,(blas-func "swap" ftype)
-		   (:& :integer) (size ,y)
+		   (:& :integer) (total-size ,y)
 		   (:* ,(lisp->ffc ftype) :+ (head ,x)) (the ,(store-type sym) (store ,x)) (:& :integer) ,st-x
 		   (:* ,(lisp->ffc ftype) :+ (head ,y)) (the ,(store-type sym) (store ,y)) (:& :integer) ,st-y)
 	 ,y))))
-  
+
 (deft/generic (t/swap! #'subtypep) sym (x y))
 (deft/method t/swap! (sym dense-tensor) (x y)
-  (using-gensyms (decl (x y) (idx sto-x sto-y of-x of-y y-val))
-    `(let* (,@decl
-	    (,sto-x (store ,x))
-	    (,sto-y (store ,y)))
-       (declare (type ,sym ,x ,y)
-		(type ,(store-type sym) ,sto-x ,sto-y))
+  (using-gensyms (decl (x y) (idx ref-x ref-y))
+    `(let* (,@decl)
+       (declare (type ,sym ,x ,y))
        (very-quickly
-	 (iter (for-mod ,idx from 0 below (dimensions ,x) with-strides ((,of-x (strides ,x) (head ,x))
-									(,of-y (strides ,y) (head ,y))))
-	       (let-typed ((,y-val (t/store-ref ,sym ,sto-y ,of-y) :type ,(field-type sym)))
-		 (t/store-set ,sym (t/store-ref ,sym ,sto-x ,of-x) ,sto-y ,of-y)
-		 (t/store-set ,sym ,y-val ,sto-x ,of-x)))
+	 (dorefs (,idx (dimensions ,x))
+		 ((,ref-x ,x :type ,sym)
+		  (,ref-y ,y :type ,sym))
+	   (rotatef ,ref-x ,ref-y))
 	 ,y))))
 ;;---------------------------------------------------------------;;
 (defmethod swap! :before ((x dense-tensor) (y dense-tensor))
@@ -63,6 +59,6 @@
 (define-tensor-method swap! ((x dense-tensor :x t) (y dense-tensor :x t))
   (recursive-append
    (when (blas-tensor-typep (cl y))
-     `(if-let (strd (and (call-fortran? x (t/l1-lb ,clx)) (blas-copyablep x y)))
-	(t/blas-swap! ,clx x (first strd) y (second strd)))))
+     `(if-let (strd (and (call-fortran? x (t/blas-lb ,(cl x) 1)) (blas-copyablep x y)))
+	(t/blas-swap! ,(cl x) x (first strd) y (second strd)))))
   `(t/swap! ,(cl y) x y))
