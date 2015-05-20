@@ -128,11 +128,12 @@
 			ref-decls))
 	 (ssyms (mapcar #'(lambda (x y) (when y `(,(gensym) (slot-value ,(car x) 'store)))) tsyms types))
 	 (osyms (mapcar #'(lambda (y) (when y (gensym))) types)))
-    (using-gensyms (decl (dims) ())
+    (using-gensyms (decl (dims) (lst))
       `(let-typed (,@decl
 		   ,@(mapcar #'(lambda (x y) (if y (append x `(:type ,y)) x)) tsyms types))
 	 (declare (type index-store-vector ,dims))
-	 (let-typed (,@(remove-if #'null (mapcar #'(lambda (x y) (when y (append x `(:type ,(store-type y))))) ssyms types)))
+	 (let-typed ((,lst (make-list (length ,dims) :initial-element 0))
+		     ,@(remove-if #'null (mapcar #'(lambda (x y) (when y (append x `(:type ,(store-type y))))) ssyms types)))
 	   (iter (for-mod ,idx from ,(case uplo?
 					   (:uo `(append (make-list (1- (length ,dims)) :initial-element 0) (list 1)))
 					   (:lo `(append (list 1) (make-list (1- (length ,dims)) :initial-element 0)))
@@ -140,8 +141,9 @@
 			  below ,dims with-iterator ((:stride (,@(remove-if #'null (mapcar #'(lambda (of ten typ) (when typ `(,of (strides ,(car ten)) (head ,(car ten)))))
 											   osyms tsyms types)))))
 			  ,@(when loop-ordering-p `(loop-order ,loop-order)) uplo ,uplo?)
-		 (symbol-macrolet (,@(mapcar #'(lambda (ref sto ten of typ) (if typ
-										(list ref `(the ,(field-type typ) (t/store-ref ,typ ,(car sto) ,of)))
-										(list ref `(ref ,(car ten) ,idx))))
+		 (lvec->list! idx ,lst)
+		 (symbol-macrolet (,@(mapcar #'(lambda (ref sto ten of typ) (list ref (if typ
+											  `(the ,(field-type typ) (t/store-ref ,typ ,(car sto) ,of))
+											  `(apply #'ref (list* ,(car ten) ,lst)))))
 					     rsyms ssyms tsyms osyms types))
 		   ,@body)))))))
