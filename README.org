@@ -148,6 +148,8 @@ The fortran libraries provided by matlisp earlier are now part of [[https://gith
 
 * Emacs
 We currently use Unicode symbols, for certain function names and in the infix reader,
+
+#+BEGIN_SRC lisp
 ;; Lisp
 (defun add-lisp-slime-hook (func)
   (add-hook 'lisp-mode-hook func)
@@ -169,4 +171,4 @@ We currently use Unicode symbols, for certain function names and in the infix re
 (add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c o") (lambda () (interactive (insert "∘"))))))
 (add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c p") (lambda () (interactive (insert "π"))))))
 (add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c s") (lambda () (interactive (insert "σ"))))))
-
+#+END_SRC
