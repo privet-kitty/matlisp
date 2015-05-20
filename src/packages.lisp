@@ -138,7 +138,7 @@
   (:documentation "Fortran foreign function interface"))
 
 (defpackage "MATLISP"
-  (:use #:common-lisp #:iterate #:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template)
+  (:use #:common-lisp #:iterate #:named-readtables #:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template)
   (:import-from :λ-reader #:λ)
   (:nicknames :m)
   ;;Shadow iterate:sum
