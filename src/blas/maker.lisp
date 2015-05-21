@@ -21,9 +21,9 @@
 	     (,nnz (max (ceiling (* *default-sparsity* (lvec-foldr #'* ,adims))) (or ,nz 0))))
        (make-instance ',class
 		      :dimensions ,adims
-		      :fence (t/store-allocator index-store-vector (1+ (aref ,adims 1))) ;;Compressed Columns by default		      
+		      :fence (t/store-allocator index-store-vector (1+ (aref ,adims 1))) ;;Compressed Columns by default
 		      :neighbours (t/store-allocator index-store-vector ,nnz)
-		      :store (t/store-allocator ,class ,nnz)))))
+		      ,@(when (subtypep class 'base-tensor) `(:store (t/store-allocator ,class ,nnz)))))))
 
 #+nil
 (deft/method t/zeros (class compressed-sparse-matrix) (dims &optional nz)

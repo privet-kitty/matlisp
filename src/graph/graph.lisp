@@ -7,11 +7,7 @@
 
 (defun adlist->graph (ag &optional type)
   (let*-typed ((nnz (iter (for ai in-vector ag) (summing (length ai))))
-	       (ret (if type
-			(zeros (list (length ag) (length ag)) type nnz)
-			(make-instance 'graph-accessor :dimensions (idxv (length ag) (length ag))
-				       :fence (t/store-allocator index-store-vector (1+ (length ag)))
-				       :neighbours (t/store-allocator index-store-vector nnz))) :type graph-accessor)
+	       (ret (zeros (list (length ag) (length ag)) (or type 'graph-accessor) nnz) :type graph-accessor)
 	       (fe (fence ret))
 	       (nv (δ-i ret)))
     (iter (for i from 0 below (length ag))
@@ -135,7 +131,7 @@
 	  (setf (aref vs i) t))
     (adlist->graph cc)))
 
-(defun tree-decomposition (g)
+(defun tree-decomposition (g &optional type)
   (letv* ((cliques (or (nth-value 1 (max-cardinality-search g)) (nth-value 1 (max-cardinality-search (chordal-cover g (triangulate-graph g))))))
 	  (k (length cliques)))
     (values
@@ -148,7 +144,7 @@
 			   (ref ret (+ i j) i) (ref ret i (+ i j)))))
 	     (counting t into i))
        (copy ret '(index-type))
-       (order->tree (dijkstra-prims (copy ret '(index-type graph-accessor)))))
+       (order->tree (dijkstra-prims (copy ret '(index-type graph-accessor))) type))
      (coerce cliques 'vector))))
 
 #+nil

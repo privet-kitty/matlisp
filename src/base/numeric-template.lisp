@@ -61,6 +61,8 @@
 
 ;;
 (deft/generic (t/fid+ #'subtypep) ty ())
+(deft/method t/fid+ (ty t) ()
+  nil)
 (deft/method t/fid+ (ty number) ()
   (coerce 0 ty))
 

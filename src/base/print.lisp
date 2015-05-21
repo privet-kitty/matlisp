@@ -137,3 +137,8 @@ of a matrix (default 0)
 	  (print-tensor tensor stream)))
       (print-unreadable-object (tensor stream :type t)
 	(format stream "~A, size: ~A/~A" (dimensions tensor) (total-size tensor) (store-size tensor)))))
+
+(defmethod print-object ((g graph-accessor) stream)
+  (print-unreadable-object (g stream :type t)
+    (format stream "~A, size: ~A/~A" (dimensions g) (aref (fence g) (1- (length (fence g)))) (length (δ-i g)))))
+
