@@ -113,49 +113,52 @@
   Examples:
   @lisp
   > (macroexpand-1 `(letv* ((x 2 :type fixnum)
-                            ((a &optional (c 2)) b (values (list 1) 3) :type (fixnum &optional (t)) t))
-                      t))
+			    ((a &optional (c 2)) b (values (list 1) 3) :type (fixnum &optional (t)) t))
+		      t))
   => (LET ((X 2))
-           (DECLARE (TYPE FIXNUM X))
+	   (DECLARE (TYPE FIXNUM X))
        (MULTIPLE-VALUE-BIND (#:G1120 B) (VALUES (LIST 1) 3)
-         (DECLARE (TYPE T B))
-         (DESTRUCTURING-BIND (A &OPTIONAL (C 2)) #:G1120
-           (DECLARE (TYPE FIXNUM A)
-                    (TYPE T C))
-           (LOCALLY T))))
+	 (DECLARE (TYPE T B))
+	 (DESTRUCTURING-BIND (A &OPTIONAL (C 2)) #:G1120
+	   (DECLARE (TYPE FIXNUM A)
+		    (TYPE T C))
+	   (LOCALLY T))))
   @end lisp
   "
-  (labels ((typedecl (syms alist)
-	     (let ((decls (remove-if #'null (mapcar #'(lambda (s)
-							(let ((ts (assoc s alist)))
-							  (when ts
-							    (if (second ts)
-								`(type ,(second ts) ,s)
-								`(ignore ,s)))))
-						    syms))))
-	       (when decls `((declare ,@decls))))))
-    (apply #'recursive-append
-	   (append
-	    (mapcan #'(lambda (x)
-			(destructuring-bind (bind expr type) (let ((tpos (position :type x)) (len (length x)))
-							       (list (subseq x 0 (1- (or tpos len))) (nth (1- (or tpos len)) x) (when tpos (nthcdr (1+ tpos) x))))
-			  (let* ((typa (maptree t #'(lambda (x) (if (atom (car x))
-								    (unless (member (car x) cl:lambda-list-keywords) (list x))
-								    (values x #'(lambda (mf x) (apply #'append (mapcar mf x))))))
-						(ziptree bind type)))
-				 (vsyms (mapcar #'(lambda (x) (if (atom x) (list x)
-								  (let ((g (gensym)))
-								    (list g `(destructuring-bind (,@x) ,g ,@(typedecl (flatten x) typa))))))
-						bind)))
-			    (list*
-			     (recursive-append
-			      (if (> (length bind) 1)
-				  `(multiple-value-bind (,@(mapcar #'car vsyms)) ,expr)
-				  `(let ((,@(mapcar #'car vsyms) ,expr))))
-			      (car (typedecl (mapcar #'car vsyms) typa)))
-			     (remove-if #'null (mapcar #'cadr vsyms))))))
-		    bindings)
-	    `((locally ,@body))))))
+  (let ((consy (gensym "consy")))
+    (labels ((typedecl (syms alist)
+	       (let ((decls (remove-if #'null (mapcar #'(lambda (s)
+							  (let ((ts (assoc s alist)))
+							    (when ts
+							      (if (second ts)
+								  `(type ,(second ts) ,s)
+								  `(ignore ,s)))))
+						      syms))))
+		 (when decls `((declare ,@decls))))))
+      (apply #'recursive-append
+	     (append
+	      (mapcan #'(lambda (x)
+			  (destructuring-bind (bind expr type) (let ((tpos (position :type x)) (len (length x)))
+								 (list (deconsify (subseq x 0 (1- (or tpos len))) consy) (nth (1- (or tpos len)) x) (when tpos (deconsify (nthcdr (1+ tpos) x) consy))))
+			    (let ((flt (remove consy (flatten bind))))
+			      (assert (= (length flt) (length (remove-duplicates flt))) nil "Duplicates present in binding ~a" flt))
+			    (let* ((typa (maptree t #'(lambda (x) (if (atom (car x))
+								      (unless (or (eql (car x) consy) (member (car x) cl:lambda-list-keywords)) (list x))
+								      (values x #'(lambda (mf x) (apply #'append (mapcar mf x))))))
+						  (ziptree bind type)))
+				   (vsyms (mapcar #'(lambda (x) (if (atom x) (list x)
+								    (let ((g (gensym)))
+								      (list g `(destructuring-bind ,(reconsify x consy) ,g ,@(typedecl (flatten x) typa))))))
+						  bind)))
+			      (list*
+			       (recursive-append
+				(if (> (length bind) 1)
+				    `(multiple-value-bind (,@(mapcar #'car vsyms)) ,expr)
+				    `(let ((,@(mapcar #'car vsyms) ,expr))))
+				(car (typedecl (mapcar #'car vsyms) typa)))
+			       (remove-if #'null (mapcar #'cadr vsyms))))))
+		      bindings)
+	      `((locally ,@body)))))))
 
 (defmacro let-typed (bindings &rest body)
   "
@@ -175,7 +178,7 @@
   (destructuring-bind (decl body) (optima:match (first body)
 				    ((cons 'declare _) (list (first body) (rest body)))
 				    (_ (list nil body)))
-  
+
     `(let (,@(mapcar #'(lambda (x) (subseq x 0 2)) bindings))
        ,@(let ((types (remove-if #'null (mapcar #'(lambda (x) (destructuring-bind (s e &key (type t)) x
 								(declare (ignore e))

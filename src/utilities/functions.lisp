@@ -24,7 +24,7 @@
     (vector
      (let ((ret (make-array n :element-type element-type)))
        (loop :for i :of-type fixnum :from 0 :below n
-	  :for ele :across seq	    
+	  :for ele :across seq
 	  :do (setf (aref ret i) ele)
 	  :finally (return ret))))))
 
@@ -66,12 +66,12 @@
   Example:
   @lisp
   > (maptree-if #'(λ (x) (and (consp x) (eq (car x) 'ping)))
-                #'(λ (x) `(pong ,@(cdr x)))
-                '(progn (ping (ping (ping 1)))))
+		#'(λ (x) `(pong ,@(cdr x)))
+		'(progn (ping (ping (ping 1)))))
   >= (PROGN (PONG (PING (PING 1))))
   > (maptree-if #'(λ (x) (and (consp x) (eq (car x) 'ping)))
-                #'(λ (x) (values `(pong ,@(cdr x)) #'mapcar))
-                '(progn (ping (ping (ping 1)))))
+		#'(λ (x) (values `(pong ,@(cdr x)) #'mapcar))
+		'(progn (ping (ping (ping 1)))))
   >= (PROGN (PONG (PONG (PONG 1))))
   @end lisp
   "
@@ -174,8 +174,25 @@
   > (zipsym '(a b c))
   => ((#:G1064 A) (#:G1065 B) (#:G1066 C))
   @end lisp
-  "  
+  "
   (map 'list #'(lambda (x) (list (gensym) x)) lst))
+
+(defun deconsify (x sym)
+  (if (atom x) x
+      (iter (for ll on x)
+	    (collect (deconsify (car ll) sym))
+	    (when (and (cdr ll) (not (consp (cdr ll))))
+	      (collect sym)
+	      (collect (deconsify (cdr ll) x))))))
+
+(defun reconsify (x sym)
+  (if (atom x) x
+      (iter (for ll on x) (with right = nil)
+	    (if (eql (car ll) sym)
+		(progn (assert (not (caddr ll)) nil "Misformed x")
+		  (setf right (cadr ll)) (finish))
+		(collect (reconsify (car ll) sym) into left))
+	    (finally (if right (setf (cdr (last left)) right)) (return left)))))
 
 (defun recursive-append (&rest lsts)
   "
@@ -186,10 +203,10 @@
   @lisp
   (reduce
     #'(lambda (x y)
-        (if (null x)
-          (if (typep (car y) 'symbol) y (car y))
-            (append x (if (null y) nil
-                        (if (typep (car y) 'symbol) `(,y) y)))))
+	(if (null x)
+	  (if (typep (car y) 'symbol) y (car y))
+	    (append x (if (null y) nil
+			(if (typep (car y) 'symbol) `(,y) y)))))
     lsts :from-end t)
   @end lisp
 
@@ -204,19 +221,19 @@
   > (recursive-append
       '(let ((x 1)))
       '((let ((y 2))
-          (setq y 3))
-        (let ((z 2))
-          z)))
+	  (setq y 3))
+	(let ((z 2))
+	  z)))
   => (LET ((X 1))
        (LET ((Y 2))
-         (SETQ Y 3))
+	 (SETQ Y 3))
        (LET ((Z 2))
-         Z))
+	 Z))
 
   > (recursive-append
       nil
       '((let ((x 1)) x)
-        (progn (+ 1 2))))
+	(progn (+ 1 2))))
   => (LET ((X 1))
        X)
 
@@ -294,7 +311,7 @@ superclasses.  This class is generated automatically, if necessary."
 	 (cond ((symbolp superclasses) (find-class superclasses))
 	       ((typep superclasses 'cl:standard-class) superclasses)
 	       (t (find-programmatic-class superclasses)))
-         initargs))
+	 initargs))
 
 ;;Helper functions
 (declaim (inline modproj))
@@ -305,5 +322,3 @@ superclasses.  This class is generated automatically, if necessary."
     (t (assert (if open? (<= (- (1+ d)) i d) (< (- (1+ d)) i d)) nil 'invalid-value)
        (if (< i 0) (if (and open? (= i (- (1+ d)))) -1 (mod i d)) i))))
 )
-
-
