@@ -43,7 +43,10 @@
   (:documentation "Vanilla stride accessor."))
 
 (defclass coordinate-accessor (base-accessor)
-  ((indices :initarg :indices :type index-store-matrix :documentation "Non-zero indices in the tensor."))
+  ((indices :initarg :indices :type index-store-matrix :documentation "Non-zero indices in the tensor.")
+   (stride-hash :initarg :stride-hash :type index-store-vector :documentation "Strides in Column major order")
+   (strides :initarg :strides :type index-store-vector :documentation "Strides in Column major order")
+   (boundary :initform 0 :initarg :boundary :type index-type :documentation "Row bound for indices"))
   (:documentation "Bi-partite graph/Hypergraph/Factor/Co-ordinate store"))
 
 (defclass graph-accessor (base-accessor)

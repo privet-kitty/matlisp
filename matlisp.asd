@@ -112,7 +112,7 @@
 			 (:file "chol")
 			 (:file "eig")
 			 (:file "least-squares")
-			 #+nil(:file "qr")
+			 (:file "qr")
 			 (:file "schur")
 			 (:file "svd")
 			 (:file "syl" :depends-on ("schur"))))

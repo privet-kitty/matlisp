@@ -25,6 +25,17 @@
 		      :neighbours (t/store-allocator index-store-vector ,nnz)
 		      ,@(when (subtypep class 'base-tensor) `(:store (t/store-allocator ,class ,nnz)))))))
 
+(deft/method t/zeros (class coordinate-accessor) (dims &optional nz)
+  (with-gensyms (adims nnz)
+    `(letv* ((,adims (coerce ,dims 'index-store-vector) :type index-store-vector)
+	     (,nnz (max (ceiling (* *default-sparsity* (lvec-foldr #'* ,adims))) (or ,nz 0))))
+       (make-instance ',class
+		      :dimensions ,adims
+		      :indices (t/store-allocator index-store-matrix (list ,nnz (length ,adims)))
+		      :stride-hash (t/store-allocator index-store-vector ,nnz)
+		      :strides (make-stride-cmj ,adims)
+		      ,@(when (subtypep class 'base-tensor) `(:store (t/store-allocator ,class ,nnz)))))))
+
 #+nil
 (deft/method t/zeros (class compressed-sparse-matrix) (dims &optional nz)
   (with-gensyms (dsym)
@@ -79,7 +90,7 @@
     (zeros-generic dims dtype initial-element)))
 
 
-(definline zeros (dims &optional (type *default-tensor-type*) initial-element)
+(definline zeros (dims &optional type initial-element)
 "
     Create a tensor with dimensions @arg{dims} of class @arg{dtype}.
     The optional argument @arg{initial-element} is used in two completely
@@ -104,7 +115,7 @@
     #<REAL-COMPRESSED-SPARSE-MATRIX #(10000 10000), store-size: 10000>
 "
   (with-no-init-checks
-    (let ((type (etypecase type (standard-class (class-name type)) (symbol type) (list (apply #'tensor type)))))
+    (let ((type (let ((type (or type *default-tensor-type*))) (etypecase type (standard-class (class-name type)) (symbol type) (list (apply #'tensor type))))))
       (etypecase dims
 	(list (zeros-generic dims type initial-element))
 	(vector (zeros-generic (lvec->list dims) type initial-element))

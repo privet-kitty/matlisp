@@ -1,6 +1,6 @@
 (in-package #:matlisp)
 
-(defmacro-clause (FOR v IN-GRAPH g &optional FROM root WITH-ORDER order WITH-COLOR color WITH-PARENT p)
+(defmacro-clause (FOR v IN-GRAPH g &optional FROM root IN-ORDER order WITH-COLOR color WITH-PARENT p)
   (binding-gensyms (gm gf)
     (let* ((order (or order :dfs)) (colorp color) (color (or color (gf 'color)))
 	   (visited (ecase order (:sfd (gf 'visited)) ((:dfs :bfs) color))))

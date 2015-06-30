@@ -1,6 +1,6 @@
 (in-package #:matlisp)
 
-(declaim (ftype (function (stride-accessor &optional index-type) (or index-type index-store-vector)) strides)
+(declaim (ftype (function ((or stride-accessor coordinate-accessor) &optional index-type) (or index-type index-store-vector)) strides)
 	 (ftype (function (stride-accessor) index-type) head))
 (definline strides (x &optional idx)
   (declare (type stride-accessor x))
@@ -31,7 +31,7 @@
      i = 0
 "
   (declare (type list idx)
-	   (type stride-accessor tensor))
+	   (type (or stride-accessor coordinate-accessor) tensor))
   (loop :for cidx :of-type index-type :in idx
      :for i :of-type index-type := 0 :then (1+ i)
      :for d :across (dimensions tensor)

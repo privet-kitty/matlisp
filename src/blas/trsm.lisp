@@ -34,6 +34,7 @@
 	 ,b))))
 ;;
 (defgeneric trs! (alpha A b &optional solve uplo)
+  (:documentation "Solve -> :{trans-> n/t/c}{Diag-> u/n}{Side-> l/r}")
   (:method :before (alpha (A dense-tensor) (b dense-tensor) &optional (solve :nn) (uplo *default-uplo*))
      (destructuring-bind (joba diag &optional (side #\L sidep)) (split-job solve)
        (assert (and (inline-member joba (#\N #\T #\C) char=) (inline-member side (#\L #\R) char=) (inline-member diag (#\U #\N) char=)
@@ -41,7 +42,7 @@
        (assert (and (typep A 'tensor-square-matrix) (if sidep (tensor-matrixp b) (<= (order b) 2))
 		    (= (dimensions A 0) (dimensions B (ecase side (#\L 0) (#\R 1))))) nil 'tensor-dimension-mismatch))))
 
-(define-tensor-method trs! (alpha (A dense-tensor :x) (b dense-tensor :x) &optional  (solve :nn) (uplo *default-uplo*))
+(define-tensor-method trs! (alpha (A dense-tensor :x) (b dense-tensor :x) &optional (solve :nn) (uplo *default-uplo*))
   `(destructuring-bind (joba diag &optional (side #\L)) (split-job solve)
      (with-columnification (((A joba)) ())
        (letv* ((lda opa (blas-matrix-compatiblep a joba))

@@ -122,7 +122,7 @@
 	   (type index-type axis))
   (let* ((d (dimensions x (ecase (modproj axis 2 nil) (0 1) (1 0))))
 	 (μ (mean x axis)) (δ (zeros d (type-of x))))
-    (iter (for xi slicing x along axis) (with ret = (zeros (list d d)))
+    (iter (for xi slicing x along axis) (with ret = (zeros (list d d) (type-of x)))
 	  (ger! 1 (axpy! -1 μ (copy! xi δ)) δ ret)
 	  (finally (return (values (scal! (/ (- (dimensions x axis) (if bias 0 1))) ret) μ))))))
 
@@ -137,6 +137,6 @@
 		axis))
 	(prod! x nil))))
 
-(definline normalize! (x)
-  (let ((sum (sum x nil)))
-    (values (scal! (/ sum) x) sum)))
+(definline normalize! (x &optional (n 1))
+  (let ((norm (norm x n)))
+    (values (scal! (/ norm) x) norm)))

@@ -26,6 +26,24 @@
 			      (plusp (+ (expt v 2) (* 4 (expt u 2) (log u))))))
 	       (return (/ v u)))))))
 
+(definline draw-standard-normal-single ()
+  "Draw a random number from N(0,1)."
+  ;; Method from Leva (1992).  This is considered much better/faster than the Box-Muller method.
+  ;; Adapted from cl-random, originally written by Tamas Papp
+  ;; This seems to be just as fast as Marsaglia with storage.
+  (very-quickly
+    (loop
+       :do (let* ((u (random 1e0))
+		  (v (* 1.7156e0 (- (random 1e0) 0.5e0)))
+		  (x (- u 0.449871e0))
+		  (y (+ (abs v) 0.386595e0))
+		  (q (+ (expt x 2) (* y (- (* 0.19600e0 y) (* 0.25472e0 x))))))
+	     (declare (type single-float u v x y q))
+	     (unless (and (> q 0.27597e0)
+			  (or (> q 0.27846e0)
+			      (plusp (+ (expt v 2) (* 4 (expt u 2) (log u))))))
+	       (return (/ v u)))))))
+
 (declaim (ftype (function () (complex double-float)) draw-standard-normal-marsaglia))
 (definline draw-standard-normal-marsaglia ()
   (very-quickly
@@ -38,29 +56,26 @@
 	   (let ((mult (/ (* -4 (log s)) s)))
 	     (declare (type double-float mult))
 	     (return (* z mult))))))))
-
 ;;
-(macrolet ((generate-rand (func clause)
-	     (let ((clause (etypecase clause
-			     (symbol `(,clause))
-			     (cons clause)))
-		   (func! (intern (string+ (symbol-name func) "!"))))
-	       `(eval-every
-		  (defun ,func! (tensor)
-		    (declare (type ,(tensor 'double-float) tensor))
-		    (very-quickly
-		      (dorefs (idx (dimensions tensor))
-			      ((ref tensor :type ,(tensor 'double-float)))
-			      (setf ref ,clause)))
-		    tensor)
-		  (defun ,func (&optional dims)
-		     (if dims
-			 (,func! (zeros dims '(double-float)))
-			 ,clause)))
-	       ))
-	   (generate-rands ((&rest args))
+(defmacro generate-rand (func type clause)
+  (let ((clause (etypecase clause (symbol `(,clause)) (cons clause)))
+	(func! (intern (string+ (symbol-name func) "!"))))
+    `(eval-every
+       (defun ,func! (tensor)
+	 (declare (type ,(tensor type) tensor))
+	 (very-quickly
+	   (dorefs (idx (dimensions tensor))
+		   ((ref tensor :type ,(tensor type)))
+		   (setf ref ,clause)))
+	 tensor)
+       (defun ,func (&optional dims)
+	 (if dims
+	     (,func! (zeros dims ',(tensor type)))
+	     ,clause)))))
+
+(macrolet ((generate-rands ((&rest args))
 	     `(progn
-		,@(mapcar #'(lambda (x) `(generate-rand ,(car x) ,(cadr x))) args))))
+		,@(mapcar #'(lambda (x) `(generate-rand ,(car x) double-float ,(cadr x))) args))))
   (generate-rands ((randn (draw-standard-normal))
 		   (rand (random 1d0))
 		   (rande (draw-standard-exponential)))))

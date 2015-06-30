@@ -74,6 +74,9 @@
 	     (error "POTRF: the ~a'th argument had an illegal value." (- info))
 	     (error 'matrix-not-pd :message "POTRF: the leading minor of order ~a is not p.d; the factorization could not be completed." :position info)))))
   'A)
+
+(definline chol! (a &optional (uplo *default-uplo*))
+  (tricopy! 0 (potrf! a uplo) (ecase uplo (:l :uo) (:u :lo))))
 ;;
 (deft/generic (t/lapack-potrs! #'subtypep) sym (A lda B ldb uplo))
 (deft/method (t/lapack-potrs! #'blas-tensor-typep) (sym dense-tensor) (A lda B ldb uplo)

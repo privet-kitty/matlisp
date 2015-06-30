@@ -19,7 +19,12 @@
 	     (t/f* cl:*))))
 
 (deft/method t/f= (ty number) (&rest nums)
- `(cl:= ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums)))
+  `(cl:= ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums)))
+
+(deft/method t/f= (ty t) (&rest nums)
+  (let ((zg (zipsym nums)))
+    `(let (,@zg)
+       (ziprm (and eql) (,@(mapcar #'car zg)) (,@(mapcar #'car (cdr zg)) ,(caar zg))))))
 
 ;;add a chinese remainder theorem solver.
 (definline eeuclid (a b)

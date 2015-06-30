@@ -194,19 +194,14 @@
     (copy-n cseq seq size))
   seq)
 
-#+nil
 (defmethod permute! ((A tensor) (perm permutation-pivot-flip) &optional (arg 0))
-  (let ((t1 (slice~ A arg)) (t2 (slice~ A arg)))
-    (let-typed ((argstd (strides A arg) :type index-type)
-		(hd-sl (head t2) :type index-type)
-		(idiv (store perm) :type index-store-vector))
-	       (very-quickly
-		 (loop :for i :from 0 :below (length idiv)
-		    :do (progn
-			  (unless (= i (aref idiv i))
-			    (setf (slot-value t2 'head) (the index-type (+ hd-sl (the index-type (* (aref idiv i) argstd)))))
-			    (swap! t1 t2))
-			  (setf (slot-value t1 'head) (the index-type (+ argstd (the index-type (head t1)))))))))) ;;type optimization
+  (let-typed ((t1 (slice~ A arg)) (t2 (slice~ A arg))
+	      (idiv (store perm) :type index-store-vector))
+    (iter (for σi in-vector idiv with-index i)
+	  (unless (= i σi)
+	    (setf (slot-value t1 'head) (the index-type (+ (head A) (the index-type (* i (strides A arg)))))
+		  (slot-value t2 'head) (the index-type (+ (head A) (the index-type (* σi (strides A arg))))))
+	    (swap! t1 t2))))
   A)
 
 ;;Conversions----------------------------------------------------;;
@@ -293,19 +288,19 @@
 (defun permutation/ (a)
   (etypecase a
     (permutation-action
-     (let*-typed ((sto (store obj) :type index-store-vector)
+     (let*-typed ((sto (store a) :type index-store-vector)
 		  (rsto (t/store-allocator index-store-vector (length sto)) :type index-store-vector))
        (loop :for i :from 0 :below (length rsto)
 	  :for ele of-type index-type :across sto
 	  :do (setf (aref rsto ele) i))
        (with-no-init-checks (make-instance 'permutation-action :store rsto :size (length rsto)))))
     (permutation-cycle
-     (let ((sto (store obj)))
+     (let ((sto (store a)))
        (with-no-init-checks
 	   (make-instance 'permutation-cycle
 			  :store (loop :for cyc :of-type index-store-vector :in sto :collect (reverse cyc))
-			  :size (permutation-size obj)))))
-    (permutation-pivot-flip (copy (permutation/ (copy flip 'permutation-action)) 'permutation-pivot-flip))))
+			  :size (permutation-size a)))))
+    (permutation-pivot-flip (copy (permutation/ (copy a 'permutation-action)) 'permutation-pivot-flip))))
 
 (defun permutation* (a b)
   (declare (type permutation a b))

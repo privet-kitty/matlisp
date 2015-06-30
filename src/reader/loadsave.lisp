@@ -47,20 +47,50 @@
     nil))
 
 ;;
+;; (definline parse-integer! (astring)
+;;   (declare (type (vector base-char) astring))
+;;   (very-quickly
+;;     (iter (for i from 0 below (length astring)) (with ret = 0) (with pl = 1) (declare (type index-type ret pl i))
+;; 	  (incf ret (the index-type (* pl (the index-type (- (char-code (vector-pop astring)) #.(char-code #\0)))))) (setf pl (the index-type (* 10 pl)))
+;; 	  (finally (return ret)))))
 
-(defun loadmtx (fname &key (delimiters '(#\Space #\Tab #\,)) (newlines '(#\Newline #\;)) (skip-rows 0))
-  (with-open-file (fs fname)
-    (let* ((dims 
-	    (do ((line (read-line fs nil nil) (read-line fs nil nil)))
-		((null line))
-	      (unless (char= (aref line 0) #\%)
-		(return (mapcar #'read-from-string (split-seq #'(lambda (x) (member x delimiters)) line))))))
-	   (mtx (zeros (subseq dims 0 2) 'real-sparse-tensor))
-	   (*read-default-float-format* 'double-float))
-      (do ((line (read-line fs nil nil) (read-line fs nil nil)))
-	  ((null line) mtx)
-	(let ((dat (mapcar #'read-from-string (split-seq #'(lambda (x) (member x delimiters)) line))))
-	  (setf (ref mtx (mapcar #'1- (subseq dat 0 2))) (third dat)))))))
+;; (definline read-number (str stack)
+;;   (setf (fill-pointer stack) 0)
+;;   (iter (for cc next (read-char str)) (with decimal? = nil)
+;; 	(when (char= cc #\.) (setf decimal? t))
+;; 	(if (not (or (char= cc #\|) (char= cc #\,) (char= cc #\Newline)))
+;; 	    (vector-push-extend cc stack)
+;; 	    (return (values (if decimal? (read-from-string stack) (parse-integer! stack)) cc)))))
+
+;; (defun warm-up (data)
+;;   (with-open-file (out data)
+;;     (let ((user-table (make-hash-table))
+;; 	  (feat-table (make-hash-table)))
+;;       (iter (for data next (handler-case (read-line out)
+;; 			     (end-of-file () (terminate))))
+;; 	    (let ((split (split-seq #'(λ (x) (char= x #\|)) data)))
+;; 	      (setf (gethash (parse-integer (nth 3 split)) user-table) t)
+;; 	      (mapcar #'(λ (x) (setf (gethash (parse-integer x) feat-table) t)) (split-seq #'(λ (x) (char= x #\,)) (ref split -1)))
+;; 	      (summing (read-from-string (first split)) into sum)
+;; 	      (counting t into n))
+;; 	    (finally (return (values (list sum n) (hash-table-count feat-table) (hash-table-count user-table))))))))
+
+;;     (let ((pre (letv* ((spt n (split-seq #'(lambda (x) (member x '(#\Space #\Return #\Tab))) (read-line fs))))
+;; 		 (assert (and (= n 4) (string= (first spt) "%%MatrixMarket")) nil "invalid header")
+;; 		 (mapcar #'read-from-string (cdr spt)))))
+;;       pre
+;;       )
+
+(defun loadmtx (fname)
+  (let ((delims '(#\Space #\Return #\Tab)))
+    (with-open-file (fs fname)
+      (read-line fs)
+      (letv* ((dims (mapcar #'read-from-string (split-seq #'(lambda (x) (member x delims)) (read-line fs))))
+	      (mtx (zeros (subseq dims 0 2) '(double-float stride-accessor hash-table) (third dims)))
+	      (*read-default-float-format* 'double-float))
+	(iter (for data next (handler-case (read-line fs) (end-of-file () (return mtx))))
+	      (let ((line (mapcar #'read-from-string (split-seq #'(lambda (x) (member x delims)) data))))
+		(setf (apply #'ref (list* mtx (mapcar #'1- (butlast line)))) (third line))))))))
 
   ;; (multiple-value-bind (lns nrows) (split-seq #'(lambda (x) (member x newlines)) f-string)
   ;;     (loop :for 

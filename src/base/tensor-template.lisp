@@ -79,6 +79,9 @@
 
 (deft/method t/total-size (sym graph-accessor) (ele)
   `(nth-value 1 (fence ,ele -1)))
+
+(deft/method t/total-size (sym coordinate-accessor) (ele)
+  `(slot-value ,ele 'boundary))
 ;;
 (deft/method t/store-allocator (sym index-store) (size &optional initial-element)
   `(the index-store (make-array ,size :element-type 'index-type ,@(when initial-element `(:initial-element ,initial-element)))))

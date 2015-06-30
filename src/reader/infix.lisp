@@ -107,6 +107,7 @@
    (expr transpose #'(lambda (a b) (list b a)))
    (expr + expr #'(lambda (a b c) (list b a c)))
    (expr - expr #'(lambda (a b c) (list b a c)))
+   (- expr)
    (expr / expr #'(lambda (a b c) (list b a c)))
    (expr ./ expr #'(lambda (a b c) (list b a c)))
    (expr * expr #'(lambda (a b c) (list b a c)))
@@ -169,7 +170,7 @@
    (ctranspose id #'(lambda (a b) (declare (ignore a)) (list 'quote b)))
    (ctranspose |:| id #'(lambda (a b c) (declare (ignore a b)) (intern (symbol-name c) :keyword)))
    list callable slice
-   (- term)
+   ;;(- term)
    (/ term #'(lambda (a b) (list a nil b)))
    (./ term)))
 ;;

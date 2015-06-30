@@ -1,22 +1,39 @@
 (in-package :matlisp)
 
-(defun graph->adlist (g)
+(defun graph->adlist (g &optional invert-orientation?)
   (declare (type graph-accessor g))
-  (iter (for i from 0 below (1- (length (fence g))))
-	(collect (δ-i g i t) result-type vector)))
+  (if invert-orientation?
+      (let ((ret (make-array (1- (length (fence g))) :initial-element nil)))
+	(iter (for u from 0 below (1- (length (fence g))))
+	      (letv* ((ll rr (fence g u)))
+		(iter (for v in-vector (δ-i g) from ll below rr) (push u (aref ret v)))))
+	(iter (for i from 0 below (length ret)) (setf (aref ret i) (sort ret #'<)))
+	ret)
+      (iter (for i from 0 below (1- (length (fence g))))
+	    (collect (δ-i g i t) result-type vector))))
 
 (defun adlist->graph (ag &optional type)
-  (let*-typed ((nnz (iter (for ai in-vector ag) (summing (length ai))))
-	       (ret (zeros (list (length ag) (length ag)) (or type 'graph-accessor) nnz) :type graph-accessor)
-	       (fe (fence ret))
-	       (nv (δ-i ret)))
+  (let*-typed ((ag (coerce ag 'vector))
+	       (ret (zeros (list (length ag) (length ag)) (or type 'graph-accessor) (iter (for ai in-vector ag) (summing (length ai)))) :type graph-accessor))
     (iter (for i from 0 below (length ag))
-	  (setf (aref ag i) (sort (aref ag i) #'(lambda (x y) (declare (type index-type x y)) (< x y))))
-	  (iter (for nj in (aref ag i))
-		(setf (aref nv (+ (aref fe i) j)) nj)
-		(counting t into j)
-		(finally (setf (aref fe (1+ i)) (+ (aref fe i) j)))))
+	  (iter (for u in (setf (aref ag i) (sort (aref ag i) #'<)))
+		(setf (aref (δ-i ret) (+ (fence ret i) j)) u) (counting t into j)
+		(finally (setf (aref (fence ret) (1+ i)) (+ (fence ret i) j)))))
     ret))
+
+(defun hyper->bipartite (hh &optional type full)
+  (letv* ((vv (coerce (sort (reduce #'union hh) #'<) 'index-store-vector)) (hh (coerce hh 'vector))
+	  (n (length vv)) (m (length hh)))
+    (if full
+	(let ((hh (symmetrize! (concatenate 'vector (make-array n :initial-element nil) hh))))
+	  (adlist->graph hh))
+	(let ((ret (zeros (list n m) (or type 'graph-accessor) (iter (for h in-vector hh) (summing (length h))))))
+	  (iter (for i from 0 below (length hh))
+		(setf (aref hh i) (sort (aref hh i) #'<))
+		(iter (for u in (aref hh i))
+		      (setf (aref (δ-i ret) (+ (fence ret i) j)) u) (counting t into j)
+		      (finally (setf (aref (fence ret) (1+ i)) (+ (fence ret i) j)))))
+	  ret))))
 
 (defun order->tree (order &optional type)
   (adlist->graph
@@ -31,6 +48,8 @@
     (finally (return-from main t))))
 
 (defun gnp (n p)
+  ;;TODO: Implement fast version from "Efficient generation of large random networks" - V. Batagelj, U. Brandes, PRL E 71
+  ;;Current alg is O(n^2) and is way too slow.
   (let ((ret (zeros (list n n) '(index-type stride-accessor hash-table))))
     (iter (for i from 0 below n)
 	  (iter (for j from (1+ i) below n)
@@ -81,7 +100,8 @@
 		   (letv* ((,w-j ,j (fib:extract-min ,fib) :type t index-type))
 		     ,@update-body))
 	     ,@body))))))
-;;
+
+;;TODO: The clique-check can be eliminated, apparently. See Tarjan's paper.
 (defun max-cardinality-search (g &optional start)
   (let* ((order (t/store-allocator index-store-vector (1- (length (fence g)))))
 	 (start (or start (random (length order))))
@@ -102,8 +122,8 @@
 
 ;;Naive-implementation, can't use graphfib because of non-monotonicity
 ;;Use union-find/hash-table in place of list forc sets.
-(defun triangulate-graph (g &optional (heuristic :min-fill))
-  (let* ((ag (graph->adlist g))
+(defun triangulate-graph (g &optional heuristic)
+  (let* ((ag (graph->adlist g)) (heuristic (or heuristic :min-fill))
 	 (ord (t/store-allocator index-store-vector (length ag))))
     (flet ((cliquify (u)
 	     (iter (for v in (aref ag u))
@@ -119,7 +139,44 @@
 	    (cliquify (aref ord i))))
     ord))
 
-(defun chordal-cover (g order)
+;;Translated from Tim Davis' CSparse
+(defun elimination-tree (order g)
+  (declare (type graph-accessor g))
+  (let ((iord (t/store-allocator index-store-vector (length order)))
+	(ancestor (t/store-allocator index-store-vector (length order) -1))
+	(parent (t/store-allocator index-store-vector (length order) -1)))
+    (declare (type index-store-vector iord ancestor parent))
+    (iter (for i from 0 below (length iord)) (setf (aref iord (aref order i)) i))
+    (iter (for u in-vector order)
+	  (setf (aref parent u) u)
+	  (letv* ((ll rr (fence g (the index-type u)) :type index-type index-type))
+	    (iter (for v in-vector (δ-i g) from ll below rr)
+		  (when (< (aref iord v) (aref iord u))
+		    (iter (for h initially v then (let ((h+ (aref ancestor h))) (setf (aref ancestor h) u)
+						       (when (or (< h+ 0) (= h+ u)) (setf (aref parent h) u) (finish))
+						       h+)))))))
+    (values parent iord)))
+
+;;Translated from Tim Davis' CSparse
+(defun cholesky-cover (g order)
+  (declare (type graph-accessor g)
+	   (type index-store-vector order))
+  (letv* ((etree iord (elimination-tree order g)) (color (t/store-allocator #.(tensor 'boolean) (length etree)))
+	  (adj (make-array (length etree) :initial-element nil)))
+    (iter (for u in-vector order) (setf (aref color u) t) (push u (aref adj u))
+	  (letv* ((ll rr (fence g u)))
+	    (iter (for v in-vector (δ-i g) from ll below rr with-index iuv)
+		  (when (< (aref iord v) (aref iord u))
+		    (iter (for w initially v then (aref etree w)) (if (aref color w) (finish) (progn (setf (aref color w) t) (push w (aref adj u)))))))
+	    (iter (for v in (aref adj u)) (setf (aref color v) nil))))
+    (let ((lg (adlist->graph adj (type-of g))))
+      (iter (for u from 0 below (1- (length (fence g))))
+	    (letv* ((ll rr (fence g u)))
+	      (iter (for v in-vector (δ-i g) from ll below rr with-index iuv)
+		    (when (< (aref iord v) (aref iord u)) (setf (ref lg v u) (store-ref g iuv))))))
+      (values lg iord))))
+
+(defun chordal-cover (g order &optional type)
   (declare (type graph-accessor g)
 	   (type index-store-vector order))
   (let* ((cc (graph->adlist g))
@@ -127,12 +184,22 @@
     (iter (for i in-vector order)
 	  (iter (for j in (aref cc i))
 		(unless (aref vs j)
-		  (setf (aref cc j) (set-difference (union (aref cc j) (remove-if #'(lambda (x) (aref vs x)) (aref cc i))) (list j)))))
+		  (setf (aref cc j) (union (aref cc j) (remove-if #'(lambda (x) (or (= x j) (aref vs x))) (aref cc i))))))
 	  (setf (aref vs i) t))
-    (adlist->graph cc)))
+    (adlist->graph cc type)))
 
-(defun tree-decomposition (g &optional type)
-  (letv* ((cliques (or (nth-value 1 (max-cardinality-search g)) (nth-value 1 (max-cardinality-search (chordal-cover g (triangulate-graph g))))))
+(defun line-graph (hh)
+  (letv* ((hh (coerce hh 'vector)) (m (length hh))
+	  (ret (zeros (list m m) '(t stride-accessor hash-table))))
+    (iter (for i from 0 below (length hh))
+	  (iter (for j from (1+ i) below (length hh))
+		(when-let (int (intersection (aref hh i) (aref hh j)))
+		  (setf (ref ret i j) int
+			(ref ret j i) int))))
+    (copy ret '(t graph-accessor))))
+
+(defun tree-decomposition (g &optional type heuristic)
+  (letv* ((cliques (or (nth-value 1 (max-cardinality-search g)) (nth-value 1 (max-cardinality-search (chordal-cover g (triangulate-graph g heuristic))))))
 	  (k (length cliques)))
     (values
      (let ((ret (zeros (list k k) '(index-type stride-accessor hash-table))))
@@ -143,7 +210,6 @@
 		     (setf (ref ret i (+ i j)) (- (length int))
 			   (ref ret (+ i j) i) (ref ret i (+ i j)))))
 	     (counting t into i))
-       (copy ret '(index-type))
        (order->tree (dijkstra-prims (copy ret '(index-type graph-accessor))) type))
      (coerce cliques 'vector))))
 
