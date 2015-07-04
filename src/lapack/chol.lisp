@@ -185,3 +185,93 @@
        (x (randn '(10 5)))
        (b #i(a * x)))
   (norm (t- x (potrs! (chol a) b))))
+
+
+(deft/generic (t/lapack-ldl! #'subtypep) sym (A lda uplo ipiv &optional het?))
+(deft/method (t/lapack-ldl! #'blas-tensor-typep) (sym dense-tensor) (A lda uplo ipiv &optional het?)
+  (let* ((ftype (field-type sym)) (complex? (subtypep ftype 'cl:complex)))
+    (using-gensyms (decl (A lda uplo ipiv) (xxx lwork))
+      `(let* (,@decl)
+	 (declare (type ,sym ,A) (type index-type ,lda) (type character ,uplo)
+		  (type (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*)) ,ipiv))
+	 (with-lapack-query ,sym (,xxx ,lwork)
+	   (ffuncall ,(blas-func (if (or (not het?) (not complex?)) "sytrf" "hetrf") ftype)
+	     (:& :character) ,uplo
+	     (:& :integer) (dimensions ,A 0) (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
+	     (:* :integer) (the (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*)) ,ipiv)
+	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxx) (:& :integer) ,lwork
+	     (:& :integer :output) 0))))))
+
+(defgeneric ldl! (a &optional hermitian? uplo)
+  (:method :before ((a dense-tensor) &optional hermitian? uplo)
+     (declare (ignore hermitian?))
+     (assert (typep a 'tensor-square-matrix) nil 'tensor-dimension-mismatch :message "Expected square matrix.")
+     (assert (inline-member uplo (:l :u)) nil 'invalid-arguments :given uplo :expected `(member uplo '(:l :u)))))
+
+(define-tensor-method ldl! ((a dense-tensor :x t) &optional (hermitian? t) (uplo *default-uplo*))
+  '(declare (ignorable hermitian?))
+  (let ((complex? (subtypep (field-type (cl a)) 'cl:complex)))
+    `(let ((ipiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type ',(matlisp-ffi::%ffc->lisp :integer))))
+       (with-columnification (() (A))
+	 ,(recursive-append
+	   (if complex?
+	       `(if hermitian?
+		    (let ((info (t/lapack-ldl! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) (char-upcase (aref (symbol-name uplo) 0)) ipiv t)))
+		      (unless (= info 0)
+			(if (< info 0)
+			    (error "HETRF: the ~a'th argument had an illegal value." (- info))
+			    (warn 'matrix-not-pd :message "HETRF: D(~a, ~:*~a) is exactly zero. The factorization has been completed, but the block diagonal matrix D is exactly singular, and division-by-zero by zero will occur if it is used to solve a system of equations." :position info))))))
+	   `(let ((info (t/lapack-ldl! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) (char-upcase (aref (symbol-name uplo) 0)) ipiv nil)))
+	      (unless (= info 0)
+		(if (< info 0)
+		    (error "SYTRF: the ~a'th argument had an illegal value." (- info))
+		    (error 'matrix-not-pd :message "SYTRF: D(~a, ~:*~a) is exactly zero. The factorization has been completed, but the block diagonal matrix D is exactly singular, and division by zero will occur if it is used to solve a system of equations." :position info))))))
+       (setf (gethash '|(SY/HE)TRF| (memos A)) ipiv)
+       (values a ipiv))))
+
+(defun ldl (a &optional (hermitian? t) (uplo *default-uplo*))
+  (letv* ((ret ipiv (ldl! (copy a) hermitian? uplo))
+	  (D (zeros (dimensions A))))
+    (tricopy! (diag~ ret) D :d)
+    (tricopy! 1 (tricopy! 0 ret (ecase uplo (:u :lo) (:l :uo))) :d)
+    (iter (for σi in-vector ipiv with-index i)
+	  (when (< σi 0)
+	    (ecase uplo
+	      (:u (rotatef (ref D i (1+ i)) (ref ret i (1+ i))))
+	      (:l (rotatef (ref D i (1+ i)) (ref ret (1+ i) i))))
+	    (setf (ref D (1+ i) i) (ref D i (1+ i)))
+	    (incf i)))
+    (values (cpermute! ret ipiv uplo) D
+	    (let ((p (with-no-init-checks (make-instance 'permutation-pivot-flip :size (length ipiv) :store (pflip.f->l ipiv uplo)))))
+	      (ecase uplo (:u (permutation/ p)) (:l p))))))
+
+(defun cpermute! (m ipiv &optional (uplo *default-uplo*))
+  (declare (type (and dense-tensor tensor-square-matrix) m)
+	   (type (simple-array (signed-byte 32)) ipiv))
+  (let ((rv (slice~ m 0)) (rvσ (slice~ m 0))
+	(n (length ipiv)) (hd (head m)) (sr (strides m 0)) (sc (strides m 1)))
+    (declare (type index-type n sr sc hd))
+    (ecase uplo
+      (:u
+       (macrolet ((update! (x r d)
+		    `(setf (aref (dimensions ,x) 0) (the index-type (- n ,d 1))
+			   (slot-value ,x 'head) (the index-type (+ hd (the index-type (* sc (1+ ,d))) (the index-type (* sr ,r)))))))
+	 (iter (for σi in-vector ipiv with-index i downto 0)
+	       (unless (= i (1- σi))
+		 (if (< σi 0)
+		     (progn (update! rv (1- i) i) (update! rvσ (1- (- σi)) i) (decf i))
+		     (progn (update! rv i i) (update! rvσ (1- σi) i)))
+		 (when (< 0 (dimensions rv 0))
+		   (swap! rv rvσ))))))
+      (:l
+       (macrolet ((update! (x r d)
+		    `(setf (aref (dimensions ,x) 0) (the index-type ,d)
+			   (slot-value ,x 'head) (the index-type (+ hd (the index-type (* sr ,r)))))))
+	 (iter (for σi in-vector ipiv with-index i)
+	       (unless (= i (1- σi))
+		 (if (< σi 0)
+		     (progn (update! rv (1+ i) i) (update! rvσ (1- (- σi)) i) (incf i))
+		     (progn (update! rv i i) (update! rvσ (1- σi) i)))
+		 (when (< 0 (dimensions rv 0))
+		   (swap! rv rvσ))))))))
+  m)

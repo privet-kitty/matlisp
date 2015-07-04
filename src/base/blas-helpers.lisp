@@ -1,5 +1,5 @@
 (in-package #:matlisp)
- 
+
 (defun consecutive-storep (tensor)
   (declare (type stride-accessor tensor))
   (with-memoization ((memos tensor))
@@ -91,13 +91,28 @@
 	 ,@(mapcar #'(lambda (mat sym) `(when (pop ,stack) (copy! ,sym ,mat))) (reverse output) (reverse output-syms))
 	 nil)))))
 
-(definline pflip.f->l (uidiv)
+(definline pflip.f->l (uidiv &optional uplo)
   (declare (type (simple-array (signed-byte 32) (*)) uidiv))
   (let ((ret (make-array (length uidiv) :element-type 'index-type)))
     (declare (type index-store-vector ret))
-    (very-quickly
-      (loop :for i :from 0 :below (length uidiv)
-	 :do (setf (aref ret i) (1- (aref uidiv i)))))
+    (case uplo
+      (:u (very-quickly
+	    (loop :with i :of-type index-type := 0
+	       :do (if (> (aref uidiv i) 0)
+		       (setf (aref ret i) (1- (aref uidiv i)))
+		       (setf (aref ret i) (1- (- (aref uidiv i)))
+			     (aref ret (incf i)) i))
+	       :do (incf i) :when (>= i (length uidiv)) :do (return))))
+      (:l (very-quickly
+	    (loop :with i :of-type index-type := 0
+	       :do (if (> (aref uidiv i) 0)
+		       (setf (aref ret i) (1- (aref uidiv i)))
+		       (setf (aref ret i) i
+			     (aref ret (incf i)) (1- (- (aref uidiv i)))))
+	       :do (incf i) :when (>= i (length uidiv)) :do (return))))
+      (t (very-quickly
+	   (loop :for i :from 0 :below (length uidiv)
+	      :do (setf (aref ret i) (1- (aref uidiv i)))))))
     ret))
 
 (definline pflip.l->f (idiv)

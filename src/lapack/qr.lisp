@@ -87,6 +87,7 @@
 	 (unless (= info 0) (error "(OR/UN)GQR: the ~a'th argument had an illegal value." (- info)))))
      (values-n (if p 3 2) qq (tricopy! 0 qr :lo) p)))
 ;;
+#+nil
 (defun gram-schmidt (Q k)
   (iter (for qi slicing Q along -1 from k with-index i)
 	(iter (for qj slicing Q along -1 from 0 below i) (axpy! (- (dot qj qi)) qj qi))
