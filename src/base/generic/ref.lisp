@@ -37,6 +37,19 @@
 	     (when (< subs 0) (setf subs (modproj subs (length obj))))
 	     subs)))
   (defmethod ref ((obj cons) &rest subscripts)
-    (elt obj (list-subs obj subscripts)))
+    (cond
+      ((and (not (cdr subscripts)) (symbolp (first subscripts))) (getf obj (first subscripts)))
+      (t (elt obj (list-subs obj subscripts)))))
   (defmethod (setf ref) (value (obj cons) &rest subscripts)
-    (setf (elt obj (list-subs obj subscripts)) value)))
+    (cond
+      ((and (not (cdr subscripts)) (symbolp (first subscripts))) (setf (getf obj (first subscripts)) value))
+      (t (setf (elt obj (list-subs obj subscripts)) value)))))
+
+(defmethod ref :before ((obj hash-table) &rest subscripts)
+  (assert (and (first subscripts) (not (cdr subscripts))) nil 'invalid-arguments))
+
+(defmethod ref ((obj hash-table) &rest subscripts)
+  (gethash (car subscripts) obj))
+
+(defmethod (setf ref) (value (obj hash-table) &rest subscripts)
+  (setf (gethash (car subscripts) obj) value))

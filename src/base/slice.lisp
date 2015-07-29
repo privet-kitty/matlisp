@@ -176,6 +176,8 @@
 				      strd))
     ten))
 
+(defun reshape~ (x dims) (reshape! (subtensor~ x nil) dims))
+
 ;;
 (defun tensor-append (axis tensor &rest more-tensors)
   (if (null tensor)
