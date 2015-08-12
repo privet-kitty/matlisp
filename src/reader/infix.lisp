@@ -101,7 +101,7 @@
 		(:left ./ / * .* @ ⊗)
 		(:left + -)
 		(:left ⟼)
-		(:left := = ==)))
+		(:right := = ==)))
   (expr
    (expr ctranspose #'(lambda (a b) (list b a)))
    (expr transpose #'(lambda (a b) (list b a)))
@@ -307,6 +307,28 @@
       (#\( (let ((expr (cdr (infix-reader stream #\I nil))))
 	     `(matlisp::zeros (list ,@expr) ',cl))))))
 
+(defun symbolic-reader (stream subchar arg)
+  (assert (null arg) nil "given arg where none was required.")
+  (let ((cl (matlisp::tensor 'matlisp::ge-expression)))
+    (ignore-characters *blank-characters* stream)
+    (let ((sym (unless (member (peek-char nil stream t nil t) '(#\[ #\())
+		 (intern (iter (for c next (read-char stream t nil t))
+			       (cond
+				 ((char= c #\[) (error "can't symbolify a specified tensor, use parentheses."))
+				 ((char= c #\() (unread-char c stream) (return (coerce sname 'string)))
+				 ((> n 32) (error "can't exceed 32 characters for var name.")))
+			       (counting t into n)
+			       (collect (char-upcase c) into sname))))))
+      (ecase (peek-char nil stream t nil t)
+	(#\[ (let ((expr (cdr (infix-reader stream #\I nil))))
+	       `(matlisp::copy (list ,@(mapcar #'matlisp::weylify expr)) ',cl)))
+	(#\( (let ((expr (cdr (infix-reader stream #\I nil))))
+	       (recursive-append
+		(when sym `(matlisp::symbolify! ',sym))
+		`(matlisp::zeros (list ,@expr) ',cl))))))))
+
+;(#\S ,(matlisp:tensor 'matlisp::ge-expression))
+
 (defun permutation-cycle-reader (stream subchar arg)
   (declare (ignore subchar))
   (assert (null arg) nil "given arg where none was required.")
@@ -323,5 +345,6 @@
 		(:merge :λ-standard)
 		(:dispatch-macro-char #\# #\I #'infix-reader)
 		(:dispatch-macro-char #\# #\S #'permutation-cycle-reader)
-		,@(mapcar #'(lambda (x) `(:dispatch-macro-char #\# ,(car x) #'tensor-reader)) *tensor-symbol*))))
+		,@(mapcar #'(lambda (x) `(:dispatch-macro-char #\# ,(car x) #'tensor-reader)) *tensor-symbol*)
+		(:dispatch-macro-char #\# #\स #'symbolic-reader))))
   (tensor-symbol-enumerate))

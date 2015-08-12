@@ -5,7 +5,7 @@
     (let* ((order (or order :dfs)) (colorp color) (color (or color (gf 'color)))
 	   (visited (ecase order (:sfd (gf 'visited)) ((:dfs :bfs) color))))
       (check-type color symbol) (check-type v symbol)
-      (let* ((pushor `(letv* ((,(gm l) ,(gm r) (fence ,(gm g) ,v) :type index-type index-type))
+      (let* ((pushor `(letv* ((,(gm l) ,(gm r) (fence ,(gm g) (the index-type ,v)) :type index-type index-type))
 			(iter (for ,(gm u) in-vector (δ-i ,(gm g)) from ,(gm l) below ,(gm r)) (with ,(gm switch) = nil) (finally (return ,(gm switch)))
 			      (unless (aref ,visited ,(gm u)) (setf ,(gm switch) t)
 				      ,@(let ((up (if (and p (not (eql order :sfd))) `(cons ,(gm u) ,v) (gm u))))

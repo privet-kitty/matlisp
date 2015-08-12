@@ -31,7 +31,7 @@
 (in-package #:matlisp-system)
 
 (asdf:defsystem :matlisp-basic
-  :depends-on (#:cffi #:iterate #:optima #:named-readtables #:lambda-reader #:yacc #:trivial-garbage #:closer-mop)
+  :depends-on (#:cffi #:iterate #:optima #:named-readtables #:lambda-reader #:yacc #:trivial-garbage #:closer-mop #:weyl)
   :pathname "src"
   :components
   ((:file "packages")
@@ -78,6 +78,7 @@
 			 (:file "blas-helpers" :depends-on ("base-tensor" "stride-accessor" "permutation"))
 			 (:file "einstein" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))
 			 (:file "slice" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))
+			 (:file "symbolic" :depends-on ("base-tensor" "tensor-template" "loopy"))
 			 ))
    #+nil
    (:module "matlisp-classes"

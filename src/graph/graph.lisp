@@ -170,6 +170,7 @@
 		    (iter (for w initially v then (aref etree w)) (if (aref color w) (finish) (progn (setf (aref color w) t) (push w (aref adj u)))))))
 	    (iter (for v in (aref adj u)) (setf (aref color v) nil))))
     (let ((lg (adlist->graph adj (type-of g))))
+      #+nil
       (iter (for u from 0 below (1- (length (fence g))))
 	    (letv* ((ll rr (fence g u)))
 	      (iter (for v in-vector (δ-i g) from ll below rr with-index iuv)

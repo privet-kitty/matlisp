@@ -1,5 +1,6 @@
 (in-package #:matlisp)
 
+;;The scheme for this iterator was obtained from FEMLISP.
 (defmacro mod-update ((idx init dims &key order uplo) &rest body)
   (let* ((uplo (or uplo :ul))
 	 (order (or order (case uplo ((:u :uo) :col-major) ((:l :lo) :row-major)) matlisp::*default-stride-ordering*)))
@@ -70,8 +71,24 @@
 (defmethod for-mod-iterator ((clause-name (eql :general)) init dims body)
   body)
 ;;
+(defmacro offset-ref (decl &rest body)
+  (let ((stack (mapcar #'(lambda (x) (list (gensym "sto") (gensym))) decl)))
+    `(let-typed (,@(mapcar #'(lambda (x s)
+			       (letv* (((ref offset tensor &key type) x))
+				 `(,(second s) ,tensor ,@(when type `(:type ,type)))))
+			   decl stack))
+       (let-typed (,@(mapcar #'(lambda (x s) (letv* (((ref offset tensor &key type) x))
+					       `(,(first s) (store ,(second s)) ,@(when type `(:type ,(store-type type))))))
+			     decl stack))
+	 (symbol-macrolet (,@(mapcar #'(lambda (x s)
+					 (letv* (((ref offset tensor &key type) x))
+					   `(,ref ,(if type
+						       `(the ,(field-type type) (t/store-ref ,type ,(first s) ,offset))
+						       `(store-ref ,(second s) ,(first s))))))
+				     decl stack))
+	   ,@body)))))
 
-;;The scheme for this iterator was obtained from FEMLISP.
+;;
 (defmacro dorefs ((idx dims &key (loop-order *default-stride-ordering* loop-ordering-p) (uplo? :ul)) (&rest ref-decls) &rest body)
   (let* ((tsyms (zipsym (mapcar #'second ref-decls)))
 	 (rsyms (mapcar #'car ref-decls))
