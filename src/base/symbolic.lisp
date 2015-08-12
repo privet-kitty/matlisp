@@ -55,7 +55,7 @@
 		    :inputs inputs))))
 
 (defun reweylify (expr)
-  (let* ((rexpr (weylify (weyli:lispify (slot-value expr 'expression)))))
+  (let* ((rexpr (weylify (weyli::lispify (slot-value expr 'expression)))))
     (setf (slot-value rexpr 'inputs) (mapcar #'(lambda (zz) (or (find-if #'(lambda (x) (and (consp x) (eql (car x) zz))) (slot-value expr 'inputs)) zz)) (slot-value rexpr 'inputs)))
     rexpr))
 
