@@ -91,3 +91,4 @@
 
 (define-tensor-method (setf ref) (value (x stride-accessor :x) &rest subscripts)
   `(t/store-set ,(cl x) (t/coerce ,(field-type (cl x)) value) (t/store ,(cl x) x) (stride-indexing subscripts x)))
+;;

@@ -44,7 +44,7 @@
 							   (cond
 							     ((and (consp x) (assoc (car x) flist)) (values (cons (second (assoc (car x) flist)) (cdr x))
 													    #'(lambda (f lst) (cons (car lst) (mapcar f (cdr lst))))))
-							     ((symbolp x) (push x inputs) `(weyl:make-ge-variable weyl:*general* (quote ,x)))
+							     ((symbolp x) (setf inputs (union inputs (list x) :test #'equal)) `(weyl:make-ge-variable weyl:*general* (quote ,x)))
 							     ((and (consp x) (eql (car x) 'matlisp-infix::generic-ref))
 							      (let ((sym (intern (format nil  "~a_~{~a~^,~}" (second x) (cddr x)))))
 								(setf inputs (union (list (list sym (cons 'ref (cdr x)))) inputs :test #'equal))
@@ -92,9 +92,12 @@
 
 (defun symbolify! (x tensor)
   (iter (for-mod idx from 0 below (dimensions tensor) with-iterator ((:stride ((of (strides tensor) (head tensor))))))
-	(setf (store-ref tensor of) (weylify (intern (format nil  "~a_~{~a~^,~}" x (coerce idx 'list))))))
+	(let* ((sym (intern (format nil  "~a_~{~a~^,~}" x (coerce idx 'list)))) (expr (weylify sym)))
+	  (setf (slot-value expr 'inputs) `((,sym (ref ,x ,@(coerce idx 'list))))
+		(store-ref tensor of) expr)))
   tensor)
 
+#+nil
 (defun deriv (f x)
   (declare (symbol x))
   (etypecase f
@@ -135,6 +138,35 @@
        (if (integerp nd) (ref d 0 0) (orphanize (slice~ d 0)))))
     (t (deriv (t/coerce ge-expression f) x))))
 
+
+(defun deriv (f x)
+  (labels ((sderiv! (f x df)
+	     (etypecase x
+	       (#.(tensor 'ge-expression)
+		  (dorefs (idx (dimensions x))
+		    ((ref-x x :type #.(tensor 'ge-expression)) (ref-df df :type #.(tensor 'ge-expression)))
+		    (setf ref-df (sderiv! f ref-x nil)))
+		  df)
+	       ((or ge-expression symbol)
+		(reweylify
+		 (make-instance 'ge-expression
+				:expression (weyl:deriv (slot-value f 'expression) (if (typep x 'ge-expression) (slot-value x 'expression) x))
+				:inputs (slot-value f 'inputs)))))))
+    (etypecase f
+      (#.(tensor 'ge-expression)
+	 (letv* ((vx dim.x (if (typep x '#.(tensor 'ge-expression)) (values x (dimensions x t)) (values (copy '(x) (tensor 'ge-expression)) (list 1))))
+		 (df (zeros (append (dimensions f t) dim.x) '(ge-expression)))
+		 (v.df (subtensor~ df (append (make-list (order f) :initial-element 0) (make-list (length dim.x) :initial-element (list 0 nil))))))
+	   (iter (for-mod lidx from 0 below (dimensions f) with-iterator
+			  ((:stride ((of-f (strides f) (head f))
+				     (of-df (subseq (strides df) 0 (order f)) (head df))))))
+		 (setf (slot-value v.df 'head) of-df)
+		 (sderiv! (store-ref f of-f) vx v.df))
+	   df))
+      (ge-expression
+       (sderiv! f x (if (typep x '#.(tensor 'ge-expression)) (zeros (dimensions x) (type-of x)))))
+      (t (deriv (t/coerce ge-expression f) x)))))
+
 #+nil
 (definline ge-expressiond.diff (a x)
   (etypecase a
@@ -144,3 +176,28 @@
      (make-instance 'symbolic-tensor
 		    :dimensions (copy-seq (dimensions a))
 		    :store (map 'symbolic-store-vector #'(lambda (f) (maxima::$diff f x)) (store a))))))
+
+(defmacro compile-symbolic ((type) expr)
+  (let ((inputs nil))
+    (flet ((compiler (expr)
+	     (etypecase expr
+	       (#.(tensor 'ge-expression)
+		  (with-gensyms (ret sto hd std)
+		    `(let*-typed ((,ret (zeros (list ,@(dimensions expr t)) ',(tensor type)) :type ,(tensor type))
+				  (,sto (store ,ret) :type ,(store-type (tensor type))) (,hd (head ,ret) :type index-type) (,std (strides ,ret) :type index-store-vector))
+		       ,@(iter (for-mod idx from 0 below (dimensions expr))
+			       (let* ((subscripts (coerce idx 'list))
+				      (expr.i (apply #'ref (list* expr subscripts))))
+				 (setf inputs (union inputs (slot-value expr.i 'inputs) :test #'equal))
+				 (collect `(setf (t/store-ref ,(tensor type) ,sto
+							      (the index-type (+ (the index-type ,hd)
+										 ,@(mapcar #'(lambda (x ii) `(the index-type (* (aref ,std ,ii) (the index-type ,x))))
+											   subscripts (range 0 (length subscripts) :list-output? t)))))
+						 (coerce ,(weyli::lispify (slot-value expr.i 'expression)) ',type)))))
+		       ,ret)))
+	       (ge-expression
+		(setf inputs (union inputs (slot-value expr 'inputs) :test #'equal))
+		(weyli::lispify (slot-value expr 'expression))))))
+      (let ((kern (maptree-if #'(lambda (x) (typep x `(or ge-expression ,(tensor 'ge-expression)))) #'(lambda (x) (compiler x)) (eval expr))))
+	(setf *dbg* inputs)
+	`(let (,@(remove-if-not #'consp inputs)) ,kern)))))

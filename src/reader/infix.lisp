@@ -315,10 +315,11 @@
 		 (intern (iter (for c next (read-char stream t nil t))
 			       (cond
 				 ((char= c #\[) (error "can't symbolify a specified tensor, use parentheses."))
-				 ((char= c #\() (unread-char c stream) (return (coerce sname 'string)))
+				 ((or (char= c #\() (member c *blank-characters*)) (unread-char c stream) (return (coerce sname 'string)))
 				 ((> n 32) (error "can't exceed 32 characters for var name.")))
 			       (counting t into n)
 			       (collect (char-upcase c) into sname))))))
+      (ignore-characters *blank-characters* stream)
       (ecase (peek-char nil stream t nil t)
 	(#\[ (let ((expr (cdr (infix-reader stream #\I nil))))
 	       `(matlisp::copy (list ,@(mapcar #'matlisp::weylify expr)) ',cl)))
