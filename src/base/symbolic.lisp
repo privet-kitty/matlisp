@@ -154,7 +154,7 @@
 				:inputs (slot-value f 'inputs)))))))
     (etypecase f
       (#.(tensor 'ge-expression)
-	 (letv* ((vx dim.x (if (typep x '#.(tensor 'ge-expression)) (values x (dimensions x t)) (values (copy '(x) (tensor 'ge-expression)) (list 1))))
+	 (letv* ((vx dim.x (if (typep x '#.(tensor 'ge-expression)) (values x (dimensions x t)) (values (copy `(,x) (tensor 'ge-expression)) (list 1))))
 		 (df (zeros (append (dimensions f t) dim.x) '(ge-expression)))
 		 (v.df (subtensor~ df (append (make-list (order f) :initial-element 0) (make-list (length dim.x) :initial-element (list 0 nil))))))
 	   (iter (for-mod lidx from 0 below (dimensions f) with-iterator
@@ -179,25 +179,27 @@
 
 (defmacro compile-symbolic ((type) expr)
   (let ((inputs nil))
-    (flet ((compiler (expr)
-	     (etypecase expr
-	       (#.(tensor 'ge-expression)
-		  (with-gensyms (ret sto hd std)
-		    `(let*-typed ((,ret (zeros (list ,@(dimensions expr t)) ',(tensor type)) :type ,(tensor type))
-				  (,sto (store ,ret) :type ,(store-type (tensor type))) (,hd (head ,ret) :type index-type) (,std (strides ,ret) :type index-store-vector))
-		       ,@(iter (for-mod idx from 0 below (dimensions expr))
-			       (let* ((subscripts (coerce idx 'list))
-				      (expr.i (apply #'ref (list* expr subscripts))))
-				 (setf inputs (union inputs (slot-value expr.i 'inputs) :test #'equal))
-				 (collect `(setf (t/store-ref ,(tensor type) ,sto
-							      (the index-type (+ (the index-type ,hd)
-										 ,@(mapcar #'(lambda (x ii) `(the index-type (* (aref ,std ,ii) (the index-type ,x))))
-											   subscripts (range 0 (length subscripts) :list-output? t)))))
-						 (coerce ,(weyli::lispify (slot-value expr.i 'expression)) ',type)))))
-		       ,ret)))
-	       (ge-expression
-		(setf inputs (union inputs (slot-value expr 'inputs) :test #'equal))
-		(weyli::lispify (slot-value expr 'expression))))))
-      (let ((kern (maptree-if #'(lambda (x) (typep x `(or ge-expression ,(tensor 'ge-expression)))) #'(lambda (x) (compiler x)) (eval expr))))
-	(setf *dbg* inputs)
+    (labels ((compiler (expr &optional place)
+	       (etypecase expr
+		 (#.(tensor 'ge-expression)
+		    (with-gensyms (ret sto hd std)
+		      `(let*-typed ((,ret ,(or place `(zeros (list ,@(dimensions expr t)) ',(tensor type))) :type ,(tensor type))
+				    (,sto (store ,ret) :type ,(store-type (tensor type))) (,hd (head ,ret) :type index-type) (,std (strides ,ret) :type index-store-vector))
+			 ,@(iter (for-mod idx from 0 below (dimensions expr))
+				 (let* ((subscripts (coerce idx 'list)))
+				   (collect `(setf (t/store-ref ,(tensor type) ,sto
+								(the index-type (+ (the index-type ,hd)
+										   ,@(mapcar #'(lambda (x ii) `(the index-type (* (aref ,std ,ii) (the index-type ,x))))
+											     subscripts (range 0 (length subscripts) :list-output? t)))))
+						   ,(compiler (apply #'ref (list* expr subscripts)))))))
+			 ,ret)))
+		 (ge-expression
+		  (setf inputs (union inputs (slot-value expr 'inputs) :test #'equal))
+		  (maptreeu #'(lambda (x)
+				(optima:match x
+				  ((optima:guard x (numberp x)) (coerce x type))
+				  ((list 'expt m e) x)
+				  (_ (values x #'mapcar))))
+			    (weyli::lispify (slot-value expr 'expression)))))))
+      (let ((kern (maptreeu #'(lambda (x) (if (typep x `(or ge-expression ,(tensor 'ge-expression))) (compiler x) (values x #'mapcar))) (eval expr))))
 	`(let (,@(remove-if-not #'consp inputs)) ,kern)))))

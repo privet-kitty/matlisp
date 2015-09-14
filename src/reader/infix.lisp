@@ -337,13 +337,23 @@
   (ecase (peek-char nil stream t nil t)
     (#\[ (let ((expr (cdr (infix-reader stream #\I nil))))
 	   (with-gensyms (sto)
-	     `(let ((,sto (mapcar #'(lambda (x) (apply #'matlisp::pidxv x)) (list ,@expr))))
+	     `(let ((,sto (mapcar #'(lambda (x) (apply #'matlisp::idxv x)) (list ,@expr))))
 		(make-instance 'matlisp::permutation-cycle :store ,sto )))))))
+
+(defun function-cell-reader (stream char)
+  (let ((default-paren-reader (get-macro-character #\( (named-readtables:find-readtable :common-lisp))))
+    (if (char= (peek-char nil stream t nil t) #\∘)
+	(optima:match (macroexpand `(curry ,@(cdr (let ((*readtable* (named-readtables:find-readtable :common-lisp)))
+						    (read (progn (unread-char #\( stream) stream) t nil t)))))
+	  ((list 'function ff) ff)
+	  (ff ff))
+	(funcall default-paren-reader stream char))))
 
 ;;Define a readtable with dispatch characters
 (macrolet ((tensor-symbol-enumerate ()
 	     `(named-readtables:defreadtable :infix-dispatch-table
 		(:merge :λ-standard)
+		(:macro-char #\( #'function-cell-reader nil)
 		(:dispatch-macro-char #\# #\I #'infix-reader)
 		(:dispatch-macro-char #\# #\S #'permutation-cycle-reader)
 		,@(mapcar #'(lambda (x) `(:dispatch-macro-char #\# ,(car x) #'tensor-reader)) *tensor-symbol*)

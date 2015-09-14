@@ -1,7 +1,6 @@
 (in-package #:matlisp)
 
 ;;Skip for now.
-
 (declaim (ftype (function (coordinate-accessor &optional index-type) (or index-store-matrix list)) indices))
 
 (definline indices (x &optional idx)
@@ -23,3 +22,7 @@
      (values (t/store-ref ,(cl x) (t/store ,(cl x) x) (the index-type idx)) t)
      (values (t/fid+ (t/field-type ,(cl x))) nil)))
 ;;May be keep a stride-hash
+
+(define-tensor-method (setf ref) (value (x coordinate-accessor :x) &rest subscripts)
+
+  )

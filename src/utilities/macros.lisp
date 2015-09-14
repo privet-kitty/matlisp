@@ -367,4 +367,13 @@
 				 (setf (gethash ,args ,table) (multiple-value-list (progn ,@(nthcdr (+ (if def-p 1 0) (if decl-p 3 2)) x)))))))))))
 	     `(let ((,table ,hash-table)) ,@body))))
 
+(defmacro curry (func &rest more-funcs)
+  (with-gensyms (x)
+    `(lambda (,x) ,(reduce #'(lambda (f a)
+			       (let ((f (optima:match f
+					  ((list 'function x) x)
+					  (_ f))))
+				 `(,f ,a)))
+			   (append `(,func) more-funcs `(,x)) :from-end t))))
+
 )

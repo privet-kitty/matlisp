@@ -26,7 +26,7 @@
   to)
 
 (defmethod copy! ((from array) (to array))
-  (iter (for-mod idx from 0 below (array-dimensions to) with-iterator ((:stride ((of-x (make-stride-rmj (coerce (array-dimensions to) 'index-store-vector)))))))
+  (iter (for-mod idx from 0 below (array-dimensions to) with-iterator ((:stride ((of-x (make-stride-rmj (coerce (array-dimensions to) '(simple-array index-type (*)))))))))
 	(setf (row-major-aref to of-x) (row-major-aref from of-x)))
   to)
 

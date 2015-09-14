@@ -42,18 +42,28 @@
    (head :initarg :head :initform 0 :type index-type :documentation "Head for the store's accessor."))
   (:documentation "Vanilla stride accessor."))
 
+(defclass stride-accessor-scm (base-accessor) ()
+  (:documentation "Stride accessor: strict column major"))
+(defclass stride-accessor-srm (base-accessor) ()
+  (:documentation "Stride accessor: strict row major"))
+;;
 (defclass coordinate-accessor (base-accessor)
   ((indices :initarg :indices :type index-store-matrix :documentation "Non-zero indices in the tensor.")
    (stride-hash :initarg :stride-hash :type index-store-vector :documentation "Strides in Column major order")
    (strides :initarg :strides :type index-store-vector :documentation "Strides in Column major order")
    (boundary :initform 0 :initarg :boundary :type index-type :documentation "Row bound for indices"))
   (:documentation "Bi-partite graph/Hypergraph/Factor/Co-ordinate store"))
-
+;;
 (defclass graph-accessor (base-accessor)
   ((fence :initarg :fence :type index-store-vector :documentation "Start index for neighbourhood.")
    (neighbours :initarg :neighbours :type index-store-vector :documentation "Neighbour ids.")
    (transposep :initarg :transposep :initform nil :type boolean :documentation "Choose between row-column compressed forms."))
   (:documentation "Graph store via Adjacency lists; only works for matrices."))
+
+(defclass graph-accessor-ccs (graph-accessor) ()
+  (:documentation "Graph accessor: Column Compressed storage"))
+(defclass graph-accessor-crs (graph-accessor) ()
+  (:documentation "Graph accessor: Row Compressed storage."))
 ;;
 (defclass tensor (base-tensor base-accessor)
   ((store :initarg :store :reader store :documentation "Storage for the tensor.")
@@ -161,3 +171,4 @@
      (list (field-type class))
      (set-difference supclass '(tensor dense-tensor))
      (when (member 'stride-accessor supclass) (list (first (ensure-list (store-type class))))))))
+;;

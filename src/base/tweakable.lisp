@@ -112,3 +112,5 @@
   MM with small matrices.
   Default set with SBCL on x86-64 linux. A reasonable value
   is something between 20 and 200.")
+;;
+(defparameter *dbg* nil)

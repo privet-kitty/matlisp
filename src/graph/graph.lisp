@@ -58,16 +58,13 @@
 			  (ref ret j i) 1))))
     (copy ret '(index-type graph-accessor))))
 
-;;Oh may we weep for sins!
+;;Oh may we weep for sins
 (defun moralize! (adg)
-  (let ((cadg (make-array (length adg) :initial-element nil)))
+  (let ((cadg (copy adg)))
     (iter (for u from 0 below (length adg))
-	  (iter (for v in (aref adg u))
-		(push u (aref cadg v))))
-    (iter (for u from 0 below (length adg))
-	  (iter (for v in (aref cadg u))
-		(setf (aref adg v) (union (aref adg v) (aref cadg u)))))
-    adg))
+	  (let ((pa (remove-if #'(lambda (x) (find u (aref adg x))) (aref adg u))))
+	    (iter (for p.i in pa) (setf (aref cadg p.i) (union (aref cadg p.i) (list* u pa))))))
+    cadg))
 
 (defun symmetrize! (adg)
   (iter (for u from 0 below (length adg))

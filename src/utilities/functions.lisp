@@ -90,6 +90,12 @@
 		  (let ((alist (mapcar #'(lambda (x y) (cons x y)) keys transformer)))
 		    #'(lambda (x) (values (cons (cdr (assoc (car x) alist)) (cdr x)) #'mapcar))))  tree))
 
+(defun maptreeu (transformer tree)
+  (multiple-value-bind (t-tree control) (funcall transformer tree)
+    (if (and (consp t-tree) control)
+	(funcall control #'(lambda (x) (maptreeu transformer x)) t-tree)
+	t-tree)))
+
 (defun flatten (x)
   "
   Returns a new list by collecting all the symbols found in @arg{x}.
@@ -112,7 +118,7 @@
 (defun mapcart (function list &rest more-lists)
   (mapcar (lambda (args) (apply function args)) (apply #'cart list more-lists)))
 
-(declaim (inline slot-values-list))
+(declaim (inline slot-values))
 (defun slot-values (obj slots)
   "
   Returns a list containing slot-values of @arg{obj} corresponding to symbols in the list @arg{slots}.

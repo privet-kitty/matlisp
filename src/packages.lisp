@@ -76,7 +76,7 @@
 	   #:zip #:zipsym
 	   #:slot-values #:remmeth
 	   #:list-dimensions
-	   #:maprange #:maptree-if #:maptree #:flatten #:pair #:ziptree #:cart #:mapcart
+	   #:maprange #:maptree-if #:maptree #:maptreeu #:flatten #:pair #:ziptree #:cart #:mapcart
 	   #:recursive-append #:unquote-args
 	   #:compile-and-eval #:modproj
 	   ;;mop
@@ -91,7 +91,7 @@
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:binding-gensyms #:values-n
 	   #:letv* #:let-typed #:let*-typed #:make-array-allocator #:ziprm #:inline-member
 	   #:define-constant #:eval-every
-	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase
+	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase #:curry
 	   ;;
 	   #:definline #:with-optimization #:very-quickly
 	   ;;
@@ -107,8 +107,9 @@
   (:export #:make-heap #:insert-key #:min-key #:node-key #:node-existsp #:extract-min #:decrease-key #:delete-node))
 
 (defpackage "MATLISP-UNION-FIND"
-  (:nicknames :uni)
-  (:use #:common-lisp #:matlisp-utilities #:matlisp-dlist #:iterate))
+  (:nicknames :ufd)
+  (:use #:common-lisp #:matlisp-utilities #:matlisp-dlist #:iterate)
+  (:export #:union-find #:insert-item #:find-items #:unite-items #:values #:id))
 
 (defpackage "MATLISP-TEMPLATE"
   (:use #:common-lisp #:iterate #:matlisp-utilities)

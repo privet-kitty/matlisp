@@ -19,13 +19,11 @@
 		 (nn (slot-value g 'neighbours) :type index-store-vector))
 	   (loop :for ii :from l :below r :collect (aref nn ii)))
 	 (aref (the index-store-vector (slot-value g 'neighbours)) i)))
+    ((index-type (eql :size)) (letv* ((l r (fence g i))) (- r l)))
     ((index-type index-type)
      (letv* ((l r (fence g i))
 	     (nn (slot-value g 'neighbours) :type index-store-vector))
        (very-quickly (binary-search j l r nn))))))
-
-(definline |δ-I| (g i)
-  (letv* ((l r (fence g (the index-type i)))) (- r l)))
 ;;
 (definline graph-indexing (subs tensor)
   (declare (type list subs)

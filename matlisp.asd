@@ -31,7 +31,7 @@
 (in-package #:matlisp-system)
 
 (asdf:defsystem :matlisp-basic
-  :depends-on (#:cffi #:iterate #:optima #:named-readtables #:lambda-reader #:yacc #:trivial-garbage #:closer-mop #:weyl)
+  :depends-on (#:cffi #:iterate #:optima #:named-readtables #:lambda-reader #:yacc #:trivial-garbage #:closer-mop #:weyl #:external-program)
   :pathname "src"
   :components
   ((:file "packages")
@@ -43,6 +43,7 @@
 			 (:file "macros" :depends-on ("functions"))
 			 (:file "search" :depends-on ("macros" "functions"))
 			 (:file "dlist" :depends-on ("macros" "functions"))
+			 (:file "union-find" :depends-on ("macros" "functions"))
 			 (:file "lvec" :depends-on ("macros" "functions"))
 			 (:file "template" :depends-on ("macros" "functions"))))
    (:file "lazy-loader" :depends-on ("utilities"))))
@@ -63,12 +64,12 @@
 			 (:file "base-tensor" :depends-on ("tweakable"))
 			 (:file "loopy" :depends-on ("base-tensor"))
 			 ;;
-			 (:file "generic/copy" :depends-on ("base-tensor" "loopy"))
-			 (:file "generic/ref" :depends-on ("base-tensor"))
-			 (:file "print" :depends-on ("base-tensor" "generic/ref"))
-			 ;;
 			 (:file "numeric-template")
 			 (:file "tensor-template" :depends-on ("base-tensor" "numeric-template"))
+			 ;;
+			 (:file "generic/copy" :depends-on ("base-tensor" "loopy" "tensor-template"))
+			 (:file "generic/ref" :depends-on ("base-tensor"  "loopy" "tensor-template"))
+			 (:file "print" :depends-on ("base-tensor" "generic/ref"))
 			 ;;
 			 (:file "stride-accessor" :depends-on ("tensor-template"))
 			 (:file "graph-accessor" :depends-on ("tensor-template"))
@@ -137,7 +138,8 @@
 	    :depends-on ("matlisp-base" #+nil"matlisp-classes" #+nil"matlisp-blas" #+nil"matlisp-lapack")
 	    :components ((:file "fibonacci")
 			 (:file "graph")
-			 (:file "dfs")))))
+			 (:file "dfs")
+			 (:file "graphviz")))))
 
 ;; (defclass f2cl-cl-source-file (asdf:cl-source-file)
 ;;   ())

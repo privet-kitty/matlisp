@@ -1,6 +1,6 @@
 (in-package #:matlisp)
 
-(defmacro-clause (FOR v IN-GRAPH g &optional FROM root IN-ORDER order WITH-COLOR color WITH-PARENT p)
+(defmacro-clause (FOR v IN-GRAPH g &optional FROM root IN-ORDER order WITH-COLOR color WITH-PARENT p WITH-VISITED-ARRAY visited-array)
   (binding-gensyms (gm gf)
     (let* ((order (or order :dfs)) (colorp color) (color (or color (gf 'color)))
 	   (visited (ecase order (:sfd (gf 'visited)) ((:dfs :bfs) color))))
@@ -21,7 +21,7 @@
 	`(progn
 	   (with ,(gm g) = (the graph-accessor ,g)) (with ,v = (the index-type ,(or root `(random (dimensions ,(gm g) 1)))))
 	   (repeat (dimensions ,g 1))
-	   (with ,visited = (let ((,(gm color) (t/store-allocator ,(tensor 'boolean) (dimensions ,(gm g) 1))))
+	   (with ,visited = (let ((,(gm color) ,(or visited-array `(t/store-allocator ,(tensor 'boolean) (dimensions ,(gm g) 1)))))
 			      (setf (aref ,(gm color) ,v) t) ,(gm color)))
 	   (with ,(gm stack) = nil)
 	   ,@(if (and p (not (eql order :sfd))) `((with ,p = nil)))
