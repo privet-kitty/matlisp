@@ -103,10 +103,9 @@
 			 (:file "transpose" :depends-on ("scal" "copy"))
 			 (:file "swap")
 			 (:file "sum" :depends-on ("dot" "copy"))
-			 (:file "gemv" :depends-on ("copy"))
+			 (:file "gem" :depends-on ("copy"))
 			 (:file "ger" :depends-on ("copy"))
-			 (:file "gemm" :depends-on ("copy"))
-			 (:file "trsm")))
+			 (:file "trs")))
    (:module "matlisp-lapack"
 	    :pathname "lapack"
 	    :depends-on ("matlisp-base" "matlisp-blas")

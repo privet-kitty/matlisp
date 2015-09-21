@@ -67,9 +67,9 @@
   (letv* ((l.a t.a u.a (schur A) :type nil tensor tensor)
 	  (l.b t.b u.b (schur B) :type nil tensor tensor)
 	  ;;We can't use infix-dispatch-table just yet :(
-	  (ucu (gemm 1 u.a (gemm 1 c u.b nil nil :nn) nil nil :cn)))
+	  (ucu (gem 1 u.a (gem 1 c u.b nil nil :nn) nil nil :cn)))
     (trsyl! t.a t.b ucu)
-    (gemm 1 u.a (gemm 1 ucu u.b nil nil :nc) nil nil)))
+    (gem 1 u.a (gem 1 ucu u.b nil nil :nc) nil nil)))
 
 ;; (letv* ((a (randn '(10 10)))
 ;; 	(b (randn '(10 10)))

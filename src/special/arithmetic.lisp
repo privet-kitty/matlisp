@@ -58,9 +58,8 @@
 	((number tensor) (scal a b))
 	((tensor number) (scal b a))
 	;;Matrix, vector/matrix product
-	((tensor-matrix tensor-matrix) (gemm 1 a b nil nil))
-	((tensor-matrix tensor-vector) (gemv 1 a b nil nil :n))
-	((tensor-vector tensor-matrix) (gemv 1 b a nil nil :t))
+	((tensor-matrix (or tensor-matrix tensor-vector)) (gem 1 a b nil nil))
+	((tensor-vector tensor-matrix) (gem 1 b a nil nil :t))
 	;;Permutation action. Left action permutes axis-0, right action permutes the last axis (-1).
 	((permutation base-tensor) (permute b a 0))
 	((tensor permutation) (permute a b -1))
@@ -81,10 +80,8 @@
 	 `(let ((,ma ,(if (op a) (second a) a))
 		(,mb ,(if (op b) (second b) b)))
 	    (cart-etypecase (,ma ,mb)
-	      ((tensor-matrix tensor-matrix)
-	       (gemm 1 ,ma ,mb nil nil ,(intern (coerce (list (or (op a) #\N) (or (op b) #\N)) 'string) :keyword)))
-	      ((tensor-matrix tensor-vector) ;;The other case involves a complex conjugate.
-	       (gemv 1 ,ma ,mb nil nil ,(intern (coerce (list (or (op a) #\N)) 'string) :keyword)))
+	      ((tensor-matrix (or tensor-matrix tensor-vector))
+	       (gem 1 ,ma ,mb nil nil ,(intern (coerce (list (or (op a) #\N) (or (op b) #\N)) 'string) :keyword)))
 	      ((t t)
 	       (tb* ,(if (op a) `(,(car a) ,ma) ma) ,(if (op b) `(,(car b) ,mb) mb)))))))
       ((and (consp a) (eql (first a) 'tb/) (eql (second a) nil)) `(tb\\ ,b ,(third a)))
@@ -151,9 +148,8 @@
     ((tensor number) (scal b a))
     ;;Matrix, vector/matrix product
     ((tensor-vector tensor-vector) (dot a b nil))
-    ((tensor-matrix tensor-matrix) (gemm 1 a b nil nil))
-    ((tensor-matrix tensor-vector) (gemv 1 a b nil nil :n))
-    ((tensor-vector tensor-matrix) (gemv 1 b a nil nil :t))
+    ((tensor-matrix (or tensor-matrix tensor-vector)) (gem 1 a b nil nil))
+    ((tensor-vector tensor-matrix) (gem 1 b a nil nil :t))
     ((tensor tensor) (gett! 1 a b 1 (zeros (append (butlast (dimensions a t)) (cdr (dimensions b t))) (class-of a))))
     ;;Permutation action on arguments. Left action unpermutes arguments, right action permutes them.
     ;;See tb* for comparison.
@@ -175,7 +171,7 @@
        (permutation (permutation/ a))
        (number (cl:/ a))
        (base-tensor (getri! (getrf! (copy a))))))
-    (((and tensor-matrix (satisfies blas-tensorp)) (and tensor-square-matrix (satisfies blas-tensorp)))     
+    (((and tensor-matrix (satisfies blas-tensorp)) (and tensor-square-matrix (satisfies blas-tensorp)))
      (transpose (with-colm (getrs! (getrf! (copy a)) (transpose b) :t))))
     (((and tensor-vector (satisfies blas-tensorp)) (and tensor-square-matrix (satisfies blas-tensorp)))
      (let ((ret (copy b)))
