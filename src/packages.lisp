@@ -91,7 +91,7 @@
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:binding-gensyms #:values-n
 	   #:letv* #:let-typed #:let*-typed #:make-array-allocator #:ziprm #:inline-member
 	   #:define-constant #:eval-every
-	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase #:curry
+	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase #:curry #:pushcar
 	   ;;
 	   #:definline #:with-optimization #:very-quickly
 	   ;;
@@ -166,11 +166,12 @@
   (:documentation "MATLISP routines"))
 
 (defpackage "MATLISP-USER"
-  (:nicknames :mu)
-  (:use #:common-lisp #:iterate #:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template)
+  (:nicknames :μ)
+  (:use #:common-lisp #:iterate #:matlisp-utilities)
   (:import-from :λ-reader #:λ)
   ;;Shadow iterate:sum
-  (:shadow :sum)
+  (:shadowing-import-from #:matlisp #:sum #:conjugate #:imagpart #:realpart)
+  (:shadow #:+ #:- #:* #:/)
   ;;Let's keep everything in house for now.
   #+nil(:export #:index-type #:index-array #:allocate-index-store #:make-index-store
 	   ;;Standard-tensor
@@ -440,16 +441,6 @@
 ;;    "M-BESSEL-SERIES-Y")
 ;;   (:documentation "MATLISP routines"))
 
-
-
-;; (defpackage "MATLISP-USER"
-;;   (:use "COMMON-LISP"
-;;         "MATLISP"
-;;         #+:allegro "EXCL"
-;;         #+:cmu "EXT"
-;;         #+:sbcl "SB-EXT")
-;;   (:shadowing-import-from "MATLISP" "REAL")
-;;   (:documentation "Matlisp user package meant for interacting with matlisp"))
 
 ;; (in-package "MATLISP")
 

@@ -376,4 +376,8 @@
 				 `(,f ,a)))
 			   (append `(,func) more-funcs `(,x)) :from-end t))))
 
+(defmacro pushcar (x place)
+  (with-gensyms (xx)
+    `(let ((,xx ,x)) (push ,xx ,place) ,xx)))
+
 )

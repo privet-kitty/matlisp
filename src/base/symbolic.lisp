@@ -67,6 +67,7 @@
 	     (assert (typep ,nn '(or real list symbol)) nil "don't know how to coerce ~a into ge-expression" ,nn)
 	     (weylify ,nn))))))
 
+(eval-every (tensor 'ge-expression))
 (deft/method (t/store-allocator #'linear-storep) (sym #.(tensor 'ge-expression)) (size &optional initial-element)
   (with-gensyms (sitm size-sym arr idx init)
     (let ((type (second (store-type sym))))
