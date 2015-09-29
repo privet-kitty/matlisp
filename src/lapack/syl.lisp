@@ -1,7 +1,7 @@
 (in-package #:matlisp)
 ;;
 (deft/generic (t/lapack-trsyl! #'subtypep) sym (op.A op.B sgn A ld.a B ld.b C ld.c))
-(deft/method (t/lapack-trsyl! #'blas-tensor-typep) (sym dense-tensor) (op.A op.B sgn A ld.a B ld.b C ld.c)
+(deft/method t/lapack-trsyl! (sym blas-mixin) (op.A op.B sgn A ld.a B ld.b C ld.c)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (op.A op.B sgn A ld.a B ld.b C ld.c))
       `(let (,@decl)
@@ -38,7 +38,7 @@
 		    (ziprm (or char=) (sgn sgn) (#\N #\P)))
 	       nil 'tensor-dimension-mismatch))))
 
-(define-tensor-method trsyl! ((A dense-tensor :x) (B dense-tensor :x) (C dense-tensor :x t) &optional (job :nnp))
+(define-tensor-method trsyl! ((A blas-mixin :x) (B blas-mixin :x) (C blas-mixin :x t) &optional (job :nnp))
   `(destructuring-bind (op.a op.b sgn) (split-job job)
      (with-columnification (((A #\C) (B #\C)) (C))
        (letv* ((scale info (t/lapack-trsyl! ,(cl a) op.a op.b sgn

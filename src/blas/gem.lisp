@@ -2,7 +2,7 @@
 
 ;;
 (deft/generic (t/blas-gemv! #'subtypep) sym (alpha A lda x st-x beta y st-y transp))
-(deft/method (t/blas-gemv! #'blas-tensor-typep) (sym dense-tensor) (alpha A lda x st-x beta y st-y transp)
+(deft/method t/blas-gemv! (sym blas-mixin) (alpha A lda x st-x beta y st-y transp)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (alpha A lda x st-x beta y st-y transp) (m n))
       `(let* (,@decl
@@ -22,7 +22,7 @@
 	 ,y))))
 
 (deft/generic (t/blas-gemm! #'subtypep) sym (alpha A lda B ldb beta C ldc transa opa opb))
-(deft/method (t/blas-gemm! #'blas-tensor-typep) (sym dense-tensor) (alpha A lda B ldb beta C ldc transa opa opb)
+(deft/method t/blas-gemm! (sym blas-mixin) (alpha A lda B ldb beta C ldc transa opa opb)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (alpha A lda B ldb beta C ldc transa opa opb) (m n k))   
       `(let* (,@decl
@@ -145,14 +145,14 @@
 	      (type base-char joba jobb))
      (if (tensor-vectorp C)
 	 ,(recursive-append
-	   (when (blas-tensor-typep (cl B))
+	   (when (subtypep (cl B) 'blas-mixin)
 	     `(if (call-fortran? A (t/blas-lb ,(cl a) 2))
 		  (with-columnification (((A joba)) ())
 		    (letv* ((lda opa (blas-matrix-compatiblep A joba)))
 		      (t/blas-gemv! ,(cl a) alpha A lda B (strides B 0) beta C (strides C 0) opa)))))
 	   `(t/gemv! ,(cl a) alpha A B beta C joba))
 	 ,(recursive-append
-	   (when (blas-tensor-typep (cl c))
+	   (when (subtypep (cl c) 'blas-mixin)
 	     `(if (call-fortran? C (t/blas-lb ,(cl c) 3))
 		  (with-columnification (((a joba) (b jobb)) (c))
 		    (letv* ((lda opa (blas-matrix-compatiblep a joba))

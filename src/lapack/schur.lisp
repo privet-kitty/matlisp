@@ -3,7 +3,7 @@
 ;; (permute!  '(jobvs sort select n a lda sdim w rwork vs ldvs work lwork bwork info) )
 ;;
 (deft/generic (t/lapack-gees! #'subtypep) sym (A lda vs ldvs wr wi))
-(deft/method (t/lapack-gees! #'blas-tensor-typep) (sym dense-tensor) (A lda vs ldvs wr wi)
+(deft/method t/lapack-gees! (sym blas-mixin) (A lda vs ldvs wr wi)
   (let* ((ftype (field-type sym)))
     (using-gensyms (decl (A lda vs ldvs wr wi) (lwork xxx))
       `(let (,@decl)
@@ -37,7 +37,7 @@
   (:method :before ((A tensor) &optional (job :v))
      (assert (and (typep A 'tensor-square-matrix) (member job '(:v :n))) nil 'invalid-arguments :message "argument is not a square matrix.")))
 
-(define-tensor-method schur ((A dense-tensor :x) &optional (job :v))
+(define-tensor-method schur ((A blas-mixin :x) &optional (job :v))
   `(let-typed ((tret (with-colm (copy A)))
 	       (vs (when (eq job :v) (with-colm (zeros (dimensions A) ',(cl a)))))
 	       (wr (t/store-allocator ,(cl a) (dimensions a 0)) :type ,(store-type (cl a)))

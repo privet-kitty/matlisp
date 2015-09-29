@@ -2,7 +2,7 @@
 
 ;;
 (deft/generic (t/blas-ger! #'subtypep) sym (alpha x st-x y st-y A lda &optional conjp))
-(deft/method (t/blas-ger! #'blas-tensor-typep) (sym dense-tensor) (alpha x st-x y st-y A lda &optional (conjp t))
+(deft/method t/blas-ger! (sym blas-mixin) (alpha x st-x y st-y A lda &optional (conjp t))
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (alpha x st-x y st-y A lda) (m n))
       `(let* (,@decl
@@ -68,10 +68,10 @@
   `(let ((alpha (t/coerce ,(field-type (cl x)) alpha)))
      (declare (type ,(field-type (cl x)) alpha))
      ,(recursive-append
-       (when (blas-tensor-typep (cl x))
+       (when (subtypep (cl x) 'blas-mixin)
 	 `(if (call-fortran? A (t/blas-lb ,(cl a) 2))
-	      (with-columnification (() (A))		  
-		(if conjugate-p 
+	      (with-columnification (() (A))
+		(if conjugate-p
 		    (t/blas-ger! ,(cl a)
 				 alpha
 				 x (strides x 0)

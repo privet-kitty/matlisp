@@ -28,7 +28,7 @@
 (in-package #:matlisp)
 
 (deft/generic (t/blas-axpy! #'subtypep) sym (a x st-x y st-y))
-(deft/method (t/blas-axpy! #'blas-tensor-typep) (sym dense-tensor) (a x st-x y st-y)
+(deft/method t/blas-axpy! (sym blas-mixin) (a x st-x y st-y)
   (let ((apy? (null x)) (ftype (field-type sym)))
     (using-gensyms (decl (a x y) (sto-x))
       `(let (,@decl)
@@ -86,7 +86,7 @@
   `(let ((alpha (t/coerce ,(field-type (cl x)) alpha)))
      (declare (type ,(field-type (cl x)) alpha))
      ,(recursive-append
-       (when (blas-tensor-typep (cl y))
+       (when (subtypep (cl y) 'blas-mixin)
 	 `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl y) 1)) (blas-copyablep x y)))
 	    (t/blas-axpy! ,(cl y) alpha x (first strd) y (second strd))))
        `(t/axpy! ,(cl y) alpha x y))
@@ -98,7 +98,7 @@
      (when x (setq alpha (t/f* ,(field-type (cl y)) alpha (t/coerce ,(field-type (cl y)) x))))
      (unless (t/f= ,(field-type (cl y)) alpha (t/fid+ ,(field-type (cl y))))
        ,(recursive-append
-	 (when (blas-tensor-typep (cl y))
+	 (when (subtypep (cl y) 'blas-mixin)
 	   `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl y) 1)) (consecutive-storep y)))
 	      (t/blas-axpy! ,(cl y) alpha nil nil y strd)))
 	 `(t/axpy! ,(cl y) alpha nil y)))

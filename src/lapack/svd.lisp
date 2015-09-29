@@ -29,7 +29,7 @@
 
 ;;
 (deft/generic (t/lapack-gesvd! #'subtypep) sym (A lda u ldu v ldv s))
-(deft/method (t/lapack-gesvd! #'blas-tensor-typep) (sym dense-tensor) (A lda u ldu v ldv s)
+(deft/method t/lapack-gesvd! (sym blas-mixin) (A lda u ldu v ldv s)
   (let* ((ftype (field-type sym)) (rtype (field-type (realified-type sym)))
 	 (complex? (subtypep ftype 'cl:complex)))
     (using-gensyms (decl (A lda u ldu v ldv s) (lwork xxx xxr))
@@ -105,7 +105,7 @@
   (:method :before ((a tensor) &optional (job :nn))
      (assert (member job '(:nn :un :nv :uv)) nil 'invalid-arguments)))
 
-(define-tensor-method svd ((a dense-tensor :input) &optional (job :nn))
+(define-tensor-method svd ((a blas-mixin :input) &optional (job :nn))
   `(destructuring-bind (ujob vjob) (split-job job)
      (let ((u (when (char= ujob #\U) (with-colm (zeros (list (dimensions a 0) (dimensions a 0)) ',(cl a)))))
 	   (v (when (char= vjob #\V) (with-colm (zeros (list (dimensions a 1) (dimensions a 1)) ',(cl a)))))

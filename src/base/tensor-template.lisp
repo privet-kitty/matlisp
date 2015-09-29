@@ -8,8 +8,7 @@
   (defun linear-storep (cl) (eql (first (ensure-list (store-type cl))) 'simple-array))
   (defun hash-table-storep (x) (eql (store-type x) 'hash-table))
   (defun clinear-storep (x) (and (subtypep x 'tensor) (linear-storep x) (real-subtype (field-type x))))
-  (defun blas-tensor-typep (type) (member (field-type type) '(single-float double-float (complex single-float) (complex double-float)) :test #'equal))
-  (defun blas-tensorp (x) (blas-tensor-typep (class-name (class-of x))))
+  (defun float-tensorp (type) (member (field-type type) '(single-float double-float (complex single-float) (complex double-float)) :test #'equal))
   (defun tensor-leafp (x)
     (let* ((x (etypecase x (class x) (symbol (find-class x)))))
       (and
@@ -59,7 +58,7 @@
 ;;
 (deft/generic (t/compute-store-size #'subtypep) sym (size))
 (deft/generic (t/store-size #'subtypep) sym (ele))
-(deft/generic (t/store-allocator #'subtypep) sym (size &optional initial-element))
+(deft/generic (t/store-allocator #'subtypep) sym (size &rest initargs))
 (deft/generic (t/total-size #'subtypep) sym (ele))
 ;;
 (deft/method (t/compute-store-size #'linear-storep) (sym tensor) (size)
@@ -83,29 +82,36 @@
 (deft/method t/total-size (sym coordinate-accessor) (ele)
   `(slot-value ,ele 'boundary))
 ;;
-(deft/method t/store-allocator (sym index-store) (size &optional initial-element)
-  `(the index-store (make-array ,size :element-type 'index-type ,@(when initial-element `(:initial-element ,initial-element)))))
-(deft/method t/store-allocator (sym index-store-vector) (size &optional initial-element)
-  `(the index-store-vector (make-array ,size :element-type 'index-type ,@(when initial-element `(:initial-element ,initial-element)))))
-(deft/method t/store-allocator (sym index-store-matrix) (size &optional initial-element)
-  `(the index-store-matrix (make-array ,size :element-type 'index-type ,@(when initial-element `(:initial-element ,initial-element)))))
+(deft/method t/store-allocator (sym index-store) (size &rest initargs)
+  (letv* ((() initargs))
+    `(the index-store (make-array ,size :element-type 'index-type))))
+(deft/method t/store-allocator (sym index-store-vector) (size &rest initargs)
+  (letv* (((&key initial-element initial-contents) initargs))
+    `(the index-store-vector (make-array ,size :element-type 'index-type
+					 ,@(when initial-element `(:initial-element ,initial-element))
+					 ,@(when initial-contents `(:initial-element ,initial-contents))))))
+(deft/method t/store-allocator (sym index-store-matrix) (size &rest initargs)
+  (letv* ((() initargs))
+    `(the index-store-matrix (make-array ,size :element-type 'index-type))))
 
-(deft/method (t/store-allocator #'linear-storep) (sym tensor) (size &optional initial-element)
-  (with-gensyms (sitm size-sym arr idx init)
-    (let ((type (second (store-type sym))))
-      `(let*-typed ((,size-sym (t/compute-store-size ,sym (let ((,sitm ,size))
-							    (etypecase ,sitm
-							      (index-type ,sitm)
-							      (index-store-vector (lvec-foldr #'* (the index-store-vector ,sitm)))
-							      (cons (reduce #'* ,sitm))))))
-		    ,@(when initial-element `((,init ,initial-element :type ,(field-type sym))))
-		    (,arr (make-array ,size-sym :element-type ',type :initial-element ,(if (subtypep type 'number) `(t/fid+ ,type) nil)) :type ,(store-type sym)))
-	 ,@(when initial-element
-	     `((very-quickly (loop :for ,idx :from 0 :below ,size-sym :do (t/store-set ,sym ,init ,arr ,idx)))))
-	 ,arr))))
+(deft/method (t/store-allocator #'linear-storep) (sym tensor) (size &rest initargs)
+  (letv* (((&key initial-element) initargs))
+    (with-gensyms (sitm size-sym arr idx init)
+      (let ((type (second (store-type sym))))
+	`(let*-typed ((,size-sym (t/compute-store-size ,sym (let ((,sitm ,size))
+							      (etypecase ,sitm
+								(index-type ,sitm)
+								(index-store-vector (lvec-foldr #'* (the index-store-vector ,sitm)))
+								(cons (reduce #'* ,sitm))))))
+		      ,@(when initial-element `((,init ,initial-element :type ,(field-type sym))))
+		      (,arr (make-array ,size-sym :element-type ',type :initial-element ,(if (subtypep type 'number) `(t/fid+ ,type) nil)) :type ,(store-type sym)))
+	   ,@(when initial-element
+		   `((very-quickly (loop :for ,idx :from 0 :below ,size-sym :do (t/store-set ,sym ,init ,arr ,idx)))))
+	   ,arr)))))
 
-(deft/method (t/store-allocator #'hash-table-storep) (sym stride-accessor) (size &optional initial-element)
-  `(make-hash-table :size ,size))
+(deft/method (t/store-allocator #'hash-table-storep) (sym stride-accessor) (size &rest initargs)
+  (letv* (((&key size) initargs))
+    `(make-hash-table :size ,size)))
 ;;
 (deft/generic (t/store-ref #'subtypep) sym (store &rest idx))
 (deft/generic (t/store-set #'subtypep) sym (value store &rest idx))
@@ -169,7 +175,7 @@
 
 (deft/method with-field-element (sym tensor) (decl &rest body)
   (destructuring-bind (var init &optional (count 1)) decl
-    `(let-typed ((,var (t/store-allocator ,sym ,count ,init) :type ,(store-type sym)))
+    `(let-typed ((,var (t/store-allocator ,sym ,count :initial-element ,init) :type ,(store-type sym)))
        (locally ,@body))))
 ;;
 ;;A helper macro which takes of care of the class checking and stuff.
@@ -185,23 +191,12 @@
 (defun cclass-max (&rest lst)
   (iter (for ele in lst) (with max)
 	(when (or (null max) (and (coerceable? max ele) (or (not (coerceable? ele max))
-							    (and (blas-tensor-typep ele) (blas-tensor-typep max)
+							    (and (float-tensorp ele) (float-tensorp max)
 								 (> (float-digits (coerce 0 (or (real-subtype (field-type ele)) (field-type ele))))
 								    (float-digits (coerce 0 (or (real-subtype (field-type max)) (field-type max)))))))))
 	  (setf max ele))
 	(finally (return max))))
-
 ;;(cclass-max (tensor '(complex double-float)) (tensor '(complex double-float)))
-
-#+nil
-(defun cclass-max (&rest lst)
-  (iter (for ele in lst) (with max)
-	(when (or (null max) (and (coerceable? max ele) (or (not (coerceable? ele max))
-							    (and (blas-tensorp ele) (blas-tensorp max)
-								 (> (float-digits (coerce 0 (or (real-subtype ele) (field-type ele))))
-								    (float-digits (coerce 0 (or (real-subtype max) (field-type max)))))))))
-	  (setf max ele))
-	(finally (return max))))
 
 (defmacro define-tensor-method (name (&rest args) &body body)
   (let* ((keypos (or (position-if (lambda (x) (member x cl:lambda-list-keywords)) args) (length args)))
@@ -305,7 +300,7 @@
 
 ;;Blas
 (deft/generic (t/blas-lb #'subtypep) sym (i))
-(deft/method (t/blas-lb #'blas-tensor-typep) (sym dense-tensor) (i)
+(deft/method t/blas-lb (sym blas-mixin) (i)
   (if (clinear-storep sym)
       (ecase i
 	(1 '*complex-l1-fcall-lb*)

@@ -28,7 +28,7 @@
 (in-package #:matlisp)
 
 (deft/generic (t/blas-copy! #'subtypep) sym (x st-x y st-y))
-(deft/method (t/blas-copy! #'blas-tensor-typep) (sym dense-tensor) (x st-x y st-y)
+(deft/method t/blas-copy! (sym blas-mixin) (x st-x y st-y)
   (let ((ncp? (null st-x)) (ftype (field-type sym)))
     (using-gensyms (decl (x y) (sto-x))
       `(let (,@decl)
@@ -207,7 +207,7 @@
 
 (define-tensor-method copy! ((x tensor :x) (y tensor :y t))
   (recursive-append
-   (when (and (eql (cl x) (cl y)) (blas-tensor-typep (cl y)))
+   (when (and (eql (cl x) (cl y)) (subtypep (cl y) 'blas-mixin))
      `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl y) 1)) (blas-copyablep x y)))
 	(t/blas-copy! ,(cl y) x (first strd) y (second strd))))
    `(t/copy! (,(cl x) ,(cl y)) x y))
@@ -215,7 +215,7 @@
 
 (define-tensor-method copy! ((x t) (y dense-tensor :y t))
   (recursive-append
-   (when (blas-tensor-typep (cl y))
+   (when (subtypep (cl y) 'blas-mixin)
      `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl y) 1)) (consecutive-storep y)))
 	(t/blas-copy! ,(cl y) (t/coerce ,(field-type (cl y)) x) nil y strd)))
    `(t/copy! (t ,(cl y)) x y)))

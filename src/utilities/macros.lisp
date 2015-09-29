@@ -146,9 +146,10 @@
 								      (unless (or (eql (car x) consy) (member (car x) cl:lambda-list-keywords)) (list x))
 								      (values x #'(lambda (mf x) (apply #'append (mapcar mf x))))))
 						  (ziptree bind type)))
-				   (vsyms (mapcar #'(lambda (x) (if (atom x) (list x)
+				   (vsyms (mapcar #'(lambda (x) (if (listp x)
 								    (let ((g (gensym)))
-								      (list g `(destructuring-bind ,(reconsify x consy) ,g ,@(typedecl (flatten x) typa))))))
+								      (list g `(destructuring-bind ,(reconsify x consy) ,g ,@(typedecl (flatten x) typa))))
+								    (list x)))
 						  bind)))
 			      (list*
 			       (recursive-append

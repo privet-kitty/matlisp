@@ -1,7 +1,7 @@
 (in-package :matlisp)
 ;;
 (deft/generic (t/lapack-gelsy! #'subtypep) sym (A lda B ldb rcond))
-(deft/method (t/lapack-gelsy! #'blas-tensor-typep) (sym dense-tensor) (A lda B ldb rcond)
+(deft/method t/lapack-gelsy! (sym blas-mixin) (A lda B ldb rcond)
   (let* ((ftype (field-type sym)) (complex? (subtypep ftype 'cl:complex))
 	 (rtype (field-type (realified-type sym))))
     (using-gensyms (decl (A lda B ldb rcond) (lwork xxx xxr jpvt))
@@ -90,11 +90,11 @@
 
    =====================================================================
 ")
-  (:method :before ((A dense-tensor) (B dense-tensor) &optional rcond)
+  (:method :before ((A tensor) (B tensor) &optional rcond)
      (assert (and (tensor-matrixp A) (tensor-matrixp B) (= (dimensions A 0) (dimensions B 0))) nil 'tensor-dimension-mismatch)
      (assert (or (null rcond) (> rcond 0)) nil 'invalid-value :expected '(> rcond 0) :given rcond :message "Invalid rcond.")))
 
-(define-tensor-method gelsy ((A dense-tensor :x) (B dense-tensor :x t) &optional (rcond *default-rcond*))
+(define-tensor-method gelsy ((A blas-mixin :x) (B blas-mixin :x t) &optional (rcond *default-rcond*))
   `(let* ((A (with-colm (copy A ',(cl b)))))
      (declare (type ,(cl b) A))
      (let* ((mn (lvec-max (dimensions A)))

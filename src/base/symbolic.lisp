@@ -68,19 +68,20 @@
 	     (weylify ,nn))))))
 
 (eval-every (tensor 'ge-expression))
-(deft/method (t/store-allocator #'linear-storep) (sym #.(tensor 'ge-expression)) (size &optional initial-element)
-  (with-gensyms (sitm size-sym arr idx init)
-    (let ((type (second (store-type sym))))
-      `(let*-typed ((,size-sym (t/compute-store-size ,sym (let ((,sitm ,size))
-							    (etypecase ,sitm
-							      (index-type ,sitm)
-							      (index-store-vector (lvec-foldr #'* (the index-store-vector ,sitm)))
-							      (cons (reduce #'* ,sitm))))))
-		    ,@(when initial-element `((,init ,initial-element :type ,(field-type sym))))
-		    (,arr (make-array ,size-sym :element-type ',type :initial-element (t/fid+ ,type)) :type ,(store-type sym)))
-	 ,@(when initial-element
-	     `((very-quickly (loop :for ,idx :from 0 :below ,size-sym :do (t/store-set ,sym ,init ,arr ,idx)))))
-	 ,arr))))
+(deft/method (t/store-allocator #'linear-storep) (sym #.(tensor 'ge-expression)) (size &rest initargs)
+  (letv* (((&key initial-element) initargs))
+    (with-gensyms (sitm size-sym arr idx init)
+      (let ((type (second (store-type sym))))
+	`(let*-typed ((,size-sym (t/compute-store-size ,sym (let ((,sitm ,size))
+							      (etypecase ,sitm
+								(index-type ,sitm)
+								(index-store-vector (lvec-foldr #'* (the index-store-vector ,sitm)))
+								(cons (reduce #'* ,sitm))))))
+		      ,@(when initial-element `((,init ,initial-element :type ,(field-type sym))))
+		      (,arr (make-array ,size-sym :element-type ',type :initial-element (t/fid+ ,type)) :type ,(store-type sym)))
+	   ,@(when initial-element
+		   `((very-quickly (loop :for ,idx :from 0 :below ,size-sym :do (t/store-set ,sym ,init ,arr ,idx)))))
+	   ,arr)))))
 
 (defmethod print-object ((obj ge-expression) stream)
   (format stream "~a" (slot-value obj 'expression)))

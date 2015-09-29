@@ -29,7 +29,7 @@
 
 ;;
 (deft/generic (t/lapack-getrf! #'subtypep) sym (A lda ipiv))
-(deft/method (t/lapack-getrf! #'blas-tensor-typep) (sym dense-tensor) (A lda ipiv)
+(deft/method t/lapack-getrf! (sym blas-mixin) (A lda ipiv)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (A lda ipiv))
       `(let* (,@decl)
@@ -73,10 +73,10 @@
   [3] INFO = T: successful
 	     i:  U(i,i) is exactly zero.
 ")
-  (:method :before ((A dense-tensor))
+  (:method :before ((A tensor))
      (assert (tensor-matrixp A) nil 'tensor-dimension-mismatch)))
 
-(define-tensor-method getrf! ((A dense-tensor :x t))
+(define-tensor-method getrf! ((A blas-mixin :x t))
   `(let ((upiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type ',(matlisp-ffi::%ffc->lisp :integer))))
      (declare (type (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*)) upiv))
      (with-columnification (() (A))
@@ -90,7 +90,7 @@
 
 ;;
 (deft/generic (t/lapack-getrs! #'subtypep) sym (A lda B ldb ipiv transp))
-(deft/method (t/lapack-getrs! #'blas-tensor-typep) (sym dense-tensor) (A lda B ldb ipiv transp)
+(deft/method t/lapack-getrs! (sym blas-mixin) (A lda B ldb ipiv transp)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (A lda B ldb ipiv transp))
       `(let* (,@decl)
@@ -133,14 +133,14 @@
 		 but the factor U is exactly singular.
 		 Solution could not be computed.
 ")
-  (:method :before ((A dense-tensor) (B dense-tensor) &optional (job :n) ipiv)
+  (:method :before ((A tensor) (B tensor) &optional (job :n) ipiv)
      (declare (type (or null permutation) ipiv) (ignore job))
      (assert (and (tensor-matrixp A) (<= (order B) 2)
 		  (= (dimensions A 0) (dimensions A 1) (dimensions B 0))
 		  (or (not ipiv) (<= (permutation-size ipiv) (dimensions A 0))))
 	     nil 'tensor-dimension-mismatch)))
 
-(define-tensor-method getrs! ((A dense-tensor :x) (B dense-tensor :x t) &optional (job :n) ipiv)
+(define-tensor-method getrs! ((A blas-mixin :x) (B blas-mixin :x t) &optional (job :n) ipiv)
   `(if (tensor-vectorp b)
        (getrs! a (suptensor~ b 2) job ipiv)
        (let ((upiv (if ipiv
@@ -158,7 +158,7 @@
   'B)
 ;;
 (deft/generic (t/lapack-getri! #'subtypep) sym (A lda ipiv))
-(deft/method (t/lapack-getri! #'blas-tensor-typep) (sym dense-tensor) (A lda ipiv)
+(deft/method t/lapack-getri! (sym blas-mixin) (A lda ipiv)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (A lda ipiv) (lwork xxx))
       `(let* (,@decl)
@@ -184,11 +184,11 @@
   =======
   Computes the inverse of A using the LU factorization returned by GETRF!
 ")
-  (:method :before ((A dense-tensor) &optional ipiv)
+  (:method :before ((A tensor) &optional ipiv)
      (declare (type (or null permutation) ipiv))
      (assert (and (typep A 'tensor-square-matrix) (or (not ipiv) (<= (permutation-size ipiv) (dimensions A 0)))) nil 'tensor-dimension-mismatch)))
 
-(define-tensor-method getri! ((a dense-tensor :x t) &optional ipiv)
+(define-tensor-method getri! ((a blas-mixin :x t) &optional ipiv)
   `(let ((upiv (if ipiv (pflip.l->f (store (copy ipiv 'permutation-action)))
 		   (or (gethash 'getrf (memos A)) (error "Cannot find permutation for the PLU factorisation of A.")))))
      (declare (type (simple-array (signed-byte 32) (*)) upiv))
@@ -215,7 +215,7 @@
   If SPLIT-LU? is T, then return (L, U, P), otherwise
   returns (LU, P).
 "
-  (declare (type (and tensor-square-matrix (satisfies blas-tensorp)) a))
+  (declare (type (and tensor-square-matrix blas-mixin) a))
   (multiple-value-bind (lu perm) (getrf! (copy a))
     (if (not split-lu?) (values lu perm)
 	(let* ((min.d (lvec-min (dimensions lu)))

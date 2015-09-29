@@ -72,6 +72,7 @@
 
 (defclass dense-tensor (tensor)
   ((parent :initform nil :initarg :parent :type (or null tensor) :documentation "This slot is bound if the tensor is the view of another.")))
+(defclass blas-mixin () ())
 
 (definline orphanize (x)
   (declare (type dense-tensor))
@@ -156,7 +157,9 @@
 			 (and (= (length (closer-mop:class-direct-superclasses (find-class x))) 2))))
 		(mapcar #'class-name (apply #'intersection (mapcar #'closer-mop:class-direct-subclasses (mapcar #'find-class `(tensor ,accessor))))))
        (let ((cl (intern (format nil "~{~a~^ ~}" (remove nil (list field accessor store))) (find-package "MATLISP"))))
-	 (compile-and-eval `(defclass ,cl (,(if (equal (list accessor store) '(stride-accessor simple-array)) 'dense-tensor 'tensor) ,accessor) ()))
+	 (compile-and-eval `(defclass ,cl (,@(if (equal (list accessor store) '(stride-accessor simple-array))
+						 `(dense-tensor ,@(when (member field '(single-float double-float (complex single-float) (complex double-float)) :test #'equal) '(blas-mixin)))
+						 '(tensor)) ,accessor) ()))
 	 (compile-and-eval `(deft/method t/field-type (sym ,cl) () ',field))
 	 (case store
 	   (simple-array (compile-and-eval `(deft/method t/store-type (sym ,cl) (&optional (size '*))

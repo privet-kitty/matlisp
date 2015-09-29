@@ -1,39 +1,41 @@
 (in-package #:matlisp)
 
-(deft/generic (t/zeros #'subtypep) sym (dims &optional initial-element))
+(deft/generic (t/zeros #'subtypep) sym (dims &optional initarg))
 
 (deft/method t/zeros (class stride-accessor) (dims &optional initial-element)
-  (with-gensyms (astrs adims sizs)
-    `(letv* ((,adims (coerce ,dims 'index-store-vector) :type index-store-vector)
-	     (,astrs ,sizs (,(if (hash-table-storep class) 'make-stride-cmj 'make-stride) ,adims) :type index-store-vector index-type))
-       (make-instance ',class
-		      :dimensions ,adims
-		      :head 0 :strides ,astrs
-		      :store (t/store-allocator ,class
-						,(if (hash-table-storep class)
-						     `(cl:max (cl:ceiling (cl:* *default-sparsity* ,sizs)) (or ,initial-element 0))
-						     sizs)
-						,@(when initial-element `((t/coerce ,(field-type class) ,initial-element))))))))
+  (with-gensyms (dimsv strdv tsize init)
+    `(letv* ((,dimsv (coerce ,dims 'index-store-vector) :type index-store-vector)
+	     (,strdv ,tsize (make-stride ,dimsv) :type index-store-vector index-type)
+	     ,@(when initial-element `((,init ,initial-element))))
+       (make-instance ',class :dimensions ,dimsv :head 0 :strides ,strdv
+		      :store ,(recursive-append
+			       (when initial-element `(if ,init (t/store-allocator ,class ,tsize :initial-element (t/coerce ,(field-type class) ,init))))
+			       `(t/store-allocator ,class ,tsize))))))
 
-(deft/method t/zeros (class graph-accessor) (dims &optional nz)
-  (with-gensyms (adims nnz)
-    `(letv* ((,adims (coerce ,dims 'index-store-vector) :type (index-store-vector 2))
-	     (,nnz (max (ceiling (* *default-sparsity* (lvec-foldr #'* ,adims))) (or ,nz 0))))
-       (make-instance ',class
-		      :dimensions ,adims
-		      :fence (t/store-allocator index-store-vector (1+ (aref ,adims 1))) ;;Compressed Columns by default
+(deft/method (t/zeros #'hash-table-storep) (class stride-accessor) (dims &optional size)
+  (with-gensyms (dimsv strdv tsize)
+    `(letv* ((,dimsv (coerce ,dims 'index-store-vector) :type index-store-vector)
+	     (,strdv ,tsize (make-stride-cmj ,dimsv) :type index-store-vector index-type))
+       (make-instance ',class :dimensions ,dimsv :head 0 :strides ,strdv
+		      :store (t/store-allocator ,class :size (cl:max (cl:ceiling (cl:* *default-sparsity* ,tsize)) (or ,size 0)))))))
+
+(deft/method t/zeros (class graph-accessor) (dims &optional size)
+  (with-gensyms (dimsv nnz)
+    `(letv* ((,dimsv (coerce ,dims 'index-store-vector) :type (index-store-vector 2))
+	     (,nnz (cl:max (cl:ceiling (* *default-sparsity* (lvec-foldr #'* ,dimsv))) (or ,size 0))))
+       (make-instance ',class :dimensions ,dimsv
+		      :fence (t/store-allocator index-store-vector (1+ (aref ,dimsv 1))) ;;Compressed Columns by default
 		      :neighbours (t/store-allocator index-store-vector ,nnz)
-		      ,@(when (subtypep class 'base-tensor) `(:store (t/store-allocator ,class ,nnz)))))))
+		      ,@(when (subtypep class 'tensor) `(:store (t/store-allocator ,class ,nnz)))))))
 
-(deft/method t/zeros (class coordinate-accessor) (dims &optional nz)
-  (with-gensyms (adims nnz)
-    `(letv* ((,adims (coerce ,dims 'index-store-vector) :type index-store-vector)
-	     (,nnz (max (ceiling (* *default-sparsity* (lvec-foldr #'* ,adims))) (or ,nz 0))))
-       (make-instance ',class
-		      :dimensions ,adims
-		      :indices (t/store-allocator index-store-matrix (list ,nnz (length ,adims)))
+(deft/method t/zeros (class coordinate-accessor) (dims &optional size)
+  (with-gensyms (dimsv nnz)
+    `(letv* ((,dimsv (coerce ,dims 'index-store-vector) :type index-store-vector)
+	     (,nnz (max (ceiling (* *default-sparsity* (lvec-foldr #'* ,dimsv))) (or ,size 0))))
+       (make-instance ',class :dimensions ,dimsv
+		      :indices (t/store-allocator index-store-matrix (list ,nnz (length ,dimsv)))
 		      :stride-hash (t/store-allocator index-store-vector ,nnz)
-		      :strides (make-stride-cmj ,adims)
+		      :strides (make-stride-cmj ,dimsv)
 		      ,@(when (subtypep class 'base-tensor) `(:store (t/store-allocator ,class ,nnz)))))))
 
 #+nil
@@ -53,47 +55,44 @@
 ;;     `(let (,@decl)
 ;;        (declare (type index-type ,dims))
 ;;        (with-no-init-checks
-;; 	   (make-instance ',class
-;; 			  :store nil
-;; 			  :size 0)))))
+;;	   (make-instance ',class
+;;			  :store nil
+;;			  :size 0)))))
 
 ;; (deft/method t/zeros (class permutation-action) (dims &optional nz)
 ;;   (using-gensyms (decl (dims))
 ;;     `(let (,@decl)
 ;;        (declare (type index-type ,dims))
 ;;        (with-no-init-checks
-;; 	   (make-instance ',class
-;; 			  :store (index-id ,dims)
-;; 			  :size ,dims)))))
+;;	   (make-instance ',class
+;;			  :store (index-id ,dims)
+;;			  :size ,dims)))))
 
 ;; (deft/method t/zeros (class permutation-pivot-flip) (dims &optional nz)
 ;;   (using-gensyms (decl (dims))
 ;;     `(let (,@decl)
 ;;        (declare (type index-type ,dims))
 ;;        (with-no-init-checks
-;; 	   (make-instance ',class
-;; 			  :store (index-id ,dims)
-;; 			  :size ,dims)))))
+;;	   (make-instance ',class
+;;			  :store (index-id ,dims)
+;;			  :size ,dims)))))
 
 ;;
-(defgeneric zeros-generic (dims dtype &optional initial-element)
+(defgeneric zeros-generic (dims dtype &optional initarg)
   (:documentation "
     A generic version of @func{zeros}.
 ")
-  (:method ((dims list) (dtype t) &optional initial-element)
+  (:method ((dims list) (dtype t) &optional initarg)
     ;;(assert (tensor-leafp dtype) nil 'tensor-abstract-class :tensor-class dtype)
     (compile-and-eval
-     `(defmethod zeros-generic ((dims list) (dtype (eql ',dtype)) &optional initial-element)
-	(if initial-element
-	    (t/zeros ,dtype dims initial-element)
-	    (t/zeros ,dtype dims))))
-    (zeros-generic dims dtype initial-element)))
+     `(defmethod zeros-generic ((dims list) (dtype (eql ',dtype)) &optional initarg)
+	(t/zeros ,dtype dims initarg)))
+    (zeros-generic dims dtype initarg)))
 
-
-(definline zeros (dims &optional type initial-element)
+(definline zeros (dims &optional type initarg)
 "
     Create a tensor with dimensions @arg{dims} of class @arg{dtype}.
-    The optional argument @arg{initial-element} is used in two completely
+    The optional argument @arg{initarg} is used in two completely
     incompatible ways.
 
     If @arg{dtype} is a dense tensor, then @arg{initial-element}, is used to
@@ -103,22 +102,23 @@
     Example:
     > (zeros 3)
     #<REAL-TENSOR #(3)
-      0.0000      0.0000      0.0000     
+      0.0000      0.0000      0.0000
     >
 
     > (zeros 3 'complex-tensor 2)
     #<COMPLEX-TENSOR #(3)
-      2.0000      2.0000      2.0000     
+      2.0000      2.0000      2.0000
     >
 
     > (zeros '(10000 10000) 'real-compressed-sparse-matrix 10000)
     #<REAL-COMPRESSED-SPARSE-MATRIX #(10000 10000), store-size: 10000>
 "
   (with-no-init-checks
-    (let ((type (let ((type (or type *default-tensor-type*))) (etypecase type (standard-class (class-name type)) (symbol type) (list (apply #'tensor type))))))
-      (etypecase dims
-	(list (zeros-generic dims type initial-element))
-	(vector (zeros-generic (lvec->list dims) type initial-element))
-	(fixnum (zeros-generic (list dims) type initial-element))))))
+      (let ((type (let ((type (or type *default-tensor-type*)))
+		    (etypecase type (standard-class (class-name type)) (symbol type) (list (apply #'tensor type))))))
+	(etypecase dims
+	  (list (zeros-generic dims type initarg))
+	  (vector (zeros-generic (lvec->list dims) type initarg))
+	  (fixnum (zeros-generic (list dims) type initarg))))))
 
 (declaim (ftype (function ((or list vector fixnum) &optional t t) t) zeros))

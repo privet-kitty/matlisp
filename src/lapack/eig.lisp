@@ -2,7 +2,7 @@
 
 ;;
 (deft/generic (t/lapack-geev! #'subtypep) sym (A lda vl ldvl vr ldvr wr wi))
-(deft/method (t/lapack-geev! #'blas-tensor-typep) (sym dense-tensor) (A lda vl ldvl vr ldvr wr wi)
+(deft/method t/lapack-geev! (sym blas-mixin) (A lda vl ldvl vr ldvr wr wi)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (A lda vl ldvl vr ldvr wr wi) (lwork xxx))
       `(let (,@decl)
@@ -25,7 +25,7 @@
 												   (list (idxv 12 11 10 9 8 7 6))))))))))))
 ;;
 (deft/generic (t/lapack-heev! #'subtypep) sym (jobz uplo A lda w))
-(deft/method (t/lapack-heev! #'blas-tensor-typep) (sym dense-tensor) (jobz uplo A lda w)
+(deft/method t/lapack-heev! (sym blas-mixin) (jobz uplo A lda w)
   (using-gensyms (decl (jobz A lda w uplo) (lwork xxx xxr))
     (let ((complex? (subtypep (field-type sym) 'complex))
 	  (ftype (field-type sym)))
@@ -47,7 +47,7 @@
 
 ;;
 (deft/generic (t/geev-output-fix #'subtypep) sym (wr wi))
-(deft/method (t/geev-output-fix #'blas-tensor-typep) (sym dense-tensor) (wr wi)
+(deft/method t/geev-output-fix (sym blas-mixin) (wr wi)
   (if (clinear-storep sym)
       (using-gensyms (decl (wr))
 	`(let (,@decl)
@@ -109,7 +109,7 @@
      (when vr
        (assert (and (lvec-eq (dimensions a) (dimensions vr)) (typep vr (type-of a)))  nil 'tensor-dimension-mismatch))))
 
-(define-tensor-method geev! ((a dense-tensor :x t) &optional vl vr)
+(define-tensor-method geev! ((a blas-mixin :x t) &optional vl vr)
   `(let* ((jobvl (if vl #\V #\N))
 	  (jobvr (if vr #\V #\N))
 	  (n (dimensions A 0))
@@ -153,11 +153,11 @@ elements ~a:~a of WR and WI contain eigenvalues which have converged." info n)))
  ========
  Computes the eigenvalues / eigenvectors of a Hermitian (symmetric) A.
  ")
-  (:method :before ((a dense-tensor) &optional (job :n) (uplo? *default-uplo*))
+  (:method :before ((a tensor) &optional (job :n) (uplo? *default-uplo*))
      (assert (typep a 'tensor-square-matrix) nil 'tensor-dimension-mismatch)
      (assert (and (member job '(:v :n)) (member uplo? '(:u :l))) nil 'invalid-arguments)))
 
-(define-tensor-method heev! ((a dense-tensor :output) &optional (job :n) (uplo? *default-uplo*))
+(define-tensor-method heev! ((a blas-mixin :output) &optional (job :n) (uplo? *default-uplo*))
   `(let ((evals (zeros (dimensions a 0) ',(realified-type (cl a)))))
      (with-columnification (() (A))
        (let ((info (t/lapack-heev! ,(cl a)
@@ -189,7 +189,7 @@ elements ~a:~a of WR and WI contain eigenvalues which have converged." info n)))
     evec))
 
 (defun eig (x &optional (job :nn) (uplo *default-uplo*))
-  (declare (type (and tensor-square-matrix (satisfies blas-tensorp)) x))
+  (declare (type (and tensor-square-matrix blas-mixin) x))
   (let ((*default-tensor-type* (class-of x)))
     (if (clinear-storep (class-of x))
 	(ecase job

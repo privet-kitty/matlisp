@@ -37,7 +37,7 @@
 	 (with ,(gm dims) = (coerce ,dimensions 'index-store-vector))
 	 (with ,(gm init) = (let ((,(gm idx) ,initial))
 			      (if (numberp ,(gm idx))
-				  (t/store-allocator index-store-vector (length ,(gm dims)) ,(gm idx))
+				  (t/store-allocator index-store-vector (length ,(gm dims)) :initial-element ,(gm idx))
 				  (coerce ,(gm idx) 'index-store-vector))))
 	 (with ,idx = (copy-seq ,(gm init)))
 	 (declare (type index-store-vector ,(gm dims) ,idx ,(gm init)))

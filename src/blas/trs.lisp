@@ -2,7 +2,7 @@
 
 ;;
 (deft/generic (t/blas-trsm! #'subtypep) sym (side uplo transA diagA alpha A lda B ldb))
-(deft/method (t/blas-trsm! #'blas-tensor-typep) (sym dense-tensor) (side uplo transA diagA alpha A lda B ldb)
+(deft/method t/blas-trsm! (sym blas-mixin) (side uplo transA diagA alpha A lda B ldb)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (side uplo transA diagA alpha A lda B ldb))
       `(let* (,@decl)
@@ -19,7 +19,7 @@
 	 ,B))))
 
 (deft/generic (t/blas-trsv! #'subtypep) sym (uplo transA diagA A lda b st-b))
-(deft/method (t/blas-trsv! #'blas-tensor-typep) (sym dense-tensor) (uplo transA diagA A lda b st-b)
+(deft/method t/blas-trsv! (sym blas-mixin) (uplo transA diagA A lda b st-b)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (uplo transA diagA A lda b st-b))
       `(let* (,@decl)
@@ -42,7 +42,7 @@
        (assert (and (typep A 'tensor-square-matrix) (if sidep (tensor-matrixp b) (<= (order b) 2))
 		    (= (dimensions A 0) (dimensions B (ecase side (#\L 0) (#\R 1))))) nil 'tensor-dimension-mismatch))))
 
-(define-tensor-method trs! (alpha (A dense-tensor :x) (b dense-tensor :x) &optional (solve :nn) (uplo *default-uplo*))
+(define-tensor-method trs! (alpha (A blas-mixin :x) (b blas-mixin :x) &optional (solve :nn) (uplo *default-uplo*))
   `(destructuring-bind (joba diag &optional (side #\L)) (split-job solve)
      (with-columnification (((A joba)) ())
        (letv* ((lda opa (blas-matrix-compatiblep a joba))

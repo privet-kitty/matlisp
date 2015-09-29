@@ -1,6 +1,6 @@
 (in-package #:matlisp)
 
-(defclass foreign-numeric-tensor (blas-numeric-tensor) ())
+(defclass foreign-tensor (dense-tensor) ())
 
 (deft/method t/store-allocator (sym foreign-numeric-tensor) (size &optional initial-element)
   (error "cannot allocate store for ~a" sym))

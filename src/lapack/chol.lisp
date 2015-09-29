@@ -28,7 +28,7 @@
 (in-package #:matlisp)
 
 (deft/generic (t/lapack-potrf! #'subtypep) sym (A lda uplo))
-(deft/method (t/lapack-potrf! #'blas-tensor-typep) (sym dense-tensor) (A lda uplo)
+(deft/method t/lapack-potrf! (sym blas-mixin) (A lda uplo)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (A lda uplo))
       `(let* (,@decl)
@@ -62,11 +62,11 @@
   [2] INFO = T: successful
 	     i:  U(i,i) is exactly zero.
 ")
-  (:method :before ((a dense-tensor) &optional (uplo *default-uplo*))
+  (:method :before ((a tensor) &optional (uplo *default-uplo*))
      (assert (typep a 'tensor-square-matrix) nil 'tensor-dimension-mismatch :message "Expected square matrix.")
      (assert (inline-member uplo (:l :u)) nil 'invalid-arguments :given uplo :expected `(member uplo '(:l :u)))))
 
-(define-tensor-method potrf! ((a dense-tensor :x t) &optional (uplo *default-uplo*))
+(define-tensor-method potrf! ((a blas-mixin :x t) &optional (uplo *default-uplo*))
   `(with-columnification (() (A))
      (let ((info (t/lapack-potrf! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) (char-upcase (aref (symbol-name uplo) 0)))))
        (unless (= info 0)
@@ -79,7 +79,7 @@
   (tricopy! 0 (potrf! a uplo) (ecase uplo (:l :uo) (:u :lo))))
 ;;
 (deft/generic (t/lapack-potrs! #'subtypep) sym (A lda B ldb uplo))
-(deft/method (t/lapack-potrs! #'blas-tensor-typep) (sym dense-tensor) (A lda B ldb uplo)
+(deft/method t/lapack-potrs! (sym blas-mixin) (A lda B ldb uplo)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (A lda B ldb uplo))
       `(let* (,@decl)
@@ -119,11 +119,11 @@
 		 but the factor U is exactly singular.
 		 Solution could not be computed.
 ")
-  (:method :before ((A dense-tensor) (B dense-tensor) &optional (uplo *default-uplo*))
+  (:method :before ((A tensor) (B tensor) &optional (uplo *default-uplo*))
      (assert (and (typep A 'tensor-square-matrix) (<= (order B) 2) (= (dimensions A 0) (dimensions B 0))) nil 'tensor-dimension-mismatch)
      (assert (inline-member uplo (:l :u)) nil 'invalid-value :given uplo :expected `(member uplo '(:u :l)))))
 
-(define-tensor-method potrs! ((A dense-tensor :x) (B dense-tensor :x t) &optional (uplo *default-uplo*))
+(define-tensor-method potrs! ((A blas-mixin :x) (B blas-mixin :x t) &optional (uplo *default-uplo*))
   `(if (tensor-vectorp B)
        (potrs! A (suptensor~ B 2) uplo)
        (with-columnification (((A #\C)) (B))
@@ -135,7 +135,7 @@
   'B)
 ;;
 (deft/generic (t/lapack-potri! #'subtypep) sym (A lda uplo))
-(deft/method (t/lapack-potri! #'blas-tensor-typep) (sym dense-tensor) (A lda uplo)
+(deft/method t/lapack-potri! (sym blas-mixin) (A lda uplo)
   (let ((ftype (field-type sym)))
     (using-gensyms (decl (A lda uplo))
       `(let* (,@decl)
@@ -157,11 +157,11 @@
   =======
   Computes the inverse of using the pre-computed Cholesky at A.
 ")
-  (:method :before ((A dense-tensor) &optional (uplo *default-uplo*))
+  (:method :before ((A blas-mixin) &optional (uplo *default-uplo*))
      (assert (and (typep A 'tensor-square-matrix)) nil 'tensor-dimension-mismatch)
      (assert (inline-member uplo (:l :u)) nil 'invalid-value :given uplo :expected `(member uplo '(:u :l)))))
 
-(define-tensor-method potri! ((A dense-tensor :x t) &optional (uplo *default-uplo*))
+(define-tensor-method potri! ((A blas-mixin :x t) &optional (uplo *default-uplo*))
   `(with-columnification (() (A))
      (let ((info (t/lapack-potri! ,(cl a)
 				  A (or (blas-matrix-compatiblep A #\N) 0)
@@ -171,7 +171,7 @@
 ;;
 
 (defun chol (a &optional (uplo *default-uplo*))
-  (declare (type (and tensor-square-matrix (satisfies blas-tensorp)) a))
+  (declare (type (and tensor-square-matrix blas-mixin) a))
   (let ((l (copy a)))
     (restart-case (potrf! l uplo)
       (increment-diagonal-and-retry (value)
@@ -188,7 +188,7 @@
 
 
 (deft/generic (t/lapack-ldl! #'subtypep) sym (A lda uplo ipiv &optional het?))
-(deft/method (t/lapack-ldl! #'blas-tensor-typep) (sym dense-tensor) (A lda uplo ipiv &optional het?)
+(deft/method t/lapack-ldl! (sym blas-mixin) (A lda uplo ipiv &optional het?)
   (let* ((ftype (field-type sym)) (complex? (subtypep ftype 'cl:complex)))
     (using-gensyms (decl (A lda uplo ipiv) (xxx lwork))
       `(let* (,@decl)
@@ -203,12 +203,12 @@
 	     (:& :integer :output) 0))))))
 
 (defgeneric ldl! (a &optional hermitian? uplo)
-  (:method :before ((a dense-tensor) &optional hermitian? uplo)
+  (:method :before ((a tensor) &optional hermitian? uplo)
      (declare (ignore hermitian?))
      (assert (typep a 'tensor-square-matrix) nil 'tensor-dimension-mismatch :message "Expected square matrix.")
      (assert (inline-member uplo (:l :u)) nil 'invalid-arguments :given uplo :expected `(member uplo '(:l :u)))))
 
-(define-tensor-method ldl! ((a dense-tensor :x t) &optional (hermitian? t) (uplo *default-uplo*))
+(define-tensor-method ldl! ((a blas-mixin :x t) &optional (hermitian? t) (uplo *default-uplo*))
   '(declare (ignorable hermitian?))
   (let ((complex? (subtypep (field-type (cl a)) 'cl:complex)))
     `(let ((ipiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type ',(matlisp-ffi::%ffc->lisp :integer))))
@@ -230,6 +230,7 @@
        (values a ipiv))))
 
 (defun ldl (a &optional (hermitian? t) (uplo *default-uplo*))
+  (declare (type (and tensor-square-matrix blas-mixin) a))
   (letv* ((ret ipiv (ldl! (copy a) hermitian? uplo))
 	  (D (zeros (dimensions A))))
     (tricopy! (diag~ ret) D :d)
@@ -246,7 +247,7 @@
 	      (ecase uplo (:u (permutation/ p)) (:l p))))))
 
 (defun cpermute! (m ipiv &optional (uplo *default-uplo*))
-  (declare (type (and dense-tensor tensor-square-matrix) m)
+  (declare (type (and tensor-square-matrix blas-mixin) m)
 	   (type (simple-array (signed-byte 32)) ipiv))
   (let ((rv (slice~ m 0)) (rvσ (slice~ m 0))
 	(n (length ipiv)) (hd (head m)) (sr (strides m 0)) (sc (strides m 1)))

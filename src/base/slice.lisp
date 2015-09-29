@@ -203,7 +203,7 @@
     (declare (type index-store-vector dims std))
     (macrolet ((kernel (jj) `(the index-type (* (aref std ii) (modproj (the index-type ,jj) (aref dims ii))))))
       (iter (for idx in indices)
-	    (let-typed ((sv (t/store-allocator index-store-vector (length idx) 0) :type index-store-vector))
+	    (let-typed ((sv (t/store-allocator index-store-vector (length idx) :initial-element 0) :type index-store-vector))
 	      (iter (for i from 0 below (length sv))
 		    (for jj in idx) (declare (type index-type i jj))
 		    (setf (aref sv i) (kernel jj)))
