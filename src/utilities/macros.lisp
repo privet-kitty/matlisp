@@ -381,4 +381,11 @@
   (with-gensyms (xx)
     `(let ((,xx ,x)) (push ,xx ,place) ,xx)))
 
+(defmacro mapcase (keyform function &body cases)
+  (with-gensyms (key)
+    `(let ((,key ,keyform))
+       (cond ,@(mapcar #'(lambda (x)
+			   (if (null x) `(t (error "case failure"))
+			       `((,function ,key ',(car x)) ,@(cdr x)))) cases)))))
+
 )
