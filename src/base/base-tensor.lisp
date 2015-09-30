@@ -172,6 +172,6 @@
   (let ((supclass (mapcar #'class-name (closer-mop:class-direct-superclasses (find-class class)))))
     (append
      (list (field-type class))
-     (set-difference supclass '(tensor dense-tensor))
+     (set-difference supclass '(tensor dense-tensor blas-mixin))
      (when (member 'stride-accessor supclass) (list (first (ensure-list (store-type class))))))))
 ;;
