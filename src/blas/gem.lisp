@@ -67,8 +67,7 @@
       (declare (type ,sym ,A ,B ,C)
 	       (type ,(field-type sym) ,alpha ,beta)
 	       (type character ,transa ,transb))
-      (unless (t/f= ,(field-type sym) ,beta (t/fid* ,(field-type sym)))
-	(t/scdi! ,sym ,beta ,C :scal? t :numx? t))
+      (scal! ,beta ,C)
       ,@(when (field-realp (field-type sym))
 	      `((when (char= ,transa #\C) (setq ,transa #\T))
 		(when (char= ,transb #\C) (setq ,transb #\T))))
@@ -99,6 +98,7 @@
 					,@(loop :for tb :across (if (field-realp (field-type sym)) "NT" "NTC")
 					     :collect `(,tb ,(generate-mm-code ta tb))))))))
       ,C)))
+
 ;;---------------------------------------------------------------;;
 (defgeneric gem! (alpha A B beta C &optional job)
   (:documentation
