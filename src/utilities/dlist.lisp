@@ -57,6 +57,7 @@
 (definline drdc (buf) (first buf))
 (definline dcdr (buf) (second buf))
 (definline dcar (buf) (cddr buf))
+(definline (setf dcar) (value buf) (setf (cddr buf) value))
 
 (defun dappend! (&rest dlsts)
   (let ((dlsts (remove-if #'null dlsts)))

@@ -98,6 +98,7 @@
 	   #:memoizing-let #:defmem #:with-memoization))
 
 (defpackage "MATLISP-DLIST"
+  (:nicknames #:dlist)
   (:use #:common-lisp #:matlisp-utilities #:iterate)
   (:export #:dpush #:dcons #:dpop #:dlist #:drdc #:dcdr #:dcar #:dappend!))
 

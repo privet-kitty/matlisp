@@ -320,7 +320,7 @@
 (defmacro with-coordinates ((&rest syms) vector &body code)
   (with-gensyms (vec)
     `(let ((,vec ,vector))
-       (declare (type base-vector ,vec))
+       (declare (type tensor-vector ,vec))
        (assert (= (dimensions ,vec 0) ,(length syms)) nil 'tensor-dimension-mismatch)
        (symbol-macrolet (,@(mapcar (let ((i -1)) #'(lambda (x) `(,x (ref ,vec ,(incf i))))) syms))
 	 ,@code))))
