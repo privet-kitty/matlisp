@@ -124,7 +124,7 @@
      T                 Transpose
      C                 Hermitian transpose {conjugate transpose}
 ")
-  (:method :before (alpha (A dense-tensor) (B dense-tensor) beta (C dense-tensor) &optional (job :nn))
+  (:method :before (alpha (A tensor) (B tensor) beta (C tensor) &optional (job :nn))
     (assert (not (or (eq A C) (eq B C))) nil 'invalid-arguments :message "GEM!: C = {A or B} is not allowed.")
     (letv* (((joba &optional (jobb #\N)) (split-job job)))
       (assert (and
