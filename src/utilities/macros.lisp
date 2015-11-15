@@ -64,7 +64,7 @@
 (defmacro cart-case ((&rest vars) &body cases)
   (let ((decl (zipsym vars)))
     `(let (,@decl)
-       (cond ,@(mapcar #'(lambda (clause) `((ziprm (and eql) ,(mapcar #'car decl) ,(first clause)) ,@(cdr clause))) cases)))))
+       (cond ,@(mapcar #'(lambda (clause) `((and ,@(mapcar #'(lambda (x) (list* 'eql x)) (remove-if #'(lambda (x) (eql (cadr x) t)) (zip (mapcar #'car decl) (first clause))))) ,@(cdr clause))) cases)))))
 
 (defmacro cart-ecase ((&rest vars) &body cases)
   (let ((decl (zipsym vars)))
@@ -391,11 +391,11 @@
 (defmacro recurse-maadi (x match &rest dispatchers)
   ;;recurse-ಮಾಡಿ ಸಕ್ಕತ್ತಾಗಿ!
   (assert (eql (first match) :match) nil "invalid dispatch name")
-  (let ((macros (mapcar #'(lambda (x) (list* (the (and keyword (not (member :and :or :* :not :!))) (car x))
+  (let ((macros (mapcar #'(lambda (x) (list* (the (and keyword (not (member :and :or :* :not :.))) (car x))
 					     (gensym "dispatch") (cdr x))) (list* match dispatchers))))
     (labels ((recurse (p)
 	       (cond
-		 ((and (listp p) (member (car p) (list* :and :or :* :not :! (mapcar #'car (cdr macros)))))
+		 ((and (listp p) (member (car p) (list* :and :or :* :not :. (mapcar #'car (cdr macros)))))
 		  (case (car p)
 		    (:and `(and ,@(mapcar #'recurse (cdr p))))
 		    (:or `(or ,@(mapcar #'recurse (cdr p))))
@@ -403,7 +403,7 @@
 				 `(not ,(if (eql term :*)
 					    `(do () ((not ,(recurse clause))))
 					    (recurse clause)))))
-		    (:! `(locally ,@(cdr p)))
+		    (:. `(locally ,@(cdr p)))
 		    (t `(,(second (assoc (car p) macros)) ,@(cdr p)))))
 		 (t `(,(second (assoc :match macros)) ,p)))))
       `(macrolet (,@(mapcar #'cdr macros)) ,(recurse x)))))

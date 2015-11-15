@@ -17,7 +17,7 @@
     `(letv* ((,dimsv (coerce ,dims 'index-store-vector) :type index-store-vector)
 	     (,strdv ,tsize (make-stride-cmj ,dimsv) :type index-store-vector index-type))
        (make-instance ',class :dimensions ,dimsv :head 0 :strides ,strdv
-		      :store (t/store-allocator ,class :size (cl:max (cl:ceiling (cl:* *default-sparsity* ,tsize)) (or ,size 0)))))))
+		      :store (t/store-allocator ,class ,tsize :size (cl:max (cl:ceiling (cl:* *default-sparsity* ,tsize)) (or ,size 0)))))))
 
 (deft/method t/zeros (class graph-accessor) (dims &optional size)
   (with-gensyms (dimsv nnz)

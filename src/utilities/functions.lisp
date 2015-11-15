@@ -107,7 +107,7 @@
   @end lisp
   "
   (let ((acc nil))
-    (maptree-if #'atom #'(lambda (x) (push x acc)) x)
+    (when x (maptree-if #'atom #'(lambda (x) (push x acc)) x))
     (reverse acc)))
 
 (defun cart (list &rest more-lists)

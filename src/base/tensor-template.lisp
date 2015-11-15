@@ -10,10 +10,9 @@
   (defun clinear-storep (x) (and (subtypep x 'tensor) (linear-storep x) (real-subtype (field-type x))))
   (defun float-tensorp (type) (member (field-type type) '(single-float double-float (complex single-float) (complex double-float)) :test #'equal))
   (defun tensor-leafp (x)
-    (let* ((x (etypecase x (class x) (symbol (find-class x)))))
-      (and
-       (= (length (intersection (mapcar #'find-class '(base-tensor tensor dense-tensor)) (closer-mop:class-direct-superclasses x))) 1)
-       (not (find-if #'tensor-leafp (closer-mop:class-direct-subclasses x)))))))
+    (not (closer-mop:class-direct-subclasses (find-class x)))))
+
+;(closer-mop:class-direct-subclasses (find-class (tensor 'double-float)))
 
 (deft/method t/store-type (sym graph-accessor) (&optional (size '*))
   `(simple-array ,(or (real-subtype (field-type sym)) (field-type sym)) (,size)))

@@ -169,6 +169,8 @@ end
 					 (finally (return (values xk k)))))))
     (if buffer-size (outline t) (outline nil))))
 
+(defun )
+
 #+nil
 (define-optimizer bfgs-descent (x0 func)
   (:updator (x f df &aux-dynamic
@@ -180,8 +182,9 @@ end
       (copy! x+ x) (setf tk tk+))))
 ;;
 
-(bfgs-descent #d [1, 1] #'rosenbrock :max-iterations 100)
 
+
+;;
 (defun cauchy (delta g H)
   (let* ((H.g #i(H * g)) (gHg (dot g H.g))
 	 (ng (norm g)) (plen (/ delta ng)))
