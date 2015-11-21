@@ -20,6 +20,9 @@
 	((tensor tensor) (axpy 1 a b)))
       a))
 
+#+nil
+(defgeneric binary+ (a b))
+
 (definline t+ (&rest objs)
   (reduce #'tb+ objs))
 ;;

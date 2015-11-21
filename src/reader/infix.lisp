@@ -343,7 +343,7 @@
 (defun function-cell-reader (stream char)
   (let ((default-paren-reader (get-macro-character #\( (named-readtables:find-readtable :common-lisp))))
     (if (char= (peek-char nil stream t nil t) #\∘)
-	(optima:match (macroexpand `(curry ,@(cdr (let ((*readtable* (named-readtables:find-readtable :common-lisp)))
+	(trivia:match (macroexpand `(curry ,@(cdr (let ((*readtable* (named-readtables:find-readtable :common-lisp)))
 						    (read (progn (unread-char #\( stream) stream) t nil t)))))
 	  ((list 'function ff) ff)
 	  (ff ff))

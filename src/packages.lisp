@@ -70,7 +70,7 @@
 ))
 
 (defpackage "MATLISP-UTILITIES"
-  (:use #:common-lisp #:iterate #:optima #:matlisp-conditions)
+  (:use #:common-lisp #:iterate #:trivia #:matlisp-conditions)
   (:export #:id #:pophash
 	   #:vectorify #:copy-n #:ensure-list
 	   #:zip #:zipsym
@@ -139,8 +139,12 @@
    #:with-vector-data-addresses)
   (:documentation "Fortran foreign function interface"))
 
+(defpackage "MATLISP-DESTRUCTURING"
+  (:use #:cl #:matlisp-utilities #:iterate)
+  (:export #:destruct-parser #:λlist-keyword #:variable-symbol))
+
 (defpackage "MATLISP"
-  (:use #:common-lisp #:iterate #:named-readtables #:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template)
+  (:use #:common-lisp #:iterate #:trivia #:named-readtables #:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template)
   (:import-from :λ-reader #:λ)
   (:nicknames :m)
   ;;Shadow iterate:sum

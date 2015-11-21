@@ -176,7 +176,7 @@
 	(+ 1 X))
   @end lisp
   "
-  (destructuring-bind (decl body) (optima:match (first body)
+  (destructuring-bind (decl body) (trivia:match (first body)
 				    ((cons 'declare _) (list (first body) (rest body)))
 				    (_ (list nil body)))
 
@@ -206,7 +206,7 @@
 	(+ 1 X))
   @end lisp
   "
-  (destructuring-bind (decl body) (optima:match (first body)
+  (destructuring-bind (decl body) (trivia:match (first body)
 				    ((cons 'declare _) (list (first body) (rest body)))
 				    (_ (list nil body)))
     `(let* (,@(mapcar #'(lambda (x) (subseq x 0 2)) bindings))
@@ -371,7 +371,7 @@
 (defmacro curry (func &rest more-funcs)
   (with-gensyms (x)
     `(lambda (,x) ,(reduce #'(lambda (f a)
-			       (let ((f (optima:match f
+			       (let ((f (trivia:match f
 					  ((list 'function x) x)
 					  (_ f))))
 				 `(,f ,a)))

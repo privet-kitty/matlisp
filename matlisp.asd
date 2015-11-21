@@ -31,7 +31,7 @@
 (in-package #:matlisp-system)
 
 (asdf:defsystem :matlisp-basic
-  :depends-on (#:cffi #:iterate #:optima #:named-readtables #:lambda-reader #:yacc #:trivial-garbage #:closer-mop #:weyl #:external-program)
+  :depends-on (#:cffi #:iterate #:trivia #:named-readtables #:lambda-reader #:yacc #:trivial-garbage #:closer-mop #:weyl #:external-program)
   :pathname "src"
   :components
   ((:file "packages")
@@ -45,7 +45,8 @@
 			 (:file "dlist" :depends-on ("macros" "functions"))
 			 (:file "union-find" :depends-on ("macros" "functions"))
 			 (:file "lvec" :depends-on ("macros" "functions"))
-			 (:file "template" :depends-on ("macros" "functions"))))
+			 (:file "template" :depends-on ("macros" "functions"))
+			 (:file "destructuring" :depends-on ("macros" "functions"))))
    (:file "lazy-loader" :depends-on ("utilities"))))
 
 (asdf:defsystem :matlisp

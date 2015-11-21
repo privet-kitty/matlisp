@@ -198,8 +198,8 @@
 		 (ge-expression
 		  (setf inputs (union inputs (slot-value expr 'inputs) :test #'equal))
 		  (maptreeu #'(lambda (x)
-				(optima:match x
-				  ((optima:guard x (numberp x)) (coerce x type))
+				(trivia:match x
+				  ((trivia:guard x (numberp x)) (coerce x type))
 				  ((list 'expt m e) x)
 				  (_ (values x #'mapcar))))
 			    (weyli::lispify (slot-value expr 'expression)))))))
