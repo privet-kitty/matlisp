@@ -408,4 +408,8 @@
 		 (t `(,(second (assoc :match macros)) ,p)))))
       `(macrolet (,@(mapcar #'cdr macros)) ,(recurse x)))))
 
+(defmacro rec (name args &rest body)
+  (let ((keypos (or (position-if #'(lambda (x) (member x cl:lambda-list-keywords)) args) (length args))))
+    `(labels ((,name (,@(mapcar #'first (subseq args 0 keypos)) ,@(subseq args keypos)) ,@body))
+       (,name ,@(mapcar #'second (subseq args 0 keypos))))))
 )

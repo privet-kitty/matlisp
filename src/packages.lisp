@@ -91,7 +91,7 @@
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:binding-gensyms #:values-n
 	   #:letv* #:let-typed #:let*-typed #:make-array-allocator #:ziprm #:inline-member
 	   #:define-constant #:eval-every #:recurse-maadi
-	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase #:curry #:pushcar #:mapcase
+	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase #:curry #:pushcar #:mapcase #:rec
 	   ;;
 	   #:definline #:with-optimization #:very-quickly
 	   ;;
