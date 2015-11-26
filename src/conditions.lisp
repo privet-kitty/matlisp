@@ -239,13 +239,6 @@
   (:report (lambda (c stream)
 	     (when (slots-boundp c 'method 'tensor-class)
 	       (format stream "The tensor class: ~a, does not have the method: ~a defined as a specialization." (method-name c) (tensor-class c))))))
-
-(define-condition tensor-abstract-class (tensor-error)
-  ((tensor-class :reader tensor-class :initarg :tensor-class))
-  (:documentation "Generating the method for the given class is not allowed.")
-  (:report (lambda (c stream)
-	     (when (slots-boundp c 'tensor-class)
-	       (format stream "Will not (yes you read that right, buster!) generate method for abstract tensor class \"~a\"." (tensor-class c))))))
 ;;Matrix
 (define-condition matrix-error (tensor-error)
   ;;Optional argument for error-handling.
