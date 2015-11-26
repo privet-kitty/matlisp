@@ -7,6 +7,12 @@
 (deftype index-store-matrix (&optional (m '*) (n '*)) `(simple-array index-type (,m ,n)))
 ;;
 (defclass base-tensor () ())
+(defclass vector-mixin () ())
+(defclass matrix-mixin () ())
+
+(eval-every
+  (closer-mop:defclass tensor-method-generator (closer-mop:standard-generic-function) ()
+    (:metaclass closer-mop:funcallable-standard-class)))
 ;;
 (defparameter *accessor-types* '(stride-accessor coordinate-accessor graph-accessor))
 
@@ -28,10 +34,10 @@
       (loop :for i :from 0 :below (length (dimensions x))
 	 :do (assert (> (dimensions x i) 0) nil 'tensor-invalid-dimension-value :argument i :dimension (dimensions x i) :tensor x)))))
 
-(defgeneric total-size (obj)
+(closer-mop:defgeneric total-size (obj)
   (:method ((obj sequence)) (length obj))
-  (:method ((arr array)) (array-total-size arr)))
-
+  (:method ((arr array)) (array-total-size arr))
+  (:generic-function-class tensor-method-generator))
 ;;We use order (opposed to CL convention) so as not to cause confusion with matrix rank.
 (definline order (x)
   (declare (type base-accessor x))

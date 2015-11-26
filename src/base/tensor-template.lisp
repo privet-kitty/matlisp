@@ -8,9 +8,7 @@
   (defun linear-storep (cl) (eql (first (ensure-list (store-type cl))) 'simple-array))
   (defun hash-table-storep (x) (eql (store-type x) 'hash-table))
   (defun clinear-storep (x) (and (subtypep x 'tensor) (linear-storep x) (real-subtype (field-type x))))
-  (defun float-tensorp (type) (member (field-type type) '(single-float double-float (complex single-float) (complex double-float)) :test #'equal))
-  (defun tensor-leafp (x)
-    (not (closer-mop:class-direct-subclasses (find-class x)))))
+  (defun float-tensorp (type) (member (field-type type) '(single-float double-float (complex single-float) (complex double-float)) :test #'equal)))
 
 ;(closer-mop:class-direct-subclasses (find-class (tensor 'double-float)))
 
@@ -197,6 +195,105 @@
 	(finally (return max))))
 ;;(cclass-max (tensor '(complex double-float)) (tensor '(complex double-float)))
 
+;;MOP layer to fix issues with generation and subclassing.
+#+nil
+(closer-mop:defclass tensor-method-generator (closer-mop:standard-generic-function) ()
+  (:metaclass closer-mop:funcallable-standard-class))
+;;
+(closer-mop:defclass classp-specializer (closer-mop:specializer)
+  ((object-class :initform nil :initarg :object-class)
+   (direct-methods :initform nil :reader closer-mop:specializer-direct-methods)))
+
+(defmethod closer-mop:add-direct-method ((specializer classp-specializer) method)
+  (pushnew method (slot-value specializer 'direct-methods)))
+
+(defmethod closer-mop:remove-direct-method ((specializer classp-specializer) method)
+  (setf (slot-value specializer 'direct-methods)
+	(remove method (slot-value specializer 'direct-methods))))
+
+(defmethod make-load-form ((obj classp-specializer) &optional env)
+  ;;(make-load-form-saving-slots obj :environment env)
+  (values `(classp-specializer ',(class-name (slot-value obj 'object-class))) nil))
+;;
+(closer-mop:defclass group-specializer (closer-mop:specializer)
+  ((object-class :initform nil :initarg :object-class)
+   (group-name :initform nil :initarg :group-name)
+   (direct-methods :initform nil :reader closer-mop:specializer-direct-methods)))
+
+(defmethod closer-mop:add-direct-method ((specializer group-specializer) method)
+  (pushnew method (slot-value specializer 'direct-methods)))
+
+(defmethod closer-mop:remove-direct-method ((specializer group-specializer) method)
+  (setf (slot-value specializer 'direct-methods)
+	(remove method (slot-value specializer 'direct-methods))))
+
+(defmethod make-load-form ((obj group-specializer) &optional env)
+  ;;  (make-load-form-saving-slots obj :environment env)
+  (values `(group-specializer ',(class-name (slot-value obj 'object-class)) ',(slot-value obj 'group-name)) nil))
+;;
+(defparameter *specializer-table* (make-hash-table :test 'equal))
+(with-memoization (*specializer-table*)
+  (defmem classp-specializer (class-name)
+    (make-instance 'classp-specializer :object-class (find-class class-name)))
+  (defmem group-specializer (class-name group-name)
+    (make-instance 'group-specializer :object-class (find-class class-name) :group-name (the keyword group-name))))
+
+;;
+(defmethod closer-mop:compute-applicable-methods-using-classes ((gf tensor-method-generator) required-classes)
+  (iter mc
+	(for m in (closer-mop:generic-function-methods gf))
+	(with class-info-enoughp = t)
+	(iter (for s in (closer-mop:method-specializers m))
+	      (for c in required-classes) (with group-keys = nil)
+	      (always
+	       (typecase s
+		 (class (subtypep c s))
+		 (closer-mop:eql-specializer (and (eql c (class-of (closer-mop:eql-specializer-object s)))
+						  (not (setf class-info-enoughp nil))))
+		 (group-specializer
+		  (let ((key-name (slot-value s 'group-name)))
+		    (if-let (key (assoc key-name group-keys))
+		      (eql (cdr key) c)
+		      (when (subtypep c (slot-value s 'object-class))
+			(push (cons key-name c) group-keys) t))))
+		 (classp-specializer (eq c (slot-value s 'object-class)))))
+	      (finally (in mc (collect m into applicable-methods))))
+	(finally (return-from mc
+		   (values (sort (copy-list applicable-methods) #'(lambda (m1 m2) (method-more-specific-p m1 m2 required-classes)))
+			   class-info-enoughp)))))
+;;Add closer-mop:compute-applicable-methods
+;;Borrowed from AMOP p.122
+(defun method-more-specific-p (method1 method2 required-classes)
+  (map nil #'(lambda (spec1 spec2 arg-class)
+	       (unless (or (eq spec1 spec2)
+			   (cart-typecase (spec1 spec2)
+			     ((classp-specializer classp-specializer) (eq (slot-value spec1 'object-class) (slot-value spec1 'object-class)))
+			     ((group-specializer group-specializer) (and (eq (slot-value spec1 'object-class) (slot-value spec1 'object-class))
+									 (eq (slot-value spec1 'group-name) (slot-value spec1 'group-name))))))
+		 (return-from method-more-specific-p (sub-specializer-p spec1 spec2 arg-class))))
+       (closer-mop:method-specializers method1)
+       (closer-mop:method-specializers method2)
+       required-classes))
+
+(defun sub-specializer-p (spec1 spec2 arg-class)
+  (cart-typecase (spec1 spec2)
+    ((class class) (not (null (find spec2 (cdr (member spec1 (closer-mop:class-precedence-list arg-class)))))))
+    ((classp-specializer classp-specializer) (sub-specializer-p (the class (slot-value spec1 'object-class)) (the class (slot-value spec2 'object-class)) arg-class))
+    ;;classp-specializer in list if spec1.object-class = arg-class 
+    ((classp-specializer class) t)
+    ((group-specializer class)
+     (if (or (eq (slot-value spec1 'object-class) spec2)
+	     (sub-specializer-p (slot-value spec1 'object-class) spec2 arg-class))
+	 t nil))
+    ((class group-specializer) (sub-specializer-p spec1 (slot-value spec2 'object-class) arg-class))
+    ((classp-specializer group-specializer)
+     (or (eq (slot-value spec1 'object-class) (slot-value spec2 'object-class))
+	 (sub-specializer-p (slot-value spec1 'object-class) (slot-value spec2 'object-class) arg-class)))
+    ((group-specializer classp-specializer)
+     (sub-specializer-p (slot-value spec1 'object-class) (slot-value spec2 'object-class) arg-class))
+    ((closer-mop:eql-specializer t) t)))
+
+;;(closer-mop:subclassp (find-class (tensor 'double-float)) (find-class 'base-tensor))
 (defmacro define-tensor-method (name (&rest args) &body body)
   (let* ((keypos (or (position-if (lambda (x) (member x cl:lambda-list-keywords)) args) (length args)))
 	 (dispatch-args (subseq args 0 keypos))
@@ -204,8 +301,9 @@
 	 (dispatch-key (mapcar (lambda (x) (if (consp x) (second x) t)) dispatch-args))
 	 (generate-args (remove-if-not #'(lambda (x) (and (consp x) (cddr x))) dispatch-args))
 	 (generate-groups (iter (for ele in generate-args) (unioning (list (third ele))))))
-    (with-gensyms (xx yy coerce-types generate-dispatch generate-group-types value existsp type-methods func)
+    (with-gensyms (xx value existsp type-methods func)
       `(eval-every
+	 ;;clear methods
 	 (letv* ((,value ,existsp (gethash ',name *template-generated-methods*)))
 	   (if ,existsp
 	       (if-let (,type-methods (assoc ',dispatch-key (cdr ,value) :test #'equal))
@@ -214,36 +312,58 @@
 		       (finally (setf (cdr ,type-methods) nil)))
 		 (setf (cdr ,value) (list* (list ',dispatch-key) (cdr ,value))))
 	       (setf (gethash ',name *template-generated-methods*) (list ',name (list ',dispatch-key)))))
-	 ;;
-	 (defmethod ,name (,@(mapcar (lambda (x) (if (consp x) (subseq x 0 2) x)) args))
-	   (let* ((,generate-dispatch (list ,@(mapcar (lambda (x) (letv* (((arg default-class group &optional outputp) x :type (t nil t &optional t)))
-								    `(list ',arg (let ((,xx (class-name (class-of ,arg))))
-										   (assert (tensor-leafp ,xx) nil 'tensor-abstract-class :tensor-class ,xx)
-										   ,xx)
-									   ',group ,outputp)))
-						      generate-args)))
-		  (,generate-group-types (iter (for ,xx in ,generate-dispatch)
-					       (with ,generate-group-types := (zip (list ,@(mapcar (lambda (x) `(quote ,x)) generate-groups))))
-					       (let ((,yy (assoc (third ,xx) ,generate-group-types)))
-						 (setf (cdr ,yy) (if (cdr ,yy) (cclass-max (cdr ,yy) (second ,xx)) (second ,xx)))
-						 (assert (or (not (fourth ,xx)) (eql (cdr ,yy) (second ,xx))) nil "output type clash: don't know how to generate code for the given arguments."))
-					       (finally (return ,generate-group-types))))
-		  (,coerce-types (list ,@(mapcar (lambda (x) (cond ((atom x) t)
-								   ((cddr x) `(cdr (assoc ',(third x) ,generate-group-types)))
-								   (t `(quote ,(second x)))))
-						 dispatch-args))))
-	     (unless (find-method (function ,name) nil ,coerce-types nil)
-	       (let ((,xx (or (assoc ',dispatch-key (cdr (gethash ',name *template-generated-methods*)) :test #'equal) (error "Method table missing from *template-generated-methods*!"))))
-		 ;;(format t "Compiling ~a method for dispatch ~s." ',name ,coerce-types)
-		 (push (compile-and-eval
-			`(defmethod ,',name (,@(append (zip ',dispatch-sym ,coerce-types) ',(nthcdr keypos args)))
-			   ,@(macrolet ((cl (,xx) `(or (cdr (assoc (third (assoc ',,xx ,',generate-dispatch)) ,',generate-group-types)) (error "Can't find class of ~a" ',,xx))))
-				       (list ,@body))))
-		       (cdr ,xx))))
-	     (apply #',name (append (mapcar (lambda (,xx ,yy) (lazy-coerce ,xx ,yy)) (list ,@dispatch-sym) ,coerce-types)
-				    ,(if (find '&rest args)
-					 `(list* ,@(mapcar #'(lambda (x) (if (consp x) (first x) x)) (remove-if (lambda (x) (member x cl:lambda-list-keywords)) (butlast (nthcdr keypos args)))) ,(car (last args)))
-					 `(list ,@(mapcar #'(lambda (x) (if (consp x) (first x) x)) (remove-if (lambda (x) (member x cl:lambda-list-keywords)) (nthcdr keypos args))))))))))))))
+	 ;;generic type coercer.
+	 ,@(let* ((coerce-groups (remove-if-not #'(lambda (x) (< 1 (length (remove-if-not #'(lambda (y) (eql x (third y))) generate-args)))) generate-groups))
+		  (sym (zipsym coerce-groups)))
+	     (when coerce-groups
+	       `((defmethod ,name (,@(mapcar #'(lambda (x) (if (consp x) (subseq x 0 2) x)) (subseq args 0 keypos)) ,@(subseq args keypos))
+		   (let (,@(iter (for (ts g) in sym)
+				 (collect `(,ts ,(rec c+ ((lst (remove-if-not #'(lambda (x) (eql g (third x))) generate-args)) &aux (tmp (gensym)))
+						      (when lst `(cclass-max (type-of ,(first (car lst))) ,(c+ (cdr lst)))))))))
+		     ,@(iter (for (ts g) in sym)
+			     (appending (mapcar #'(lambda (x)
+						    `(assert (eql ,ts (type-of ,(first x))) nil "output type clash: don't know how to generate code for the given arguments."))
+						(remove-if-not #'(lambda (x) (and (eql g (third x)) (fourth x))) generate-args))))
+		     ,@(let ((dargs (mapcar #'(lambda (x)
+						(match x
+						  ((λlist name dispatch (guard group (member group coerce-groups)) &optional destructive)
+						   (if destructive name `(lazy-coerce ,name ,(first (rassoc (list group) sym :test #'equal)))))
+						  ((list name dispatch) name)
+						  (_ x)))
+					    (subseq args 0 keypos))))
+			    (if-let (rest-pos (position '&rest args))
+			      `((apply #',name (list* ,@dargs ,@(mapcar #'(lambda (x) (first (ensure-list x))) (set-difference (subseq args keypos rest-pos) cl:lambda-list-keywords))
+						      ,(elt args (1+ rest-pos)))))
+			      `((,@(if (symbolp name) `(,name) `(funcall #',name)) ,@dargs ,@(mapcar #'(lambda (x) (first (ensure-list x))) (set-difference (subseq args keypos) cl:lambda-list-keywords)))))))))))
+	 ;;method generator.
+	 ,@(let ((sym (zipsym generate-groups)))
+	     `((defmethod ,name (,@(mapcar (lambda (x) (match x
+							 ((λlist name dispatch group &optional destructive)
+							  `(,name ,(group-specializer dispatch group)))
+							 (_ x)))
+					   (subseq args 0 keypos))
+				 ,@(subseq args keypos))
+		 (let (,@(iter (for (tg g) in sym) (collect `(,tg (type-of ,(first (find-if #'(lambda (x) (eql (third x) g)) generate-args))))))
+		       (,xx (or (assoc ',dispatch-key (cdr (gethash ',name *template-generated-methods*)) :test #'equal)
+				(error "Method table missing from *template-generated-methods*!"))))
+		   ;;(format t "Compiling ~a method for dispatch ~s." ',name ,coerce-types)		   
+		   (push
+		    (macrolet ((cl (,xx) (ecase ,xx ,@(mapcar #'(lambda (x) `(,(second x) (quote ,(first x))))  sym))))
+		      (compile-and-eval
+		       `(defmethod ,',name (,@(list ,@(mapcar (lambda (x) (match x
+									    ((λlist name dispatch group &optional destructive)
+									     `(list ',name (classp-specializer (cl ,group))))
+									    (_ `(quote ,x))))
+							      (subseq args 0 keypos)))
+													  ,@',(subseq args keypos))
+			  ,@(list ,@body))))
+		    (cdr ,xx)))
+		 ,@(let ((dargs (mapcar #'(lambda (x) (first (ensure-list x))) (subseq args 0 keypos))))
+		        (if-let (rest-pos (position '&rest args))
+			  `((apply #',name (list* ,@dargs ,@(mapcar #'(lambda (x) (first (ensure-list x))) (set-difference (subseq args keypos rest-pos) cl:lambda-list-keywords))
+						  ,(elt args (1+ rest-pos)))))
+			  `((,@(if (symbolp name) `(,name) `(funcall #',name)) ,@dargs ,@(mapcar #'(lambda (x) (first (ensure-list x))) (set-difference (subseq args keypos) cl:lambda-list-keywords)))))))))))))
+)
 ;;
 
 ;; (defgeneric testg (x &optional ele))
@@ -268,17 +388,19 @@
 ;;        `(t/axpy! ,(cl x) alpha x y))))
 
 
-(defgeneric store-ref (tensor idx)
-  (:documentation  "Generic serial read access to the store."))
+(closer-mop:defgeneric store-ref (tensor idx)
+  (:documentation  "Generic serial read access to the store.")
+  (:generic-function-class tensor-method-generator))
 (define-tensor-method store-ref ((tensor tensor :x) idx)
-  `(t/store-ref ,(cl tensor) (t/store ,(cl tensor) tensor) idx))
+  `(t/store-ref ,(cl :x) (t/store ,(cl :x) tensor) idx))
 
-(defgeneric (setf store-ref) (value tensor idx))
+(closer-mop:defgeneric (setf store-ref) (value tensor idx)
+  (:generic-function-class tensor-method-generator))
 (define-tensor-method (setf store-ref) (value (tensor tensor :x) idx)
-  `(t/store-set ,(cl tensor) value (t/store ,(cl tensor) tensor) idx))
+  `(t/store-set ,(cl :x) value (t/store ,(cl :x) tensor) idx))
 
 ;;
-(defgeneric store-size (tensor)
+(closer-mop:defgeneric store-size (tensor)
   (:documentation "
   Syntax
   ======
@@ -287,15 +409,16 @@
   Purpose
   =======
   Returns the number of elements the store of the tensor can hold
-  (which is not necessarily equal to its vector length)."))
+  (which is not necessarily equal to its vector length).")
+  (:generic-function-class tensor-method-generator))
 (define-tensor-method store-size ((tensor tensor :x))
-  `(t/store-size ,(cl tensor) (slot-value tensor 'store)))
+  `(t/store-size ,(cl :x) (slot-value tensor 'store)))
 
 (defmethod total-size ((x dense-tensor))
   (t/total-size dense-tensor x))
 
 (define-tensor-method total-size ((obj tensor :x))
-  `(t/total-size ,(cl obj) obj))
+  `(t/total-size ,(cl :x) obj))
 
 ;;Blas
 (deft/generic (t/blas-lb #'subtypep) sym (i))

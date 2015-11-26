@@ -37,8 +37,8 @@
 
 (define-tensor-method ref ((x graph-accessor :x) &rest subscripts)
   `(if-let (idx (graph-indexing subscripts x))
-     (values (t/store-ref ,(cl x) (t/store ,(cl x) x) (the index-type idx)) t)
-     (values (t/fid+ (t/field-type ,(cl x))) nil)))
+     (values (t/store-ref ,(cl :x) (t/store ,(cl :x) x) (the index-type idx)) t)
+     (values (t/fid+ (t/field-type ,(cl :x))) nil)))
 
 (define-tensor-method (setf ref) (value (x graph-accessor :x) &rest subscripts)
   `(letv* (((r c) subscripts :type (index-type index-type))
@@ -46,22 +46,22 @@
      (when (slot-value x 'transposep) (rotatef r c))
      (unless idx
        (letv* ((δg (δ-i x) :type index-store-vector)
-	       (sto (t/store ,(cl x) x) :type ,(store-type (cl x))))
+	       (sto (t/store ,(cl :x) x) :type ,(store-type (cl :x))))
 	 (declare (type index-type lb))
 	 ,@(flet ((code (sfr sto δfr δto)
 			`(very-quickly
 			   ,@(unless (and (eql δfr δto) (eql sto sfr))
 				     `((loop :for i :of-type index-type :from 0 :below lb
 					  :do (setf (aref ,δto i) (aref ,δfr i)
-						    (t/store-ref ,(cl x) ,sto i) (t/store-ref ,(cl x) ,sfr i)))))
+						    (t/store-ref ,(cl :x) ,sto i) (t/store-ref ,(cl :x) ,sfr i)))))
 			   (loop :for i :from lb :below (nth-value 1 (fence x -1))
 			      :do (setf (aref ,δto (1+ i)) (aref ,δfr i)
-					(t/store-ref ,(cl x) ,sto (1+ i)) (t/store-ref ,(cl x) ,sfr i))))))
+					(t/store-ref ,(cl :x) ,sto (1+ i)) (t/store-ref ,(cl :x) ,sfr i))))))
 		 `((if (> (store-size x) (nth-value 1 (fence x -1)))
 		       ,(code 'sto 'sto 'δg 'δg)
 		       (let*-typed ((ss (+ (store-size x) *default-sparse-store-increment*))
 				    (δ-new (t/store-allocator index-store-vector ss) :type index-store-vector)
-				    (sto-new (t/store-allocator ,(cl x) ss) :type ,(store-type (cl x))))
+				    (sto-new (t/store-allocator ,(cl :x) ss) :type ,(store-type (cl :x))))
 			 ,(code 'sto 'sto-new 'δg 'δ-new)
 			 (setf (slot-value x 'neighbours) δ-new
 			       (slot-value x 'store) sto-new)))))
@@ -70,5 +70,5 @@
 	 (setf idx lb)))
      (setf
       (aref (δ-i x) (the index-type idx)) r
-      (t/store-ref ,(cl x) (t/store ,(cl x) x) (the index-type idx)) (t/coerce ,(field-type (cl x)) value))))
+      (t/store-ref ,(cl :x) (t/store ,(cl :x) x) (the index-type idx)) (t/coerce ,(field-type (cl :x)) value))))
 ;;

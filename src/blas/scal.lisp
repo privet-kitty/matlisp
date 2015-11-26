@@ -41,7 +41,7 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
 	     (setf ,ref-y (,(if scal? 't/f* 't/f/) ,(field-type sym) ,ref-y  ,(if numx? x ref-x)))))
 	 ,y))))
 ;;
-(defgeneric scal! (alpha x)
+(closer-mop:defgeneric scal! (alpha x)
   (:documentation
    "
   Syntax
@@ -53,17 +53,18 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
   X <- alpha .* X
 ")
   (:method :before ((x dense-tensor) (y dense-tensor))
-     (assert (very-quickly (lvec-eq (dimensions x) (dimensions y) #'=)) nil 'tensor-dimension-mismatch)))
+	   (assert (very-quickly (lvec-eq (dimensions x) (dimensions y) #'=)) nil 'tensor-dimension-mismatch))
+  (:generic-function-class tensor-method-generator))
 
 (define-tensor-method scal! ((x dense-tensor :x) (y dense-tensor :x t))
-  `(t/scdi! ,(cl y) x y :scal? t :numx? nil)
+  `(t/scdi! ,(cl :x) x y :scal? t :numx? nil)
   'y)
 
 (define-tensor-method scal! ((x t) (y dense-tensor :x))
-  `(let ((x (t/coerce ,(field-type (cl y)) x)))
-     (declare (type ,(field-type (cl y)) x))
-     (unless (t/f= ,(field-type (cl y)) x (t/fid* ,(field-type (cl y))))
-       (t/scdi! ,(cl y) x y :scal? t :numx? t))
+  `(let ((x (t/coerce ,(field-type (cl :x)) x)))
+     (declare (type ,(field-type (cl :x)) x))
+     (unless (t/f= ,(field-type (cl :x)) x (t/fid* ,(field-type (cl :x))))
+       (t/scdi! ,(cl :x) x y :scal? t :numx? t))
      y))
 
 (defgeneric scal (alpha x)
@@ -92,7 +93,7 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
     (scal! x (copy alpha (when (complexp x) (complexified-type alpha))))))
 
 ;;These should've been auto-generated.
-(defgeneric div! (alpha x)
+(closer-mop:defgeneric div! (alpha x)
   (:documentation
    "
   Syntax
@@ -106,17 +107,18 @@ s  Purpose
   Yes the calling order is twisted.
 ")
   (:method :before ((x dense-tensor) (y dense-tensor))
-     (assert (very-quickly (lvec-eq (dimensions x) (dimensions y) #'=)) nil 'tensor-dimension-mismatch)))
+	   (assert (very-quickly (lvec-eq (dimensions x) (dimensions y) #'=)) nil 'tensor-dimension-mismatch))
+  (:generic-function-class tensor-method-generator))
 
 (define-tensor-method div! ((x dense-tensor :x) (y dense-tensor :x t))
-  `(t/scdi! ,(cl x) x y :scal? nil :numx? nil)
+  `(t/scdi! ,(cl :x) x y :scal? nil :numx? nil)
   'y)
 
 (define-tensor-method div! ((x t) (y dense-tensor :x))
-  `(let ((x (t/coerce ,(field-type (cl y)) x)))     
-     (declare (type ,(field-type (cl y)) x))
-     (unless (t/f= ,(field-type (cl y)) x (t/fid* ,(field-type (cl y))))
-       (t/scdi! ,(cl y) x y :scal? nil :numx? t))
+  `(let ((x (t/coerce ,(field-type (cl :x)) x)))     
+     (declare (type ,(field-type (cl :x)) x))
+     (unless (t/f= ,(field-type (cl :x)) x (t/fid* ,(field-type (cl :x))))
+       (t/scdi! ,(cl :x) x y :scal? nil :numx? t))
      y))
 
 (defgeneric div (x y)
@@ -140,22 +142,23 @@ s  Purpose
     (div! alpha (copy x (when (complexp alpha) (complexified-type x))))))
 
 ;;Diagonal scaling.
-(defgeneric scald! (x m &optional axis)
+(closer-mop:defgeneric scald! (x m &optional axis)
   (:method :before ((x dense-tensor) (m dense-tensor) &optional (axis 0))
      (declare (type index-type axis))
-     (assert (and (tensor-vectorp x) (= (dimensions x 0) (dimensions m axis))) nil 'tensor-dimension-mismatch)))
+     (assert (and (tensor-vectorp x) (= (dimensions x 0) (dimensions m axis))) nil 'tensor-dimension-mismatch))
+  (:generic-function-class tensor-method-generator))
 
 (define-tensor-method scald! ((x dense-tensor :x) (m dense-tensor :m t) &optional (axis 0))
-  `(let-typed ((sto-m (store m) :type ,(store-type (cl m)))
-	       (sto-x (store x) :type ,(store-type (cl x)))
+  `(let-typed ((sto-m (store m) :type ,(store-type (cl :m)))
+	       (sto-x (store x) :type ,(store-type (cl :x)))
 	       (axis (modproj axis (order m))))
      (very-quickly
        (iter (for-mod idx from 0 below (dimensions m) with-iterator ((:stride ((of-m (strides m) (head m))
 									       (of-x (let ((tmp (t/store-allocator index-store-vector (order m))))
 										       (setf (aref tmp axis) (strides x 0)) tmp)
 										     (head x))))))
-	     (setf (t/store-ref ,(cl m) sto-m of-m)
-		   (t/f* ,(field-type (cl m))
-			 (t/strict-coerce (,(field-type (cl x)) ,(field-type (cl m))) (t/store-ref ,(cl x) sto-x of-x))
-			 (t/store-ref ,(cl m) sto-m of-m))))))
+	     (setf (t/store-ref ,(cl :m) sto-m of-m)
+		   (t/f* ,(field-type (cl :m))
+			 (t/strict-coerce (,(field-type (cl :x)) ,(field-type (cl :m))) (t/store-ref ,(cl :x) sto-x of-x))
+			 (t/store-ref ,(cl :m) sto-m of-m))))))
   'm)

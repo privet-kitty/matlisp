@@ -25,7 +25,7 @@
 											  :store (when (subtypep ftype 'cl:complex)
 												   (list (idxv 12 11 10 9 8))))))))))))
 ;;
-(defgeneric schur (A &optional job)
+(closer-mop:defgeneric schur (A &optional job)
   (:documentation "
     Syntax
     ------
@@ -35,14 +35,15 @@
     The matrix V is {orthogonal/unitary}, the matrix T is {quasi-upper triangular/pper triangular}
     for {real/complex} matrices respectively.")
   (:method :before ((A tensor) &optional (job :v))
-     (assert (and (typep A 'tensor-square-matrix) (member job '(:v :n))) nil 'invalid-arguments :message "argument is not a square matrix.")))
+     (assert (and (typep A 'tensor-square-matrix) (member job '(:v :n))) nil 'invalid-arguments :message "argument is not a square matrix."))
+  (:generic-function-class tensor-method-generator))
 
 (define-tensor-method schur ((A blas-mixin :x) &optional (job :v))
   `(let-typed ((tret (with-colm (copy A)))
-	       (vs (when (eq job :v) (with-colm (zeros (dimensions A) ',(cl a)))))
-	       (wr (t/store-allocator ,(cl a) (dimensions a 0)) :type ,(store-type (cl a)))
-	       (wi (t/store-allocator ,(cl a) (dimensions a 0)) :type ,(store-type (cl a))))
-      (let ((info (t/lapack-gees! ,(cl a)
+	       (vs (when (eq job :v) (with-colm (zeros (dimensions A) ',(cl :x)))))
+	       (wr (t/store-allocator ,(cl :x) (dimensions a 0)) :type ,(store-type (cl :x)))
+	       (wi (t/store-allocator ,(cl :x) (dimensions a 0)) :type ,(store-type (cl :x))))
+      (let ((info (t/lapack-gees! ,(cl :x)
 				  tret (or (blas-matrix-compatiblep tret #\N) 0)
 				  vs (when vs (or (blas-matrix-compatiblep vs #\N) 0))
 				  wr wi)))
@@ -51,14 +52,13 @@
 	      (error "GEES: Illegal value in the ~:r argument." (- info))
 	      (error "GEES: (~a) the QR algorithm failed to compute all the eigenvalues." info))))
       (values-list (list*
-		    (make-instance ',(complexified-type (cl a))
+		    (make-instance ',(complexified-type (cl :x))
 				   :dimensions (coerce (list (dimensions A 0)) 'index-store-vector)
 				   :strides (coerce (list 1) 'index-store-vector)
 				   :head 0
-				   :store (t/geev-output-fix ,(cl a) wr wi))
+				   :store (t/geev-output-fix ,(cl :x) wr wi))
 		    tret
 		    (when vs (list vs))))))
-
 
 ;; (letv* ((a (randn '(10 10)))
 ;; 	(s u q (schur a :v)))

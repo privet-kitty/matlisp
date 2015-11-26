@@ -60,7 +60,7 @@
 		   (setf ,ref-y (t/f+ ,(field-type sym) ,@(if apy? `(,a) `((t/f* ,(field-type sym) ,a ,ref-x))) ,ref-y))))
 	 ,y))))
 ;;---------------------------------------------------------------;;
-(defgeneric axpy! (alpha x y)
+(closer-mop:defgeneric axpy! (alpha x y)
   (:documentation
    " 
  Syntax
@@ -79,29 +79,29 @@
   is stored in Y and Y is returned.
 ")
   (:method :before ((alpha number) (x base-tensor) (y base-tensor))
-    (assert (lvec-eq (dimensions x) (dimensions y) #'=) nil
-	    'tensor-dimension-mismatch)))
+	   (assert (lvec-eq (dimensions x) (dimensions y) #'=) nil 'tensor-dimension-mismatch))
+  (:generic-function-class tensor-method-generator))
 
 (define-tensor-method axpy! (alpha (x dense-tensor :y) (y dense-tensor :y t))
-  `(let ((alpha (t/coerce ,(field-type (cl x)) alpha)))
-     (declare (type ,(field-type (cl x)) alpha))
+  `(let ((alpha (t/coerce ,(field-type (cl :y)) alpha)))
+     (declare (type ,(field-type (cl :y)) alpha))
      ,(recursive-append
-       (when (subtypep (cl y) 'blas-mixin)
-	 `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl y) 1)) (blas-copyablep x y)))
-	    (t/blas-axpy! ,(cl y) alpha x (first strd) y (second strd))))
-       `(t/axpy! ,(cl y) alpha x y))
+       (when (subtypep (cl :y) 'blas-mixin)
+	 `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl :y) 1)) (blas-copyablep x y)))
+	    (t/blas-axpy! ,(cl :y) alpha x (first strd) y (second strd))))
+       `(t/axpy! ,(cl :y) alpha x y))
      y))
 
-(define-tensor-method axpy! (alpha x (y dense-tensor :x t))
-  `(let ((alpha (t/coerce ,(field-type (cl y)) alpha)))
-     (declare (type ,(field-type (cl y)) alpha))
-     (when x (setq alpha (t/f* ,(field-type (cl y)) alpha (t/coerce ,(field-type (cl y)) x))))
-     (unless (t/f= ,(field-type (cl y)) alpha (t/fid+ ,(field-type (cl y))))
+(define-tensor-method axpy! (alpha x (y dense-tensor :y t))
+  `(let ((alpha (t/coerce ,(field-type (cl :y)) alpha)))
+     (declare (type ,(field-type (cl :y)) alpha))
+     (when x (setq alpha (t/f* ,(field-type (cl :y)) alpha (t/coerce ,(field-type (cl :y)) x))))
+     (unless (t/f= ,(field-type (cl :y)) alpha (t/fid+ ,(field-type (cl :y))))
        ,(recursive-append
-	 (when (subtypep (cl y) 'blas-mixin)
-	   `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl y) 1)) (consecutive-storep y)))
-	      (t/blas-axpy! ,(cl y) alpha nil nil y strd)))
-	 `(t/axpy! ,(cl y) alpha nil y)))
+	 (when (subtypep (cl :y) 'blas-mixin)
+	   `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl :y) 1)) (consecutive-storep y)))
+	      (t/blas-axpy! ,(cl :y) alpha nil nil y strd)))
+	 `(t/axpy! ,(cl :y) alpha nil y)))
      y))
 ;;
 (defgeneric axpy (alpha x y)

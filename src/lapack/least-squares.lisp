@@ -22,7 +22,7 @@
 	       ,@(when complex? `((:* ,(lisp->ffc ftype)) ,xxr))
 	       (:& :integer :output) 0)))))))
 ;;
-(defgeneric gelsy (A B &optional rcond)
+(closer-mop:defgeneric gelsy (A B &optional rcond)
   (:documentation "
    Syntax
    =======
@@ -92,15 +92,16 @@
 ")
   (:method :before ((A tensor) (B tensor) &optional rcond)
      (assert (and (tensor-matrixp A) (tensor-matrixp B) (= (dimensions A 0) (dimensions B 0))) nil 'tensor-dimension-mismatch)
-     (assert (or (null rcond) (> rcond 0)) nil 'invalid-value :expected '(> rcond 0) :given rcond :message "Invalid rcond.")))
+     (assert (or (null rcond) (> rcond 0)) nil 'invalid-value :expected '(> rcond 0) :given rcond :message "Invalid rcond."))
+  (:generic-function-class tensor-method-generator))
 
 (define-tensor-method gelsy ((A blas-mixin :x) (B blas-mixin :x t) &optional (rcond *default-rcond*))
-  `(let* ((A (with-colm (copy A ',(cl b)))))
-     (declare (type ,(cl b) A))
+  `(let* ((A (with-colm (copy A ',(cl :x)))))
+     (declare (type ,(cl :x) A))
      (let* ((mn (lvec-max (dimensions A)))
-	    (X (with-colm (zeros (list mn (dimensions B 1)) ',(cl b)))))
+	    (X (with-colm (zeros (list mn (dimensions B 1)) ',(cl :x)))))
        (copy! B (subtensor~ X `((0 ,(dimensions B 0)) (nil nil))))
-       (letv* ((rank info (t/lapack-gelsy! ,(cl b) A (or (blas-matrix-compatiblep A #\N) 0) X (or (blas-matrix-compatiblep X #\N) 0) rcond)))
+       (letv* ((rank info (t/lapack-gelsy! ,(cl :x) A (or (blas-matrix-compatiblep A #\N) 0) X (or (blas-matrix-compatiblep X #\N) 0) rcond)))
 	 (unless (= info 0)
 	   (error "gelsy returned ~a." info))
 	 (values (copy (subtensor~ X `((0 ,(dimensions A 1)) (nil nil)))) rank)))))

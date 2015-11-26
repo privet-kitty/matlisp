@@ -50,7 +50,7 @@
 	       ,@(when complex? `((:* ,(lisp->ffc rtype)) ,xxr))
 	       (:& :integer :output) 0)))))))
 ;;
-(defgeneric svd (a &optional job)
+(closer-mop:defgeneric svd (a &optional job)
   (:documentation
   "
   Syntax
@@ -103,14 +103,15 @@
   :UV             SIGMA, U, V
   ")
   (:method :before ((a tensor) &optional (job :nn))
-     (assert (member job '(:nn :un :nv :uv)) nil 'invalid-arguments)))
+	   (assert (member job '(:nn :un :nv :uv)) nil 'invalid-arguments))
+  (:generic-function-class tensor-method-generator))
 
-(define-tensor-method svd ((a blas-mixin :input) &optional (job :nn))
+(define-tensor-method svd ((a blas-mixin :x) &optional (job :nn))
   `(destructuring-bind (ujob vjob) (split-job job)
-     (let ((u (when (char= ujob #\U) (with-colm (zeros (list (dimensions a 0) (dimensions a 0)) ',(cl a)))))
-	   (v (when (char= vjob #\V) (with-colm (zeros (list (dimensions a 1) (dimensions a 1)) ',(cl a)))))
-	   (s (zeros (lvec-min (dimensions a)) ',(realified-type (cl a)))))
-       (let ((info (t/lapack-gesvd! ,(cl a) (with-colm (copy a)) (dimensions a 0) u (and u (dimensions u 0)) v (and v (dimensions v 0)) s)))
+     (let ((u (when (char= ujob #\U) (with-colm (zeros (list (dimensions a 0) (dimensions a 0)) ',(cl :x)))))
+	   (v (when (char= vjob #\V) (with-colm (zeros (list (dimensions a 1) (dimensions a 1)) ',(cl :x)))))
+	   (s (zeros (lvec-min (dimensions a)) ',(realified-type (cl :x)))))
+       (let ((info (t/lapack-gesvd! ,(cl :x) (with-colm (copy a)) (dimensions a 0) u (and u (dimensions u 0)) v (and v (dimensions v 0)) s)))
 	 (unless (= info 0)
 	   (if (< info 0)
 	       (error "GESVD: Illegal value in the ~:r argument." (- info))

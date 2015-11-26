@@ -33,14 +33,15 @@
 	   (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,st-b)
 	 ,b))))
 ;;
-(defgeneric trs! (alpha A b &optional solve uplo)
+(closer-mop:defgeneric trs! (alpha A b &optional solve uplo)
   (:documentation "Solve -> :{trans-> n/t/c}{Diag-> u/n}{Side-> l/r}")
   (:method :before (alpha (A dense-tensor) (b dense-tensor) &optional (solve :nn) (uplo *default-uplo*))
      (destructuring-bind (joba diag &optional (side #\L sidep)) (split-job solve)
        (assert (and (inline-member joba (#\N #\T #\C) char=) (inline-member side (#\L #\R) char=) (inline-member diag (#\U #\N) char=)
 		    (inline-member uplo (:u :l))) nil 'invalid-arguments)
        (assert (and (typep A 'tensor-square-matrix) (if sidep (tensor-matrixp b) (<= (order b) 2))
-		    (= (dimensions A 0) (dimensions B (ecase side (#\L 0) (#\R 1))))) nil 'tensor-dimension-mismatch))))
+		    (= (dimensions A 0) (dimensions B (ecase side (#\L 0) (#\R 1))))) nil 'tensor-dimension-mismatch)))
+  (:generic-function-class tensor-method-generator))
 
 (define-tensor-method trs! (alpha (A blas-mixin :x) (b blas-mixin :x) &optional (solve :nn) (uplo *default-uplo*))
   `(destructuring-bind (joba diag &optional (side #\L)) (split-job solve)
@@ -48,12 +49,12 @@
        (letv* ((lda opa (blas-matrix-compatiblep a joba))
 	       (uplo (let ((c (aref (symbol-name uplo) 0)))
 		       (if (char= opa joba) c (ecase c (#\U #\L) (#\L #\U)))))
-	       (alpha (t/coerce ,(field-type (cl a)) alpha) :type ,(field-type (cl a))))
+	       (alpha (t/coerce ,(field-type (cl :x)) alpha) :type ,(field-type (cl :x))))
 	 (declare (type base-char opa uplo))
 	 (if (tensor-vectorp b)
-	     (t/blas-trsv! ,(cl a) uplo opa diag a lda (scal! alpha b) (strides b 0))
+	     (t/blas-trsv! ,(cl :x) uplo opa diag a lda (scal! alpha b) (strides b 0))
 	     (with-columnification (() (b))
-	       (t/blas-trsm! ,(cl a) side uplo opa diag alpha a lda b (or (blas-matrix-compatiblep b) 0)))))))
+	       (t/blas-trsm! ,(cl :x) side uplo opa diag alpha a lda b (or (blas-matrix-compatiblep b) 0)))))))
   'B)
 
 #+nil

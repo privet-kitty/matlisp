@@ -1,6 +1,6 @@
 (in-package #:matlisp)
 
-(defgeneric ref (tensor &rest subscripts)
+(closer-mop:defgeneric ref (tensor &rest subscripts)
   (:documentation "
   Syntax
   ======
@@ -9,9 +9,11 @@
   Purpose
   =======
   Return the element corresponding to subscripts.
-"))
+")
+  (:generic-function-class tensor-method-generator))
 
-(defgeneric (setf ref) (value tensor &rest subscripts))
+(closer-mop:defgeneric (setf ref) (value tensor &rest subscripts)
+  (:generic-function-class tensor-method-generator))
 
 (labels ((array-subs (obj subscripts)
 	   (let ((subs (etypecase (car subscripts)

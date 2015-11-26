@@ -5,7 +5,7 @@
   ((id :initform (make-array 0 :adjustable t :fill-pointer t))
    (values :initarg :values :initform (make-array 0 :adjustable t :fill-pointer t))))
 
-(defmethod matlisp::total-size ((obj union-find)) (length (slot-value obj 'id)))
+;(defmethod matlisp::total-size ((obj union-find)) (length (slot-value obj 'id)))
 
 (defmethod print-object ((obj union-find) stream)
   (print-unreadable-object (obj stream :type t)

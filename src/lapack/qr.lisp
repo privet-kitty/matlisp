@@ -37,23 +37,24 @@
 	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxx) (:& :integer) ,lwork
 	     (:& :integer :output) 0))))))
 ;;
-(defgeneric qr! (a &optional pivot?)
+(closer-mop:defgeneric qr! (a &optional pivot?)
   (:method :before ((a dense-tensor) &optional pivot?)
      (declare (ignore pivot?))
-     (assert (tensor-matrixp a) nil 'tensor-not-matrix)))
+     (assert (tensor-matrixp a) nil 'tensor-not-matrix))
+  (:generic-function-class tensor-method-generator))
 
-(define-tensor-method qr! ((a blas-mixin :x t) &optional pivot?)
-  `(let-typed ((tau (zeros (lvec-min (dimensions a)) ',(cl a)) :type ,(cl a)))
+(define-tensor-method qr! ((a blas-mixin :x) &optional pivot?)
+  `(let-typed ((tau (zeros (lvec-min (dimensions a)) ',(cl :x)) :type ,(cl :x)))
      (if pivot?
 	 (let-typed ((jpvt (make-array (dimensions a 1) :element-type ',(matlisp-ffi::%ffc->lisp :integer) :initial-element 0) :type (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*))))
 	   (with-columnification (() (a))
-	     (let ((info (t/lapack-geqp! ,(cl a) a (or (blas-matrix-compatiblep a #\N) 0) jpvt (store tau))))
+	     (let ((info (t/lapack-geqp! ,(cl :x) a (or (blas-matrix-compatiblep a #\N) 0) jpvt (store tau))))
 	       (unless (= info 0) (error "GEQP3: the ~a'th argument had an illegal value." (- info)))))
 	   (setf (gethash 'geqp3 (memos A)) (list (store tau) jpvt))
 	   (values A tau (with-no-init-checks (make-instance 'permutation-action :store (pflip.f->l jpvt) :size (length jpvt)))))
 	 (progn
 	   (with-columnification (() (a))
-	     (let ((info (t/lapack-gehr! ,(cl a) a (or (blas-matrix-compatiblep a #\N) 0) (store tau))))
+	     (let ((info (t/lapack-gehr! ,(cl :x) a (or (blas-matrix-compatiblep a #\N) 0) (store tau))))
 	       (unless (= info 0) (error "GEQRF: the ~a'th argument had an illegal value." (- info)))))
 	   (setf (gethash 'geqrf (memos A)) (store tau))
 	   (values A tau)))))
@@ -75,15 +76,16 @@
 	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxx) (:& :integer) ,lwork
 	     (:& :integer :output) 0))))))
 
-(defgeneric qr (a &optional pivot?))
+(closer-mop:defgeneric qr (a &optional pivot?)
+  (:generic-function-class tensor-method-generator))
 
 (define-tensor-method qr ((a blas-mixin :x t) &optional pivot?)
   `(letv* ((qr tau p (qr! (copy a) pivot?))
-	   (qq (zeros (list (dimensions a 0) (dimensions a 0)) ',(cl a)))
+	   (qq (zeros (list (dimensions a 0) (dimensions a 0)) ',(cl :x)))
 	   (rank (lvec-min (dimensions qr))))
      (copy! (subtensor~ qr (list (list 0 nil) (list 0 rank))) (subtensor~ qq (list (list 0 nil) (list 0 rank))))
      (with-columnification (() (qq))
-       (let ((info (t/lapack-orgqr! ,(cl a) rank qq (or (blas-matrix-compatiblep qq #\N) 0) (store tau))))
+       (let ((info (t/lapack-orgqr! ,(cl :x) rank qq (or (blas-matrix-compatiblep qq #\N) 0) (store tau))))
 	 (unless (= info 0) (error "(OR/UN)GQR: the ~a'th argument had an illegal value." (- info)))))
      (values-n (if p 3 2) qq (tricopy! 0 qr :lo) p)))
 ;;

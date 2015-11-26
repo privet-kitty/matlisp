@@ -64,7 +64,7 @@
 		  :do (t/store-set ,csym (complex (aref ,wr ,i) (aref ,wi ,i)) ,ret ,i)))
 	     ,ret)))))
 ;;
-(defgeneric geev! (a &optional vl vr)
+(closer-mop:defgeneric geev! (a &optional vl vr)
   (:documentation "
  Syntax
  ======
@@ -107,14 +107,15 @@
      (when vl
        (assert (and (lvec-eq (dimensions a) (dimensions vl)) (typep vl (type-of a)))  nil 'tensor-dimension-mismatch))
      (when vr
-       (assert (and (lvec-eq (dimensions a) (dimensions vr)) (typep vr (type-of a)))  nil 'tensor-dimension-mismatch))))
+       (assert (and (lvec-eq (dimensions a) (dimensions vr)) (typep vr (type-of a)))  nil 'tensor-dimension-mismatch)))
+  (:generic-function-class tensor-method-generator))
 
 (define-tensor-method geev! ((a blas-mixin :x t) &optional vl vr)
   `(let* ((jobvl (if vl #\V #\N))
 	  (jobvr (if vr #\V #\N))
 	  (n (dimensions A 0))
-	  (wr (t/store-allocator ,(cl a) n))
-	  (wi (t/store-allocator ,(cl a) n)))
+	  (wr (t/store-allocator ,(cl :x) n))
+	  (wi (t/store-allocator ,(cl :x) n)))
      (ecase jobvl
        ,@(loop :for jvl :in '(#\N #\V) :collect
 	    `(,jvl
@@ -122,7 +123,7 @@
 		,@(loop :for jvr :in '(#\N #\V) :collect
 		     `(,jvr
 		       (with-columnification (() (A ,@(when (char= jvl #\V) `(vl)) ,@(when (char= jvr #\V) `(vr))))
-			 (let ((info (t/lapack-geev! ,(cl a)
+			 (let ((info (t/lapack-geev! ,(cl :x)
 						     A (or (blas-matrix-compatiblep A #\N) 0)
 						     ,@(if (char= jvl #\N) `(nil 1) `(vl (or (blas-matrix-compatiblep vl #\N) 0)))
 						     ,@(if (char= jvr #\N) `(nil 1) `(vr (or (blas-matrix-compatiblep vr #\N) 0)))
@@ -136,14 +137,14 @@ elements ~a:~a of WR and WI contain eigenvalues which have converged." info n)))
        (when vr (push vr ret))
        (when vl (push vl ret))
        (values-list (list* (with-no-init-checks
-			       (make-instance ',(complexified-type (cl a))
+			       (make-instance ',(complexified-type (cl :x))
 					      :dimensions (coerce (list (dimensions A 0)) 'index-store-vector)
 					      :strides (coerce (list 1) 'index-store-vector)
 					      :head 0
-					      :store (t/geev-output-fix ,(cl a) wr wi)))
+					      :store (t/geev-output-fix ,(cl :x) wr wi)))
 			  ret)))))
 ;;
-(defgeneric heev! (a &optional job uplo?)
+(closer-mop:defgeneric heev! (a &optional job uplo?)
   (:documentation "
  Syntax
  ======
@@ -155,12 +156,13 @@ elements ~a:~a of WR and WI contain eigenvalues which have converged." info n)))
  ")
   (:method :before ((a tensor) &optional (job :n) (uplo? *default-uplo*))
      (assert (typep a 'tensor-square-matrix) nil 'tensor-dimension-mismatch)
-     (assert (and (member job '(:v :n)) (member uplo? '(:u :l))) nil 'invalid-arguments)))
+     (assert (and (member job '(:v :n)) (member uplo? '(:u :l))) nil 'invalid-arguments))
+  (:generic-function-class tensor-method-generator))
 
-(define-tensor-method heev! ((a blas-mixin :output) &optional (job :n) (uplo? *default-uplo*))
-  `(let ((evals (zeros (dimensions a 0) ',(realified-type (cl a)))))
+(define-tensor-method heev! ((a blas-mixin :x) &optional (job :n) (uplo? *default-uplo*))
+  `(let ((evals (zeros (dimensions a 0) ',(realified-type (cl :x)))))
      (with-columnification (() (A))
-       (let ((info (t/lapack-heev! ,(cl a)
+       (let ((info (t/lapack-heev! ,(cl :x)
 				   (aref (symbol-name job) 0)
 				   (aref (symbol-name uplo?) 0)
 				   A (or (blas-matrix-compatiblep A #\N) 0)

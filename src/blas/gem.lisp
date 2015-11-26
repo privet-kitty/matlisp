@@ -100,7 +100,7 @@
       ,C)))
 
 ;;---------------------------------------------------------------;;
-(defgeneric gem! (alpha A B beta C &optional job)
+(closer-mop:defgeneric gem! (alpha A B beta C &optional job)
   (:documentation
    "
   Syntax
@@ -135,30 +135,31 @@
 		 (and (= (dimensions C 0) (dimensions A (logxor 0 loga)))
 		      (= (dimensions A (logxor 1 loga)) (dimensions B (logxor 0 logb)))
 		      (or (not (tensor-matrixp C)) (= (dimensions C 1) (dimensions B (logxor 1 logb)))))))
-	      nil 'tensor-dimension-mismatch))))
+	      nil 'tensor-dimension-mismatch)))
+  (:generic-function-class tensor-method-generator))
 
 (define-tensor-method gem! (alpha (A dense-tensor :x) (B dense-tensor :x) beta (C dense-tensor :x t) &optional (job :n))
-  `(letv* ((alpha (t/coerce ,(field-type (cl a)) alpha))
-	   (beta (t/coerce ,(field-type (cl a)) beta))
+  `(letv* ((alpha (t/coerce ,(field-type (cl :x)) alpha))
+	   (beta (t/coerce ,(field-type (cl :x)) beta))
 	   ((joba &optional (jobb #\N)) (split-job job)))
-     (declare (type ,(field-type (cl a)) alpha beta)
+     (declare (type ,(field-type (cl :x)) alpha beta)
 	      (type base-char joba jobb))
      (if (tensor-vectorp C)
 	 ,(recursive-append
-	   (when (subtypep (cl B) 'blas-mixin)
-	     `(if (call-fortran? A (t/blas-lb ,(cl a) 2))
+	   (when (subtypep (cl :x) 'blas-mixin)
+	     `(if (call-fortran? A (t/blas-lb ,(cl :x) 2))
 		  (with-columnification (((A joba)) ())
 		    (letv* ((lda opa (blas-matrix-compatiblep A joba)))
-		      (t/blas-gemv! ,(cl a) alpha A lda B (strides B 0) beta C (strides C 0) opa)))))
-	   `(t/gemv! ,(cl a) alpha A B beta C joba))
+		      (t/blas-gemv! ,(cl :x) alpha A lda B (strides B 0) beta C (strides C 0) opa)))))
+	   `(t/gemv! ,(cl :x) alpha A B beta C joba))
 	 ,(recursive-append
-	   (when (subtypep (cl c) 'blas-mixin)
-	     `(if (call-fortran? C (t/blas-lb ,(cl c) 3))
+	   (when (subtypep (cl :x) 'blas-mixin)
+	     `(if (call-fortran? C (t/blas-lb ,(cl :x) 3))
 		  (with-columnification (((a joba) (b jobb)) (c))
 		    (letv* ((lda opa (blas-matrix-compatiblep a joba))
 			    (ldb opb (blas-matrix-compatiblep b jobb)))
-		      (t/blas-gemm! ,(cl a) alpha A lda B ldb beta C (or (blas-matrix-compatiblep c #\N) 0) joba opa opb)))))
-	   `(t/gemm! ,(cl a) alpha A B beta C joba jobb))))
+		      (t/blas-gemm! ,(cl :x) alpha A lda B ldb beta C (or (blas-matrix-compatiblep c #\N) 0) joba opa opb)))))
+	   `(t/gemm! ,(cl :x) alpha A B beta C joba jobb))))
   'C)
 
 ;;---------------------------------------------------------------;;

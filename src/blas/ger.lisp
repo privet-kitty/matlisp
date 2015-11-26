@@ -34,7 +34,7 @@
 		      nil))
       ,A)))
 ;;---------------------------------------------------------------;;
-(defgeneric ger! (alpha x y A &optional conjugate-p)
+(closer-mop:defgeneric ger! (alpha x y A &optional conjugate-p)
   (:documentation
    "
   Syntax
@@ -62,31 +62,22 @@
 	     (tensor-vectorp x) (tensor-vectorp y) (tensor-matrixp A)
 	     (= (dimensions x 0) (dimensions A 0))
 	     (= (dimensions y 0) (dimensions A 1)))
-	    nil 'tensor-dimension-mismatch)))
+	    nil 'tensor-dimension-mismatch))
+  (:generic-function-class tensor-method-generator))
 
-(define-tensor-method ger! (alpha (x dense-tensor :input) (y dense-tensor :input) (A dense-tensor :output) &optional (conjugate-p t))
-  `(let ((alpha (t/coerce ,(field-type (cl x)) alpha)))
-     (declare (type ,(field-type (cl x)) alpha))
+(define-tensor-method ger! (alpha (x dense-tensor :x) (y dense-tensor :x) (A dense-tensor :A) &optional (conjugate-p t))
+  `(let ((alpha (t/coerce ,(field-type (cl :x)) alpha)))
+     (declare (type ,(field-type (cl :x)) alpha))
      ,(recursive-append
-       (when (subtypep (cl x) 'blas-mixin)
-	 `(if (call-fortran? A (t/blas-lb ,(cl a) 2))
+       (when (subtypep (cl :x) 'blas-mixin)
+	 `(if (call-fortran? A (t/blas-lb ,(cl :a) 2))
 	      (with-columnification (() (A))
 		(if conjugate-p
-		    (t/blas-ger! ,(cl a)
-				 alpha
-				 x (strides x 0)
-				 y (strides y 0)
-				 A (or (blas-matrix-compatiblep A #\N) 0)
-				 t)
-		    (t/blas-ger! ,(cl a)
-				 alpha
-				 x (strides x 0)
-				 y (strides y 0)
-				 A (or (blas-matrix-compatiblep A #\N) 0)
-				 nil)))))
+		    (t/blas-ger! ,(cl :a) alpha x (strides x 0) y (strides y 0) A (or (blas-matrix-compatiblep A #\N) 0) t)
+		    (t/blas-ger! ,(cl :a) alpha x (strides x 0) y (strides y 0) A (or (blas-matrix-compatiblep A #\N) 0) nil)))))
        `(if conjugate-p
-	    (t/ger! ,(cl a) alpha x y A t)
-	    (t/ger! ,(cl a) alpha x y A nil))))
+	    (t/ger! ,(cl :a) alpha x y A t)
+	    (t/ger! ,(cl :a) alpha x y A nil))))
   'A)
 ;;---------------------------------------------------------------;;
 (defgeneric ger (alpha x y A &optional conjugate-p)

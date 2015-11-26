@@ -42,7 +42,7 @@
 		   (:& :integer :output) 0)))))
 
 ;;
-(defgeneric potrf! (a &optional uplo)
+(closer-mop:defgeneric potrf! (a &optional uplo)
   (:documentation "
   Syntax
   ======
@@ -64,11 +64,12 @@
 ")
   (:method :before ((a tensor) &optional (uplo *default-uplo*))
      (assert (typep a 'tensor-square-matrix) nil 'tensor-dimension-mismatch :message "Expected square matrix.")
-     (assert (inline-member uplo (:l :u)) nil 'invalid-arguments :given uplo :expected `(member uplo '(:l :u)))))
+     (assert (inline-member uplo (:l :u)) nil 'invalid-arguments :given uplo :expected `(member uplo '(:l :u))))
+  (:generic-function-class tensor-method-generator))
 
-(define-tensor-method potrf! ((a blas-mixin :x t) &optional (uplo *default-uplo*))
+(define-tensor-method potrf! ((a blas-mixin :x) &optional (uplo *default-uplo*))
   `(with-columnification (() (A))
-     (let ((info (t/lapack-potrf! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) (char-upcase (aref (symbol-name uplo) 0)))))
+     (let ((info (t/lapack-potrf! ,(cl :x) A (or (blas-matrix-compatiblep A #\N) 0) (char-upcase (aref (symbol-name uplo) 0)))))
        (unless (= info 0)
 	 (if (< info 0)
 	     (error "POTRF: the ~a'th argument had an illegal value." (- info))
@@ -94,7 +95,7 @@
 	   (:& :integer :output) 0)))))
 
 ;;
-(defgeneric potrs! (A B &optional uplo)
+(closer-mop:defgeneric potrs! (A B &optional uplo)
   (:documentation "
   Syntax
   ======
@@ -121,13 +122,14 @@
 ")
   (:method :before ((A tensor) (B tensor) &optional (uplo *default-uplo*))
      (assert (and (typep A 'tensor-square-matrix) (<= (order B) 2) (= (dimensions A 0) (dimensions B 0))) nil 'tensor-dimension-mismatch)
-     (assert (inline-member uplo (:l :u)) nil 'invalid-value :given uplo :expected `(member uplo '(:u :l)))))
+     (assert (inline-member uplo (:l :u)) nil 'invalid-value :given uplo :expected `(member uplo '(:u :l))))
+  (:generic-function-class tensor-method-generator))
 
 (define-tensor-method potrs! ((A blas-mixin :x) (B blas-mixin :x t) &optional (uplo *default-uplo*))
   `(if (tensor-vectorp B)
        (potrs! A (suptensor~ B 2) uplo)
        (with-columnification (((A #\C)) (B))
-	 (let ((info (t/lapack-potrs! ,(cl a)
+	 (let ((info (t/lapack-potrs! ,(cl :x)
 				      A (or (blas-matrix-compatiblep A #\N) 0)
 				      B (or (blas-matrix-compatiblep B #\N) 0)
 				      (aref (symbol-name uplo) 0))))
@@ -147,7 +149,7 @@
 	   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
 	   (:& :integer :output) 0)))))
 
-(defgeneric potri! (A &optional uplo)
+(closer-mop:defgeneric potri! (A &optional uplo)
   (:documentation "
   Syntax
   ======
@@ -159,11 +161,12 @@
 ")
   (:method :before ((A blas-mixin) &optional (uplo *default-uplo*))
      (assert (and (typep A 'tensor-square-matrix)) nil 'tensor-dimension-mismatch)
-     (assert (inline-member uplo (:l :u)) nil 'invalid-value :given uplo :expected `(member uplo '(:u :l)))))
+     (assert (inline-member uplo (:l :u)) nil 'invalid-value :given uplo :expected `(member uplo '(:u :l))))
+  (:generic-function-class tensor-method-generator))
 
-(define-tensor-method potri! ((A blas-mixin :x t) &optional (uplo *default-uplo*))
+(define-tensor-method potri! ((A blas-mixin :x) &optional (uplo *default-uplo*))
   `(with-columnification (() (A))
-     (let ((info (t/lapack-potri! ,(cl a)
+     (let ((info (t/lapack-potri! ,(cl :x)
 				  A (or (blas-matrix-compatiblep A #\N) 0)
 				  (aref (symbol-name uplo) 0))))
        (unless (= info 0) (error "POTRI returned ~a. the ~:*~a'th argument had an illegal value." (- info)))))
@@ -202,26 +205,27 @@
 	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxx) (:& :integer) ,lwork
 	     (:& :integer :output) 0))))))
 
-(defgeneric ldl! (a &optional hermitian? uplo)
+(closer-mop:defgeneric ldl! (a &optional hermitian? uplo)
   (:method :before ((a tensor) &optional hermitian? uplo)
      (declare (ignore hermitian?))
      (assert (typep a 'tensor-square-matrix) nil 'tensor-dimension-mismatch :message "Expected square matrix.")
-     (assert (inline-member uplo (:l :u)) nil 'invalid-arguments :given uplo :expected `(member uplo '(:l :u)))))
+     (assert (inline-member uplo (:l :u)) nil 'invalid-arguments :given uplo :expected `(member uplo '(:l :u))))
+  (:generic-function-class tensor-method-generator))
 
-(define-tensor-method ldl! ((a blas-mixin :x t) &optional (hermitian? t) (uplo *default-uplo*))
+(define-tensor-method ldl! ((a blas-mixin :x) &optional (hermitian? t) (uplo *default-uplo*))
   '(declare (ignorable hermitian?))
-  (let ((complex? (subtypep (field-type (cl a)) 'cl:complex)))
+  (let ((complex? (subtypep (field-type (cl :x)) 'cl:complex)))
     `(let ((ipiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type ',(matlisp-ffi::%ffc->lisp :integer))))
        (with-columnification (() (A))
 	 ,(recursive-append
 	   (if complex?
 	       `(if hermitian?
-		    (let ((info (t/lapack-ldl! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) (char-upcase (aref (symbol-name uplo) 0)) ipiv t)))
+		    (let ((info (t/lapack-ldl! ,(cl :x) A (or (blas-matrix-compatiblep A #\N) 0) (char-upcase (aref (symbol-name uplo) 0)) ipiv t)))
 		      (unless (= info 0)
 			(if (< info 0)
 			    (error "HETRF: the ~a'th argument had an illegal value." (- info))
 			    (warn 'matrix-not-pd :message "HETRF: D(~a, ~:*~a) is exactly zero. The factorization has been completed, but the block diagonal matrix D is exactly singular, and division-by-zero by zero will occur if it is used to solve a system of equations." :position info))))))
-	   `(let ((info (t/lapack-ldl! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) (char-upcase (aref (symbol-name uplo) 0)) ipiv nil)))
+	   `(let ((info (t/lapack-ldl! ,(cl :x) A (or (blas-matrix-compatiblep A #\N) 0) (char-upcase (aref (symbol-name uplo) 0)) ipiv nil)))
 	      (unless (= info 0)
 		(if (< info 0)
 		    (error "SYTRF: the ~a'th argument had an illegal value." (- info))

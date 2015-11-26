@@ -87,7 +87,7 @@
   (declare (type dense-tensor A))
   (copy! value (transpose~ A permutation)))
 
-(defgeneric transpose (A &optional permutation)
+(closer-mop:defgeneric transpose (A &optional permutation)
   (:documentation "
   Syntax
   ======
@@ -106,22 +106,23 @@
   (:method :before ((A base-accessor) &optional permutation)
      (assert (or (not permutation) (< (permutation-size permutation) (order A))) nil 'tensor-index-rank-mismatch))
   (:method ((A dense-tensor) &optional permutation)
-    (copy (transpose~ A permutation))))
+    (copy (transpose~ A permutation)))
+  (:generic-function-class tensor-method-generator))
 
 (define-tensor-method transpose ((g graph-accessor :x) &optional permutation)
   `(if (and permutation (= (permutation-size permutation) 1)) (copy g)
        (let ((adj (make-array (dimensions g (if (slot-value g 'transposep) 1 0)) :initial-element nil))
-	     (ret (zeros (if (slot-value g 'transposep) (dimensions g) (reverse (dimensions g))) ',(cl g) (store-size g))))
+	     (ret (zeros (if (slot-value g 'transposep) (dimensions g) (reverse (dimensions g))) ',(cl :x) (store-size g))))
 	 (when (slot-value g 'transposep) (setf (slot-value ret 'dimensions) (reverse (dimensions ret))
 						(slot-value ret 'transposep) t))
 	 (iter (for u from 0 below (1- (length (fence g))))
 	       (letv* ((ll rr (fence g u)))
-		 (iter (for v in-vector (δ-i g) from ll below rr with-index iuv) (push ,@(if (subtypep (cl g) 'tensor) `((cons u iuv)) `(u)) (aref adj v)))))
+		 (iter (for v in-vector (δ-i g) from ll below rr with-index iuv) (push ,@(if (subtypep (cl :x) 'tensor) `((cons u iuv)) `(u)) (aref adj v)))))
 	 (iter (for v from 0 below (1- (length (fence ret))))
-	       (iter (for ,@(if (subtypep (cl g) 'tensor) `((u . iuv)) `(u)) in (setf (aref adj v) (sort (aref adj v) #'< ,@(if (subtypep (cl g) 'tensor) `(:key #'car)))))
+	       (iter (for ,@(if (subtypep (cl :x) 'tensor) `((u . iuv)) `(u)) in (setf (aref adj v) (sort (aref adj v) #'< ,@(if (subtypep (cl :x) 'tensor) `(:key #'car)))))
 		     (let ((idx (+ (fence ret v) j)))
 		       (setf (aref (δ-i ret) idx) u
-			     ,@(if (subtypep (cl g) 'tensor) `((t/store-ref ,(cl g) (t/store ,(cl g) ret) idx) (t/store-ref ,(cl g) (t/store ,(cl g) g) iuv))))
+			     ,@(if (subtypep (cl :x) 'tensor) `((t/store-ref ,(cl :x) (t/store ,(cl :x) ret) idx) (t/store-ref ,(cl :x) (t/store ,(cl :x) g) iuv))))
 		       (counting t into j) (finally (setf (aref (fence ret) (1+ v)) (+ (fence ret v) j))))))
 	 ret)))
 

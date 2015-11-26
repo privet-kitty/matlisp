@@ -17,7 +17,7 @@
 	   (:& ,(lisp->ffc (field-type (realified-type sym))) :output) (t/fid* ,(field-type (realified-type sym)))
 	   (:& :integer :output) 0)))))
 
-(defgeneric trsyl! (A B C &optional job)
+(closer-mop:defgeneric trsyl! (A B C &optional job)
   (:documentation "
     Syntax
     ------
@@ -36,12 +36,13 @@
 		    (= (dimensions A (ecase job.a (#\N 0) ((#\C #\T) 1))) (dimensions C 0))
 		    (= (dimensions B (ecase job.b (#\N 1) ((#\C #\T) 0))) (dimensions C 1))
 		    (ziprm (or char=) (sgn sgn) (#\N #\P)))
-	       nil 'tensor-dimension-mismatch))))
+	       nil 'tensor-dimension-mismatch)))
+  (:generic-function-class tensor-method-generator))
 
 (define-tensor-method trsyl! ((A blas-mixin :x) (B blas-mixin :x) (C blas-mixin :x t) &optional (job :nnp))
   `(destructuring-bind (op.a op.b sgn) (split-job job)
      (with-columnification (((A #\C) (B #\C)) (C))
-       (letv* ((scale info (t/lapack-trsyl! ,(cl a) op.a op.b sgn
+       (letv* ((scale info (t/lapack-trsyl! ,(cl :x) op.a op.b sgn
 					    A (or (blas-matrix-compatiblep A #\N) 0)
 					    B (or (blas-matrix-compatiblep B #\N) 0)
 					    C (or (blas-matrix-compatiblep C #\N) 0))))

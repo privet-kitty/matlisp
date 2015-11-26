@@ -74,7 +74,7 @@
 	 ,dot))))
 
 ;;---------------------------------------------------------------;;
-(defgeneric dot (x y &optional conjugate-p)
+(closer-mop:defgeneric dot (x y &optional conjugate-p)
   (:documentation
    "
   Sytnax
@@ -105,21 +105,22 @@
 ")
   (:method :before ((x tensor) (y tensor) &optional (conjugate-p t))
     (declare (ignore conjugate-p))
-    (assert (and (tensor-vectorp x) (tensor-vectorp y) (= (dimensions x 0) (dimensions y 0))) nil 'tensor-dimension-mismatch)))
+    (assert (and (tensor-vectorp x) (tensor-vectorp y) (= (dimensions x 0) (dimensions y 0))) nil 'tensor-dimension-mismatch))
+  (:generic-function-class tensor-method-generator))
 
 (defmethod dot ((x number) (y number) &optional (conjugate-p t))
   (if conjugate-p
-      (* (conjugate x) y)
+      (* (conjugate (the number x)) y)
       (* x y)))
 
 (define-tensor-method dot ((x dense-tensor :x) (y dense-tensor :x) &optional (conjugate-p t))
   `(if conjugate-p
-       (t/dot ,(cl x) x y t)
-       (t/dot ,(cl x) x y nil)))
+       (t/dot ,(cl :x) x y t)
+       (t/dot ,(cl :x) x y nil)))
 
 (define-tensor-method dot ((x dense-tensor :x) (y t) &optional (conjugate-p t))
-  `(let ((y (t/coerce ,(field-type (cl x)) y)))
-     (declare (type ,(field-type (cl x)) y))
+  `(let ((y (t/coerce ,(field-type (cl :x)) y)))
+     (declare (type ,(field-type (cl :x)) y))
      (if conjugate-p	 
-	 (t/dot ,(cl x) x y t t)
-	 (t/dot ,(cl x) x y nil t))))
+	 (t/dot ,(cl :x) x y t t)
+	 (t/dot ,(cl :x) x y nil t))))

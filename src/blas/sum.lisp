@@ -38,7 +38,7 @@
        (loop :for i :from 0 :below (order x)
 	  :always (if (= i axis) (= (dimensions y i) 1) (= (dimensions x i) (dimensions y i))))))))
 
-(defgeneric sum! (x y &optional axis beta)
+(closer-mop:defgeneric sum! (x y &optional axis beta)
   (:documentation "
   (SUM! x y [axis 0] [beta 0])
 
@@ -50,16 +50,17 @@
 ")
   (:method :before ((x dense-tensor) (y dense-tensor) &optional (axis 0) beta)
      (declare (ignore beta))
-     (assert (reduce-check x y axis) nil 'tensor-dimension-mismatch)))
+     (assert (reduce-check x y axis) nil 'tensor-dimension-mismatch))
+  (:generic-function-class tensor-method-generator))
 
-(define-tensor-method sum! ((x dense-tensor :input) (y dense-tensor :output) &optional (axis 0) beta)
-  `(t/sum ,(cl y) x (if beta (scal! beta y) (copy! (t/fid+ ,(field-type (cl y))) y)) axis))
+(define-tensor-method sum! ((x dense-tensor :x) (y dense-tensor :y) &optional (axis 0) beta)
+  `(t/sum ,(cl :y) x (if beta (scal! beta y) (copy! (t/fid+ ,(field-type (cl :y))) y)) axis))
 
-(define-tensor-method sum! ((x dense-tensor :input) (y (eql nil)) &optional (axis 0) beta)
+(define-tensor-method sum! ((x dense-tensor :x) (y (eql nil)) &optional (axis 0) beta)
   `(declare (ignore axis beta))
-  `(t/sum ,(cl x) x nil))
+  `(t/sum ,(cl :x) x nil))
 ;;
-(defgeneric prod! (x y &optional axis beta)
+(closer-mop:defgeneric prod! (x y &optional axis beta)
   (:documentation "
   (PROD! x y [axis 0])
        __
@@ -69,7 +70,8 @@
 ")
   (:method :before ((x dense-tensor) (y dense-tensor) &optional (axis 0) beta)
      (declare (ignore beta))
-     (assert (reduce-check x y axis) nil 'tensor-dimension-mismatch)))
+     (assert (reduce-check x y axis) nil 'tensor-dimension-mismatch))
+  (:generic-function-class tensor-method-generator))
 
 (labels ((*-ify (code)
 	   (maptree `(t/fid+ t/f+ axpy!)
@@ -80,11 +82,11 @@
 					  #'mapcar))
 	     (macroexpand-1 code))))
   ;;Don't you just love lisp :)
-  (define-tensor-method prod! ((x dense-tensor :input) (y dense-tensor :output) &optional (axis 0) beta)
-    (*-ify `(t/sum ,(cl y) x (if beta (scal! beta y) (copy! (t/fid+ ,(field-type (cl y))) y)) axis)))
-  (define-tensor-method prod! ((x dense-tensor :input) (y (eql nil)) &optional axis beta)
+  (define-tensor-method prod! ((x dense-tensor :x) (y dense-tensor :y) &optional (axis 0) beta)
+    (*-ify `(t/sum ,(cl :y) x (if beta (scal! beta y) (copy! (t/fid+ ,(field-type (cl :y))) y)) axis)))
+  (define-tensor-method prod! ((x dense-tensor :x) (y (eql nil)) &optional axis beta)
     `(declare (ignore axis beta))
-    (*-ify `(t/sum ,(cl x) x nil))))
+    (*-ify `(t/sum ,(cl :x) x nil))))
 ;;
 (defgeneric sum (x &optional axis preserve-rank?)
   (:method ((x dense-tensor) &optional (axis 0) (preserve-rank? nil))

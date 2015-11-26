@@ -1,7 +1,7 @@
 (in-package #:matlisp)
 
 ;;
-(defgeneric mapsor! (func x y)
+(closer-mop:defgeneric mapsor! (func x y)
   (:documentation
 "
     Syntax
@@ -27,18 +27,19 @@
     >
 ")
   (:method :before ((func function) (x tensor) (y tensor))
-     (assert (very-quickly (lvec-eq (dimensions x) (dimensions y))) nil 'tensor-dimension-mismatch)))
+     (assert (very-quickly (lvec-eq (dimensions x) (dimensions y))) nil 'tensor-dimension-mismatch))
+  (:generic-function-class tensor-method-generator))
 
 (define-tensor-method mapsor! ((func function) (x dense-tensor :x) (y dense-tensor :y))
   `(dorefs (idx (dimensions x))
-     ((ref-x x :type ,(cl x))
-      (ref-y y :type ,(cl y)))
+     ((ref-x x :type ,(cl :x))
+      (ref-y y :type ,(cl :y)))
      (setf ref-y (funcall func idx ref-x ref-y)))
   'y)
 
-(define-tensor-method mapsor! ((func function) (x (eql nil)) (y dense-tensor :y))
+(define-tensor-method mapsor! ((func function) (x null) (y dense-tensor :y))
   `(dorefs (idx (dimensions y))
-     ((ref-y y :type ,(cl y)))
+     ((ref-y y :type ,(cl :y)))
      (setf ref-y (funcall func idx ref-y)))
   'y)
 

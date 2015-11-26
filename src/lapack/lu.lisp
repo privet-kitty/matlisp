@@ -42,7 +42,7 @@
 		   (:* :integer) (the (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*)) ,ipiv) (:& :integer :output) 0)))))
 
 ;;
-(defgeneric getrf! (A)
+(closer-mop:defgeneric getrf! (A)
   (:documentation
 "
   Syntax
@@ -74,13 +74,14 @@
 	     i:  U(i,i) is exactly zero.
 ")
   (:method :before ((A tensor))
-     (assert (tensor-matrixp A) nil 'tensor-dimension-mismatch)))
+	   (assert (tensor-matrixp A) nil 'tensor-dimension-mismatch))
+  (:generic-function-class tensor-method-generator))
 
-(define-tensor-method getrf! ((A blas-mixin :x t))
+(define-tensor-method getrf! ((A blas-mixin :x))
   `(let ((upiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type ',(matlisp-ffi::%ffc->lisp :integer))))
      (declare (type (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*)) upiv))
      (with-columnification (() (A))
-       (let ((info (t/lapack-getrf! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) upiv)))
+       (let ((info (t/lapack-getrf! ,(cl :x) A (or (blas-matrix-compatiblep A #\N) 0) upiv)))
 	 (unless (= info 0)
 	   (if (< info 0)
 	       (error "GETRF: the ~a'th argument had an illegal value." (- info))
@@ -106,7 +107,7 @@
 	   (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,ldb
 	   (:& :integer :output) 0)))))
 
-(defgeneric getrs! (A B &optional job ipiv)
+(closer-mop:defgeneric getrs! (A B &optional job ipiv)
   (:documentation
    "
   Syntax
@@ -138,7 +139,8 @@
      (assert (and (tensor-matrixp A) (<= (order B) 2)
 		  (= (dimensions A 0) (dimensions A 1) (dimensions B 0))
 		  (or (not ipiv) (<= (permutation-size ipiv) (dimensions A 0))))
-	     nil 'tensor-dimension-mismatch)))
+	     nil 'tensor-dimension-mismatch))
+  (:generic-function-class tensor-method-generator))
 
 (define-tensor-method getrs! ((A blas-mixin :x) (B blas-mixin :x t) &optional (job :n) ipiv)
   `(if (tensor-vectorp b)
@@ -149,7 +151,7 @@
 	     (cjob (aref (symbol-name job) 0)))
 	 (declare (type (simple-array (signed-byte 32) (*)) upiv))
 	 (with-columnification (((A #\C)) (B))
-	   (let ((info (t/lapack-getrs! ,(cl a)
+	   (let ((info (t/lapack-getrs! ,(cl :x)
 					A (or (blas-matrix-compatiblep A #\N) 0)
 					B (or (blas-matrix-compatiblep B #\N) 0)
 					upiv cjob)))
@@ -173,7 +175,7 @@
 	     (:* ,(lisp->ffc ftype)) ,xxx (:& :integer) ,lwork
 	     (:& :integer :output) 0))))))
 
-(defgeneric getri! (A &optional perm)
+(closer-mop:defgeneric getri! (A &optional perm)
   (:documentation
    "
   Syntax
@@ -186,14 +188,15 @@
 ")
   (:method :before ((A tensor) &optional ipiv)
      (declare (type (or null permutation) ipiv))
-     (assert (and (typep A 'tensor-square-matrix) (or (not ipiv) (<= (permutation-size ipiv) (dimensions A 0)))) nil 'tensor-dimension-mismatch)))
+     (assert (and (typep A 'tensor-square-matrix) (or (not ipiv) (<= (permutation-size ipiv) (dimensions A 0)))) nil 'tensor-dimension-mismatch))
+  (:generic-function-class tensor-method-generator))
 
-(define-tensor-method getri! ((a blas-mixin :x t) &optional ipiv)
+(define-tensor-method getri! ((a blas-mixin :x) &optional ipiv)
   `(let ((upiv (if ipiv (pflip.l->f (store (copy ipiv 'permutation-action)))
 		   (or (gethash 'getrf (memos A)) (error "Cannot find permutation for the PLU factorisation of A.")))))
      (declare (type (simple-array (signed-byte 32) (*)) upiv))
      (with-columnification (() (A))
-       (let ((info (t/lapack-getri! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) upiv)))
+       (let ((info (t/lapack-getri! ,(cl :x) A (or (blas-matrix-compatiblep A #\N) 0) upiv)))
 	 (unless (= info 0)
 	   (if (< info 0)
 	       (error "GETRI: the ~a'th argument had an illegal value." (- info))

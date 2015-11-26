@@ -1,6 +1,6 @@
 (in-package #:matlisp)
 
-(defgeneric copy! (from to)
+(closer-mop:defgeneric copy! (from to)
   (:documentation
    "
   Syntax
@@ -12,7 +12,8 @@
   Copies the contents of X into Y. Returns Y.
 ")
   (:method :before ((x array) (y array))
-	   (assert (equal (array-dimensions x) (array-dimensions y)) nil 'dimension-mismatch)))
+	   (assert (equal (array-dimensions x) (array-dimensions y)) nil 'dimension-mismatch))
+  (:generic-function-class tensor-method-generator))
 
 (defmethod copy! ((from cons) (to cons))
   (do ((flst from (cdr flst))
@@ -92,7 +93,7 @@
     (t (error "don't know how to copy a list to type ~a" type))))
 ;;
 
-(defgeneric swap! (x y)
+(closer-mop:defgeneric swap! (x y)
   (:documentation
 "
   Sytnax
@@ -108,4 +109,5 @@
   and returns Y.
 
   X, Y must have the same dimensions.
-"))
+")
+  (:generic-function-class tensor-method-generator))

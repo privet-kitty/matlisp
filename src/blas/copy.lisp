@@ -188,17 +188,17 @@
   (assert (very-quickly (lvec-eq (dimensions x) (dimensions y) '=)) nil 'tensor-dimension-mismatch))
 
 (define-tensor-method copy! ((x array) (y tensor :y t))
-  `(let-typed ((sto-y (store y) :type ,(store-type (cl y))))
+  `(let-typed ((sto-y (store y) :type ,(store-type (cl :y))))
      (iter (for-mod idx from 0 below (dimensions y) with-iterator ((:stride ((of-y (strides y) (head y))
 									     (of-x (make-stride-rmj (coerce (array-dimensions x) 'index-store-vector)))))))
-	   (setf (t/store-ref ,(cl y) sto-y of-y) (t/coerce ,(field-type (cl y)) (row-major-aref x of-x))))
+	   (setf (t/store-ref ,(cl :y) sto-y of-y) (t/coerce ,(field-type (cl :y)) (row-major-aref x of-x))))
      y))
 
 (define-tensor-method copy! ((x tensor :x t) (y array))
-  `(let-typed ((sto-x (store x) :type ,(store-type (cl x))))
+  `(let-typed ((sto-x (store x) :type ,(store-type (cl :x))))
      (iter (for-mod idx from 0 below (dimensions x) with-iterator ((:stride ((of-x (strides x) (head x))
 									     (of-y (make-stride-rmj (coerce (array-dimensions y) 'index-store-vector)))))))
-	   (setf (row-major-aref y of-y) (t/store-ref ,(cl x) sto-x of-x)))
+	   (setf (row-major-aref y of-y) (t/store-ref ,(cl :x) sto-x of-x)))
      y))
 
 #+nil
@@ -207,53 +207,54 @@
 
 (define-tensor-method copy! ((x tensor :x) (y tensor :y t))
   (recursive-append
-   (when (and (eql (cl x) (cl y)) (subtypep (cl y) 'blas-mixin))
-     `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl y) 1)) (blas-copyablep x y)))
-	(t/blas-copy! ,(cl y) x (first strd) y (second strd))))
-   `(t/copy! (,(cl x) ,(cl y)) x y))
+   (when (and (eql (cl :x) (cl :y)) (subtypep (cl :y) 'blas-mixin))
+     `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl :y) 1)) (blas-copyablep x y)))
+	(t/blas-copy! ,(cl :y) x (first strd) y (second strd))))
+   `(t/copy! (,(cl :x) ,(cl :y)) x y))
   'y)
 
 (define-tensor-method copy! ((x t) (y dense-tensor :y t))
   (recursive-append
-   (when (subtypep (cl y) 'blas-mixin)
-     `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl y) 1)) (consecutive-storep y)))
-	(t/blas-copy! ,(cl y) (t/coerce ,(field-type (cl y)) x) nil y strd)))
-   `(t/copy! (t ,(cl y)) x y)))
+   (when (subtypep (cl :y) 'blas-mixin)
+     `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl :y) 1)) (consecutive-storep y)))
+	(t/blas-copy! ,(cl :y) (t/coerce ,(field-type (cl :y)) x) nil y strd)))
+   `(t/copy! (t ,(cl :y)) x y)))
 ;;
-(defgeneric tricopy! (a b uplo?)
-  (:documentation "Copy upper order, lower order, or diagonal."))
+(closer-mop:defgeneric tricopy! (a b uplo?)
+  (:documentation "Copy upper order, lower order, or diagonal.")
+  (:generic-function-class tensor-method-generator))
 
 (define-tensor-method tricopy! ((a dense-tensor :x) (b dense-tensor :x t) uplo?)
   `(ecase uplo?
      ,@(iter (for op in '(:u :uo :l :lo))
 	     (collect `(,op (dorefs (idx (dimensions b) :uplo? ,op)
-				    ((refa a :type ,(cl a))
-				     (refb b :type ,(cl b)))
+				    ((refa a :type ,(cl :x))
+				     (refb b :type ,(cl :x)))
 				    (setf refb refa)))))
      (:d
       (let-typed ((ss.a (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (+ x y))) (strides a)) :type index-type)
 		  (ss.b (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (+ x y))) (strides b)) :type index-type)
-		  (sto.a (store a) :type ,(store-type (cl b)))
-		  (sto.b (store b) :type ,(store-type (cl b))))
+		  (sto.a (store a) :type ,(store-type (cl :x)))
+		  (sto.b (store b) :type ,(store-type (cl :x))))
 	(loop :repeat (the index-type (lvec-min (dimensions b)))
 	   :for of.a :of-type index-type := (head a) :then (the index-type (+ of.a ss.a))
 	   :for of.b :of-type index-type := (head b) :then (the index-type (+ of.b ss.b))
-	   :do (setf (t/store-ref ,(cl b) sto.b of.b) (t/store-ref ,(cl a) sto.a of.a))))))
+	   :do (setf (t/store-ref ,(cl :x) sto.b of.b) (t/store-ref ,(cl :x) sto.a of.a))))))
   'b)
 
 (define-tensor-method tricopy! ((a t) (b dense-tensor :x) uplo?)
-  `(let ((a (t/coerce ,(field-type (cl b)) a)))
+  `(let ((a (t/coerce ,(field-type (cl :x)) a)))
      (ecase uplo?
        ,@(iter (for op in '(:u :uo :l :lo))
 	       (collect `(,op (dorefs (idx (dimensions b) :uplo? ,op)
-				((refb b :type ,(cl b)))
+				((refb b :type ,(cl :x)))
 				(setf refb a)))))
        (:d
 	(let-typed ((ss.b (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (+ x y))) (strides b)) :type index-type)
-		    (sto.b (store b) :type ,(store-type (cl b))))
+		    (sto.b (store b) :type ,(store-type (cl :x))))
 	  (loop :repeat (the index-type (lvec-min (dimensions b)))
 	     :for of.b :of-type index-type := (head b) :then (the index-type (+ of.b ss.b))
-	     :do (setf (t/store-ref ,(cl b) sto.b of.b) a)))))
+	     :do (setf (t/store-ref ,(cl :x) sto.b of.b) a)))))
      b))
 
 ;;Generic function defined in src;base;generic-copy.lisp
