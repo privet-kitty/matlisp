@@ -1,0 +1,174 @@
+# -*- Mode: org -*-
+ಮಾಟ್ಲಿಸ್ಪು ವೈಜ್ಞಾನಿಕ ಗಣನೆಗೆ ಉಪಯೋಗಕರವಾದ ಒಂದು ಲಿಸ್ಪಿನ ಸಂಗ್ರಹ. ಇದು ಮಾಟ್ಲಿಸ್ಪಿನ ಸಂಶೋಧನಾಕರ ಕಾಂಡಾ.
+
+* ಮಾಟ್ಲಿಸ್ಪು ಯಾಕೇ, ಲಿಸ್ಪು ಯಾಕೇ ?
+  ಸಾಂಶೋಧನಿಕ ಗಣನೆಗೆ ಲಿಸ್ಪು ಒಂದು ಅತ್ಯುತ್ತಮ ವಿಧಿಭಾಷೆ. ಆದರೆ, ಇದರಲ್ಲಿ ಸಂಖ್ಯಾತ್ಮಕ ಕಾರ್ಯಗಳಿಗೆ ತಂತ್ರಗಳ ಬರ.
+  ಮಾಟ್ಲಾಬು, ನಂಪೈ.. ಇತರರು ಸಂಖ್ಯಾತ್ಮಕ ಕಾರ್ಯಗಳಿಗೆ ಸೂಕ್ತವಾದರೂ, ಇತರ ಕಾರ್ಯಗಳಿಗೆ ಸರಿ ಹೋಗುವುದಿಲ್ಲ.
+  ಲಿಸ್ಪಿನಲ್ಲಿ ಹೋಸ ಅನ್ವಯಿಕ ನಿಯಂತ್ರಣಗಳನ್ನು ಬೇಕಾದಲ್ಲಿ ಸೇರಿಸಬಹುದು. ಇತರ ವಿಧಿಭಾಷೆಗಳಲ್ಲಿ ಈ ಸೌಲಭ್ಯ
+  ದೊರಕುವುದಿಲ್ಲ. ಉದಾಹರಣೆಗೆ, ನಾವು '/' ಓಪರೇಟರ್ರನ್ನು ಬರೀ ೨-ಅರಿ ಮಾತ್ರವಲ್ಲ, ೧-ಅರಿ ರೂಪದಲ್ಲಿ 
+  ಕೂಡ ಉಪಯೋಗಿಸುತ್ತೇವೆ.
+  #+BEGIN_SRC lisp   
+  MATLISP> #i(/A * b)
+  #+END_SRC
+  ಮೇಲಿನ ವಿಧ್ಯಾದೇಶ ಮೇಟ್ರಿಕ್ಸು ಸಮೀಕರಣ $A x = b$ ವನ್ನು ಪರಿಹರಿಸುತ್ತದೆ. ಇದಲ್ಲದೆ, ಬಳಸುವರು ಸುಲಭವಾಗಿ
+  ಸ್ವಂತದಾದ ಅನ್ವಯಿಕ ನಿಯಂತ್ರಣವನ್ನು "src/reader/infix.lisp" ವನ್ನು ಬದಲಾಯಿಸಿ ಸೇರಿಸ ಬಹುದು. 
+
+  SBCL ನಂತಹ ಸಂಕಲಕವನ್ನು ಉಪಯೋಗಿಸುವಾಗ ಮಾಟ್ಲಿಸ್ಪು ಸೃಷ್ಟಿಸುವ ಆದೇಶಗಳು, C ಕೋಡಿನ ಇನ ವೇಗಕ್ಕೇ ಹೋಲಿಸ ಬಹುದು.
+  ಉದಾಹರಣೆಗೆ,
+  #+BEGIN_SRC lisp
+   > (defun mm (A B C)
+       (einstein-sum #.(tensor 'double-float) (j k i) (ref C i j) (* (ref A i j) (ref B j k))))
+  #+END_SRC
+  basically generates an extremely tight naive 3-loop version of GEMM (exercise: why
+  'j k i' ?), which is only about 10 times as slow the optimized version of GEMM in
+  OpenBLAS, and about 20% slower than the naive 3-loop version in C.
+  
+  Matlisp also switches dynamically between BLAS routines (when available) and native lisp
+  code to avoid FFI overheads. This also means that, BLAS functionality of Matlisp can be used
+  (with minimal tweaking) either without a BLAS library, or for commutative-rings which don't
+  have a BLAS version available.
+  
+* How to Install
+  Matlisp uses CFFI for callng foreign functions. That said, the FFI
+  capabilities of different lisps are quite different. So if your Lisp
+  implementation supports callbacks and calling plain C functions and
+  maps float simple-arrays into C-type arrays in memory, it shouldn't
+  be too hard to get it working (if it doesn't work already). We've tested
+  Matlisp on CCL and SBCL. The build system is cranky with all the new changes.
+  
+- Install quicklisp http://www.quicklisp.org/beta/. 
+- Download matlisp source:
+#+BEGIN_SRC shell
+   > git clone git@github.com:matlisp/matlisp.git 
+   > ln -s $PWD/matlisp <quicklisp-directory>/local-projects
+#+END_SRC
+Fire up your lisp implementation and load as usual with quicklisp:
+#+BEGIN_SRC lisp
+  CL-USER> (ql:quickload :matlisp)
+  CL-USER> (in-package :matlisp)
+  MATLISP> (named-readtables:in-readtable :infix-dispatch-table)
+#+END_SRC
+The fortran libraries provided by matlisp earlier are now part of [[https://github.com/matlisp/matlisp-packages][matlisp-packages]].
+
+* Example usage
+  More documentation will be added as things reach a nicer stage of development.
+  
+  #+BEGIN_SRC lisp   
+  ;;Creation
+  MATLISP> (copy! (randn '(2 2)) (zeros '(2 2) '((complex double-float))))
+  #<|(COMPLEX DOUBLE-FLOAT) STRIDE-ACCESSOR SIMPLE-ARRAY| #(2 2)
+    0.8492   -1.976
+    2.207    -1.251   
+  >
+  ;;gemv
+  MATLISP> (let ((a (randn '(2 2)))
+		 (b (randn 2)))
+	     #i(a * b))
+  #<|DOUBLE-FLOAT STRIDE-ACCESSOR SIMPLE-ARRAY| #(2)
+  1.1885     0.95746
+  >
+
+  ;;Tensor contraction
+  MATLISP> (let ((H (randn '(2 2 2)))
+		 (b (randn 2))
+		 (c (randn 2))
+		 (f (zeros 2)))
+             ;;#i(H @ b @ c)
+	     (einstein-sum #.(tensor 'double-float) (i j k) (ref f i) (* (ref H i j k) (ref b j) (ref c k))))
+  #<|DOUBLE-FLOAT STRIDE-ACCESSOR SIMPLE-ARRAY| #(2)
+  0.62586     -1.1128
+  >
+  ;;Similarly
+  MATLISP> (let ((H (randn '(2 2 2))))
+             #i(H @ randn(2) @ randn(2)))
+  #<|DOUBLE-FLOAT STRIDE-ACCESSOR SIMPLE-ARRAY| #(2)
+   0.3234  -0.6201 
+  >
+  #+END_SRC
+  
+* Progress Tracker
+** What works ?
+   * Generic template structure.
+   * Double real, complex tensor structures in place.
+   * Templates for optimized BLAS methods in Lisp.
+   * Automatic switching between Lisp routines and BLAS.
+   * Inplace slicing, real - imag views for complex tensors.
+   * copy, scal, dot, swap, axpy, gemv, gemm, getrf/getrs (lu), geev(eig), potrf/potrs(chol), geqr
+   * permutation class, sorting, conversion between action and
+     cycle representations.
+   * mod-loop works, can produce very quick multi-index loops.
+   * einstein macro works, can produce optimized loops.
+   * Negative stride support, ala Python.
+   * Tensor contraction: Hard to do very quickly; uses einstein-sum.
+   * co-ordinate sparse tensor, compressed sparse matrix support exists, but in a shaky state. There's also a 
+     fib-heap implementation for graph algorithms.
+     
+** TODO : What remains ? (Help!)
+*** Random distributions
+    The current random number generator for Gaussians is sub-optimal (using [Leva 92]). Implementing a fast, automated version of
+    Ziggurat would be very useful (see cl-randist for a non-optimized one).
+
+*** Unify slicing syntax
+    Things are currently done using the iter slice macro (and mapslice*'s), mod-dotimes, and einstein-loop generator. The more 
+    elegant course to take would be unify these with a nice syntactic glue; sadly as far I know this hasn't been done before. 
+    This will require quite a bit of prototyping.
+
+*** Functionality
+   * Make everything in src/old/ compatible with new datastrutures.
+   * LAPACK: Add interfaces to remaining functions.
+   * DFFTPACK: computing FFTs
+   * QUADPACK: Move from f2cl-ed version to the Fortran one.
+   * MINPACK: Move from f2cl-ed version to the Fortran one.
+   * ODEPACK: Add abstraction for DLSODE, and DLSODAR may others too.
+
+*** Gnuplot interface
+   * Make gnuplot interface more usable.
+
+*** Python-bridge
+    (C)Python has far too many things, that we cannot even begin to hope to replicate.
+    Burgled-batteries has a lot of things which could be useful in talking to CPython.
+
+    Getting standard-tensor <-> numpy tranlation should be enough. Mostly care about
+    matplotlib at the moment.
+
+*** Support linking to libraries ?
+    Parse header files with cffi-grovel.
+
+*** Documentation, tests
+    * Write documentation.
+      Fix the formatting for docstrings. Maybe move to TeXinfo (like femlisp).
+    * Write tests
+      Use cl-rt stuff to write more tests. Probably even add benchmarks.
+
+*** Symbolics, AD, more fancy stuff {wishlist}
+   * Use things like macrofy to work with Maxima
+   * Provide seamless AD, Symbolic differentiation and numerical function calls, ala scmutils.
+   * Symbolic stuff tends to fit in easily with the lisp-based BLAS routines.
+     Port code from src/classes/symbolic-tensor.lisp
+
+* Emacs
+We currently use Unicode symbols, for certain function names and in the infix reader,
+
+#+BEGIN_SRC lisp
+;; Lisp
+(defun add-lisp-slime-hook (func)
+  (add-hook 'lisp-mode-hook func)
+  (add-hook 'slime-repl-mode-hook func))
+;;
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "M-SPC") 'insert-pair-paren)))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c \\") (lambda () (interactive (insert "λ"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c <right>") (lambda () (interactive (insert "→"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c <left>") (lambda () (interactive (insert "←"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c /") (lambda () (interactive (insert "⟼"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c *") (lambda () (interactive (insert "⊗"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c ^") (lambda () (interactive (insert "∧"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c .") (lambda () (interactive (insert "·"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c a") (lambda () (interactive (insert "δ"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c e") (lambda () (interactive (insert "∃"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c f") (lambda () (interactive (insert "∀"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c i") (lambda () (interactive (insert "∈"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c l") (lambda () (interactive (insert "…"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c o") (lambda () (interactive (insert "∘"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c p") (lambda () (interactive (insert "π"))))))
+(add-lisp-slime-hook #'(lambda () (local-set-key (kbd "C-c s") (lambda () (interactive (insert "σ"))))))
+#+END_SRC
