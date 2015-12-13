@@ -1,20 +1,5 @@
 (in-package #:matlisp)
 
-(closer-mop:defgeneric ref (tensor &rest subscripts)
-  (:documentation "
-  Syntax
-  ======
-  (ref store subscripts)
-
-  Purpose
-  =======
-  Return the element corresponding to subscripts.
-")
-  (:generic-function-class tensor-method-generator))
-
-(closer-mop:defgeneric (setf ref) (value tensor &rest subscripts)
-  (:generic-function-class tensor-method-generator))
-
 (labels ((array-subs (obj subscripts)
 	   (let ((subs (etypecase (car subscripts)
 			 (number subscripts)
@@ -55,3 +40,4 @@
 
 (defmethod (setf ref) (value (obj hash-table) &rest subscripts)
   (setf (gethash (car subscripts) obj) value))
+;;

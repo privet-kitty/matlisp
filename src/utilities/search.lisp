@@ -59,7 +59,7 @@
 
 (let ((code `(lambda (seq predicate &key key)
 	       (declare (type vector seq))
-	       (let*-typed ((key (or key #'id))
+	       (let*-typed ((key (or key #'identity))
 			    (len (length seq) :type fixnum)
 			    (perm (make-array len :element-type 'fixnum) :type (simple-array fixnum))
 			    (jobs (make-array len :adjustable t :fill-pointer 0)))

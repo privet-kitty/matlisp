@@ -70,7 +70,7 @@
 
 (defpackage "MATLISP-UTILITIES"
   (:use #:common-lisp #:iterate #:trivia #:matlisp-conditions)
-  (:export #:id #:pophash
+  (:export #:pophash
 	   #:vectorify #:copy-n #:ensure-list
 	   #:zip #:zipsym
 	   #:slot-values #:remmeth
@@ -94,7 +94,9 @@
 	   ;;
 	   #:definline #:with-optimization #:very-quickly
 	   ;;
-	   #:memoizing-let #:defmem #:with-memoization))
+	   #:memoizing-let #:defmem #:with-memoization
+	   ;;
+	   #:sap-wrap #:ptr))
 
 (defpackage "MATLISP-DLIST"
   (:nicknames #:dlist)

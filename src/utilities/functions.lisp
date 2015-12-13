@@ -3,9 +3,6 @@
 ;;These functions are used all over the place inside Matlisp's macros.
 (eval-when (:compile-toplevel :load-toplevel :execute)
 
-(declaim (inline id))
-(defun id (x) x)
-
 (defun pophash (key hash-table &optional default)
   (multiple-value-bind (value existsp) (gethash key hash-table default)
     (when existsp (remhash key hash-table))
@@ -327,4 +324,18 @@ superclasses.  This class is generated automatically, if necessary."
     ((not d) i)
     (t (assert (if open? (<= (- (1+ d)) i d) (< (- (1+ d)) i d)) nil 'invalid-value)
        (if (< i 0) (if (and open? (= i (- (1+ d)))) -1 (mod i d)) i))))
+
+;;
+(defstruct (sap-wrap (:constructor make-sap-wrap (ptr)))
+  (ptr (cffi:null-pointer) :type cffi:foreign-pointer :read-only t))
+
+(defun sap-wrap (ptr &optional finalizer)
+  (let ((wrap (make-sap-wrap ptr)))
+    (if finalizer
+	(tg:finalize wrap
+		     (typecase finalizer
+		       ((eql t) #'(lambda () (cffi:foreign-free ptr)))
+		       (function #'(lambda () (funcall finalizer ptr))))))
+    wrap))
+
 )

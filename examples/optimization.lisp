@@ -118,10 +118,9 @@ end
   ;;B^+ = P' * B * P + rho .* sk ^ sk
   ;;rho = 1/(sk @ yk)
   ;;P = (id - rho .* yk ^ sk)
+  ;;r    (ger! (- rho) sk (gemv! 1 Hkp yk 0 tmp :t) Hkp)  ;;left
   (let ((rho (/ (dot sk yk))))
-    (ger! (- rho) (gem 1 Hkp yk nil nil) sk Hkp)     ;;r    (ger! (- rho) sk (gemv! 1 Hkp yk 0 tmp :t) Hkp)  ;;left
-    (ger! (* alpha rho) sk sk Hkp))
-  Hkp)
+    (ger! (* alpha rho) sk sk (ger! (- rho) (gem 1 Hkp yk nil nil) sk Hkp))))
 
 ;;Use a proper circular buffer instead of using dlists ?
 (defun lbfgs-query! (q buf &optional H0)

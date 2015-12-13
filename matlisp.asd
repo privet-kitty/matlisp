@@ -64,9 +64,10 @@
 	    :components ((:file "tweakable")
 			 (:file "base-tensor" :depends-on ("tweakable"))
 			 (:file "loopy" :depends-on ("base-tensor"))
+			 (:file "generator" :depends-on ("base-tensor"))
 			 ;;
 			 (:file "numeric-template")
-			 (:file "tensor-template" :depends-on ("base-tensor" "numeric-template"))
+			 (:file "tensor-template" :depends-on ("base-tensor" "generator" "numeric-template"))
 			 ;;
 			 (:file "generic/copy" :depends-on ("base-tensor" "loopy" "tensor-template"))
 			 (:file "generic/ref" :depends-on ("base-tensor"  "loopy" "tensor-template"))

@@ -55,8 +55,8 @@
 	 (dorefs (,idx (dimensions ,y))
 		 ((,ref-x ,x :type ,clx)
 		  (,ref-y ,y :type ,cly))
-	   (setf ,ref-y ,(if (and (subtypep (field-type clx) 'cl:real) (real-subtype (field-type cly))) ;;Coercion messes up optimization in SBCL, so we specialize.
-			     `(the ,(field-type cly) (complex (t/strict-coerce (,(field-type clx) ,(real-subtype (field-type cly))) ,ref-x) (t/fid+ ,(real-subtype (field-type cly)))))
+	   (setf ,ref-y ,(if (and (subtypep (field-type clx) 'cl:real) (real-subtypep (field-type cly))) ;;Coercion messes up optimization in SBCL, so we specialize.
+			     `(the ,(field-type cly) (complex (t/strict-coerce (,(field-type clx) ,(real-subtypep (field-type cly))) ,ref-x) (t/fid+ ,(real-subtypep (field-type cly)))))
 			     (if (eql clx cly) ref-x `(t/strict-coerce (,(field-type clx) ,(field-type cly)) ,ref-x))))))
 	   ,y)))
 

@@ -6,16 +6,6 @@
 (deftype index-store-vector (&optional (size '*)) `(simple-array index-type (,size)))
 (deftype index-store-matrix (&optional (m '*) (n '*)) `(simple-array index-type (,m ,n)))
 ;;
-(defclass base-tensor () ())
-(defclass vector-mixin () ())
-(defclass matrix-mixin () ())
-
-(eval-every
-  (closer-mop:defclass tensor-method-generator (closer-mop:standard-generic-function) ()
-    (:metaclass closer-mop:funcallable-standard-class)))
-;;
-(defparameter *accessor-types* '(stride-accessor coordinate-accessor graph-accessor))
-
 (defclass base-accessor ()
   ((dimensions :initarg :dimensions :type index-store-vector :documentation "Dimensions of the vector spaces in which the tensor's arguments reside.")))
 
@@ -26,18 +16,13 @@
     (null (the index-store-vector (slot-value x 'dimensions)))
     (index-type (the index-type (aref (the index-store-vector (slot-value x 'dimensions)) (modproj (or idx 0) (order x) nil 0))))
     (t (lvec->list (the index-store-vector (slot-value x 'dimensions))))))
-
+;;Can this be moved out into MOP ?
 (defmethod initialize-instance :after ((x base-accessor) &rest initargs)
   (declare (ignore initargs))
   (when *check-after-initializing?*
     (very-quickly
       (loop :for i :from 0 :below (length (dimensions x))
 	 :do (assert (> (dimensions x i) 0) nil 'tensor-invalid-dimension-value :argument i :dimension (dimensions x i) :tensor x)))))
-
-(closer-mop:defgeneric total-size (obj)
-  (:method ((obj sequence)) (length obj))
-  (:method ((arr array)) (array-total-size arr))
-  (:generic-function-class tensor-method-generator))
 ;;We use order (opposed to CL convention) so as not to cause confusion with matrix rank.
 (definline order (x)
   (declare (type base-accessor x))
@@ -47,56 +32,62 @@
   ((strides :initarg :strides :type index-store-vector :documentation "Strides for accesing elements of the tensor.")
    (head :initarg :head :initform 0 :type index-type :documentation "Head for the store's accessor."))
   (:documentation "Vanilla stride accessor."))
-
-(defclass stride-accessor-scm (base-accessor) ()
-  (:documentation "Stride accessor: strict column major"))
-(defclass stride-accessor-srm (base-accessor) ()
-  (:documentation "Stride accessor: strict row major"))
-;;
 (defclass coordinate-accessor (base-accessor)
   ((indices :initarg :indices :type index-store-matrix :documentation "Non-zero indices in the tensor.")
    (stride-hash :initarg :stride-hash :type index-store-vector :documentation "Strides in Column major order")
    (strides :initarg :strides :type index-store-vector :documentation "Strides in Column major order")
    (boundary :initform 0 :initarg :boundary :type index-type :documentation "Row bound for indices"))
   (:documentation "Bi-partite graph/Hypergraph/Factor/Co-ordinate store"))
-;;
 (defclass graph-accessor (base-accessor)
   ((fence :initarg :fence :type index-store-vector :documentation "Start index for neighbourhood.")
    (neighbours :initarg :neighbours :type index-store-vector :documentation "Neighbour ids.")
    (transposep :initarg :transposep :initform nil :type boolean :documentation "Choose between row-column compressed forms."))
   (:documentation "Graph store via Adjacency lists; only works for matrices."))
-
-(defclass graph-accessor-ccs (graph-accessor) ()
-  (:documentation "Graph accessor: Column Compressed storage"))
-(defclass graph-accessor-crs (graph-accessor) ()
-  (:documentation "Graph accessor: Row Compressed storage."))
+;;Store types
+(defclass simple-array-store-mixin () ())
+(defclass hash-table-store-mixin () ())
 ;;
-(defclass tensor (base-tensor base-accessor)
+(defclass base-tensor () ())
+
+(closer-mop:defclass tensor-class (standard-class)
+  ((field-type :reader field-type)))
+(closer-mop:defmethod closer-mop:validate-superclass ((class tensor-class) (superclass standard-class))  t)
+(defmethod field-type ((class symbol)) (field-type (find-class class)))
+
+(closer-mop:defclass tensor (base-tensor base-accessor)
   ((store :initarg :store :reader store :documentation "Storage for the tensor.")
    (memos :initform nil :documentation "Memoized attributes."))
-  (:documentation "Basic tensor class."))
-
-(defclass dense-tensor (tensor)
-  ((parent :initform nil :initarg :parent :type (or null tensor) :documentation "This slot is bound if the tensor is the view of another.")))
-(defclass blas-mixin () ())
-
-(definline orphanize (x)
-  (declare (type dense-tensor))
-  (setf (slot-value x 'parent) nil)
-  x)
-;;I have no idea what this does, or why we want it (inherited from standard-matrix.lisp)
-(defmethod make-load-form ((tensor tensor) &optional env)
-  "
-  MAKE-LOAD-FORM allows us to determine a load time value for
-  tensor, for example #.(make-tensors ...)"
+  (:metaclass tensor-class)
+  (:documentation "Object which directly holds the values of its components (or part thereof)."))
+;;This is probably unnecessary now that the reader does not compile at read time.
+(defmethod make-load-form ((tensor base-tensor) &optional env)
   (make-load-form-saving-slots tensor :environment env))
 
 (declaim (ftype (function (tensor) hash-table) memos))
 (definline memos (x)
   (declare (type tensor x))
-  ;;Create hash-table only when necessary
-  (or (slot-value x 'memos)
+  (or (slot-value x 'memos) ;;Create hash-table only when necessary
       (setf (slot-value x 'memos) (make-hash-table :test 'equal))))
+;;
+(defclass dense-tensor (tensor stride-accessor simple-array-store-mixin)
+  ((parent :initform nil :initarg :parent :type (or null tensor) :documentation "This slot is bound if the tensor is the view of another."))
+  (:metaclass tensor-class)
+  (:documentation "Object which holds all values of its components, with a simple-vector store."))
+(defclass blas-mixin () ()
+  (:documentation "Mixin which indicates that there exist foreign-routines for an object of this type."))
+(definline orphanize (x)
+  (declare (type dense-tensor))
+  (setf (slot-value x 'parent) nil) x)
+;;
+(defclass graph-tensor (tensor graph-accessor simple-array-store-mixin) ()
+  (:metaclass tensor-class))
+(defclass hash-tensor (tensor stride-accessor hash-table-store-mixin) ()
+  (:metaclass tensor-class))
+(defclass coordinate-tensor (tensor coordinate-accessor simple-array-store-mixin) ()
+  (:metaclass tensor-class))
+;;
+(defclass vector-mixin () ())
+(defclass matrix-mixin () ())
 ;;
 (defun tensor-typep (tensor subs)
   "
@@ -152,27 +143,22 @@
 (deftype tensor-square-matrix () `(and tensor (satisfies tensor-matrixp) (satisfies tensor-squarep)))
 ;;
 (with-memoization ()
-  (defmem tensor (field &optional accessor store)
-    (let* ((accessor (or accessor 'stride-accessor))
-	   (store (or store (and (eql accessor 'stride-accessor) 'simple-array))))
-      (assert (and (member accessor *accessor-types*) (or (not store) (and (eql accessor 'stride-accessor) (member store '(simple-array hash-table))))) nil 'invalid-arguments)
-      (or
-       (find-if #'(lambda (x)
-		    (and (eql (field-type x) field)
-			 (if (eql accessor 'stride-accessor) (eql (first (ensure-list (store-type x))) store) t)
-			 (null (set-difference (closer-mop:class-direct-superclasses (find-class x)) (mapcar #'find-class `(dense-tensor blas-mixin tensor ,accessor))))))
-		(mapcar #'class-name (apply #'intersection (mapcar #'closer-mop:class-direct-subclasses (mapcar #'find-class `(tensor ,accessor))))))
-       (let ((cl (intern (format nil "~{~a~^ ~}" (remove nil (list 'tensor field accessor store))) (find-package "MATLISP"))))
-	 (compile-and-eval `(defclass ,cl (,@(when (equal (list accessor store) '(stride-accessor simple-array))
-						   `(,@(when (member field '(single-float double-float (complex single-float) (complex double-float)) :test #'equal) '(blas-mixin)) dense-tensor))
-					     tensor ,accessor) ()))
-	 (compile-and-eval `(deft/method t/field-type (sym ,cl) () ',field))
-	 (case store
-	   (simple-array (compile-and-eval `(deft/method t/store-type (sym ,cl) (&optional (size '*))
-					      `(simple-array ,(or (real-subtype (field-type sym)) (field-type sym)) (,size)))))
-	   (hash-table (compile-and-eval `(deft/method t/store-type (sym ,cl) (&optional (size '*))
-					    'hash-table))))
-	 cl)))))
+  (defmem tensor (field &optional tensor order)
+    (let* ((tensor (or tensor 'dense-tensor)))
+      (declare (type (member dense-tensor graph-tensor hash-tensor coordinate-tensor) tensor))
+      (or (if-let (class (find field (closer-mop:class-direct-subclasses (find-class tensor)) :key #'(lambda (x) (field-type (class-name x)))))
+	    (class-name class))
+	  (let* ((super-classes (remove nil (list (if (and (eql tensor 'dense-tensor)
+							   (member field '(single-float double-float (complex single-float) (complex double-float)) :test #'equal))
+						      'blas-mixin)
+						  tensor (case order (1 'vector-mixin) (2 'matrix-mixin)))))
+		 (cl-name (intern (format nil "<~{~a~^ ~}: ~a>" super-classes field) (find-package "MATLISP"))))
+	    (compile-and-eval
+	     `(progn
+		(defclass ,cl-name (,@super-classes) ()
+		  (:metaclass tensor-class))
+		(setf (slot-value (find-class ',cl-name) 'field-type) ',field)))
+	    cl-name)))))
 
 (defun tensor-load-form (class)
   (let ((supclass (mapcar #'class-name (closer-mop:class-direct-superclasses (find-class class)))))
@@ -181,4 +167,3 @@
      (set-difference supclass '(tensor dense-tensor blas-mixin))
      (when (member 'stride-accessor supclass) (list (first (ensure-list (store-type class))))))))
 ;;
-

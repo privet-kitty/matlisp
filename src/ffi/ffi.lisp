@@ -64,10 +64,10 @@
     ((eq type 'cl:double-float) :double-float)
     ((eq type 'cl:character) :character)
     ((eq type 'cl:string) :string)
-    ((tree-equal type '(cl:complex cl:single-float)) (if refp :complex-single-float :single-float))
-    ((tree-equal type '(cl:complex cl:double-float)) (if refp :complex-double-float :double-float))
-    ((tree-equal type '(cl:signed-byte 32)) :integer)
-    ((tree-equal type '(cl:signed-byte 64)) :long)))
+    ((equal type '(cl:complex cl:single-float)) (if refp :complex-single-float :single-float))
+    ((equal type '(cl:complex cl:double-float)) (if refp :complex-double-float :double-float))
+    ((equal type '(cl:signed-byte 32)) :integer)
+    ((equal type '(cl:signed-byte 64)) :long)))
 
 ;; type -> Pass by value
 ;; (:& type &key output) -> Pass by reference, if 'output' return value after exiting from foreign function.
@@ -130,7 +130,7 @@
 (define-constant +f77-name-mangler+
     (find-if #'(lambda (f) (cffi:foreign-symbol-pointer (funcall f "ddot")))
 	     (mapcart #'(lambda (a b) (compile-and-eval `(lambda (x) ,(subst b 'x a))))
-		      '((string-upcase x) (string-downcase x)) '((id x) (string+ x "_") (string+ x "__")))))
+		      '((string-upcase x) (string-downcase x)) '((identity x) (string+ x "_") (string+ x "__")))))
 
 (defmacro ffuncall (name-&-return-type &rest args)
   "This macro provides a thin wrapper around cffi:foreign-funcall for making calls to Fortran functions
