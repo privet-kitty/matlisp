@@ -375,7 +375,8 @@
 				     (,value ,exists-p (gethash ,args ,table)))
 			       (values-list
 				(if ,exists-p ,value
-				    (setf (gethash ,args ,table) (multiple-value-list (progn ,@body))))))))))))
+				    (setf (gethash ,args ,table) (multiple-value-list (progn ,@body))))))))
+			 (_ (error "don't know how to memoize ~a" code))))))
 	     `(let ((,table ,hash-table)) ,@body))))
 
 (defmacro curry (func &rest more-funcs)
