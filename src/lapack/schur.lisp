@@ -52,7 +52,7 @@
 	      (error "GEES: Illegal value in the ~:r argument." (- info))
 	      (error "GEES: (~a) the QR algorithm failed to compute all the eigenvalues." info))))
       (values-list (list*
-		    (make-instance ',(complexified-type (cl :x))
+		    (make-instance ',(complexified-tensor (cl :x))
 				   :dimensions (coerce (list (dimensions A 0)) 'index-store-vector)
 				   :strides (coerce (list 1) 'index-store-vector)
 				   :head 0

@@ -3,16 +3,17 @@
 (defun consecutive-storep (tensor)
   (declare (type stride-accessor tensor))
   (with-memoization ((memos tensor))
-    (memoizing-let ((tensor tensor))
-      (letv* ((sort-std std-perm (very-quickly (sort-index (the index-store-vector (copy-seq (strides tensor))) #'<)) :type index-store-vector index-store-vector)
-	      (perm-dims (very-quickly (apply-action! (copy-seq (the index-store-vector (dimensions tensor))) std-perm)) :type index-store-vector))
-	(very-quickly
-	  (loop
-	     :for so-st :across sort-std
-	     :for so-di :across perm-dims
-	     :and accumulated-off := (aref sort-std 0) :then (the index-type (* accumulated-off so-di))
-	     :unless (= so-st accumulated-off) :do (return (values nil perm-dims sort-std std-perm))
-	     :finally (return (values (aref sort-std 0) perm-dims sort-std std-perm))))))))
+    (memoizing
+     (let ((tensor tensor))
+       (letv* ((sort-std std-perm (very-quickly (sort-index (the index-store-vector (copy-seq (strides tensor))) #'<)) :type index-store-vector index-store-vector)
+	       (perm-dims (very-quickly (apply-action! (copy-seq (the index-store-vector (dimensions tensor))) std-perm)) :type index-store-vector))
+	 (very-quickly
+	   (loop
+	      :for so-st :across sort-std
+	      :for so-di :across perm-dims
+	      :and accumulated-off := (aref sort-std 0) :then (the index-type (* accumulated-off so-di))
+	      :unless (= so-st accumulated-off) :do (return (values nil perm-dims sort-std std-perm))
+	      :finally (return (values (aref sort-std 0) perm-dims sort-std std-perm)))))))))
 
 (definline blas-func (name type)
   (string+

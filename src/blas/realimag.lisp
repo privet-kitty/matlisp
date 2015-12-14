@@ -43,9 +43,9 @@
 "
   (etypecase tensor
     (number (cl:realpart tensor))
-    (dense-tensor (if (eql (realified-type tensor) (type-of tensor)) tensor
+    (dense-tensor (if (eql (realified-tensor tensor) (type-of tensor)) tensor
 		      (with-no-init-checks
-			  (make-instance (realified-type (type-of tensor))
+			  (make-instance (realified-tensor (type-of tensor))
 					 :parent tensor :store (store tensor)
 					 :dimensions (dimensions tensor)
 					 :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (the index-store-vector (strides tensor)))
@@ -68,9 +68,9 @@
 "
   (etypecase tensor
     (number (cl:imagpart tensor))
-    (dense-tensor (if (eql (realified-type tensor) (type-of tensor)) nil
+    (dense-tensor (if (eql (realified-tensor tensor) (type-of tensor)) nil
 		      (with-no-init-checks
-			  (make-instance (realified-type (type-of tensor))
+			  (make-instance (realified-tensor (type-of tensor))
 					 :parent tensor :store (store tensor)
 					 :dimensions (dimensions tensor)
 					 :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (the index-store-vector (strides tensor)))

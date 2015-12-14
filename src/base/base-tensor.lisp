@@ -143,27 +143,69 @@
 (deftype tensor-square-matrix () `(and tensor (satisfies tensor-matrixp) (satisfies tensor-squarep)))
 ;;
 (with-memoization ()
-  (defmem tensor (field &optional tensor order)
-    (let* ((tensor (or tensor 'dense-tensor)))
-      (declare (type (member dense-tensor graph-tensor hash-tensor coordinate-tensor) tensor))
-      (or (if-let (class (find field (closer-mop:class-direct-subclasses (find-class tensor)) :key #'(lambda (x) (field-type (class-name x)))))
-	    (class-name class))
-	  (let* ((super-classes (remove nil (list (if (and (eql tensor 'dense-tensor)
-							   (member field '(single-float double-float (complex single-float) (complex double-float)) :test #'equal))
-						      'blas-mixin)
-						  tensor (case order (1 'vector-mixin) (2 'matrix-mixin)))))
-		 (cl-name (intern (format nil "<~{~a~^ ~}: ~a>" super-classes field) (find-package "MATLISP"))))
-	    (compile-and-eval
-	     `(progn
-		(defclass ,cl-name (,@super-classes) ()
-		  (:metaclass tensor-class))
-		(setf (slot-value (find-class ',cl-name) 'field-type) ',field)))
-	    cl-name)))))
+  (memoizing
+   (defun tensor (field &optional tensor order)
+     (let* ((tensor (or tensor 'dense-tensor)))
+       (declare (type (member dense-tensor graph-tensor hash-tensor coordinate-tensor) tensor))
+       (or (if-let (class (find field (closer-mop:class-direct-subclasses (find-class tensor)) :key #'(lambda (x) (field-type (class-name x)))))
+	     (class-name class))
+	   (let* ((super-classes (remove nil (list (if (and (eql tensor 'dense-tensor)
+							    (member field '(single-float double-float (complex single-float) (complex double-float)) :test #'equal))
+						       'blas-mixin)
+						   tensor (case order (1 'vector-mixin) (2 'matrix-mixin)))))
+		  (cl-name (intern (format nil "<~{~a~^ ~}: ~a>" super-classes field) (find-package "MATLISP"))))
+	     (compile-and-eval
+	      `(progn
+		 (defclass ,cl-name (,@super-classes) ()
+		   (:metaclass tensor-class))
+		 (setf (slot-value (find-class ',cl-name) 'field-type) ',field)))
+	     cl-name))))))
 
-(defun tensor-load-form (class)
-  (let ((supclass (mapcar #'class-name (closer-mop:class-direct-superclasses (find-class class)))))
-    (append
-     (list (field-type class))
-     (set-difference supclass '(tensor dense-tensor blas-mixin))
-     (when (member 'stride-accessor supclass) (list (first (ensure-list (store-type class))))))))
+;;This is useful for Eigenvalue decompositions
+(defgeneric complexified-tensor (class)
+  (:method ((class-name symbol))
+    (complexified-tensor (find-class class-name))))
+
+(with-memoization ()
+  (memoizing
+   (defmethod complexified-tensor ((class tensor-class))
+     (cond
+       ((subtypep (field-type class) 'cl:complex) class)
+       ((subtypep (field-type class) 'cl:real)
+	(let* ((field `(cl:complex ,(field-type class)))
+	       (super-classes (closer-mop:class-direct-superclasses class))
+	       (siblings (apply #'intersection (mapcar #'closer-mop:class-direct-subclasses super-classes))))
+	  (or (find field siblings :test #'equal :key #'field-type)
+	      (let ((cl-name (intern (format nil "<~{~a~^ ~}: ~a>" (mapcar #'class-name super-classes) field) (find-package "MATLISP"))))
+		(compile-and-eval
+		 `(prog1
+		      (defclass ,cl-name (,@(mapcar #'class-name super-classes)) ()
+			(:metaclass tensor-class))
+		    (setf (slot-value (find-class ',cl-name) 'field-type) ',field)))))))
+       (t (error "Unknown complex tensor for ~a" class))))))
+(defmethod complexified-tensor :around ((class tensor-class))
+  (class-name (call-next-method)))
+;;Now we're just making up names
+(defgeneric realified-tensor (class)
+  (:method ((class-name symbol))
+    (realified-tensor (find-class class-name)))
+  (:method :around ((class tensor-class))
+    (class-name (call-next-method))))
+(with-memoization ()
+  (memoizing
+   (defmethod realified-tensor ((class tensor-class))
+     (cond
+       ((subtypep (field-type class) 'cl:real) class)
+       ((match (field-type class)
+	  ((λlist 'cl:complex field)
+	   (letv* ((super-classes (closer-mop:class-direct-superclasses class))
+		   (siblings (reduce #'intersection (mapcar #'closer-mop:class-direct-subclasses super-classes))))
+	     (or (find field siblings :test #'equal :key #'field-type)
+		 (let ((cl-name (intern (format nil "<~{~a~^ ~}: ~a>" (mapcar #'class-name super-classes) field) (find-package "MATLISP"))))
+		   (compile-and-eval
+		    `(prog1
+			 (defclass ,cl-name (,@(mapcar #'class-name super-classes)) ()
+			   (:metaclass tensor-class))
+		       (setf (slot-value (find-class ',cl-name) 'field-type) ',field)))))))))
+       (t (error "Unknown real tensor for ~a" class))))))
 ;;

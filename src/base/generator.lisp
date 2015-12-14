@@ -63,10 +63,12 @@
 ;;
 (defparameter *specializer-table* (make-hash-table :test 'equal))
 (with-memoization (*specializer-table*)
-  (defmem classp-specializer (class-name)
-    (make-instance 'classp-specializer :object-class (find-class class-name)))
-  (defmem group-specializer (class-name group-name)
-    (make-instance 'group-specializer :object-class (find-class class-name) :group-name (the keyword group-name))))
+  (memoizing
+   (defun classp-specializer (class-name)
+     (make-instance 'classp-specializer :object-class (find-class class-name))))
+  (memoizing
+   (defun group-specializer (class-name group-name)
+     (make-instance 'group-specializer :object-class (find-class class-name) :group-name (the keyword group-name)))))
 
 ;;
 (defmethod closer-mop:compute-applicable-methods-using-classes ((gf tensor-method-generator) required-classes)
@@ -132,7 +134,7 @@
   (cart-typecase (spec1 spec2)
     ((class class) (not (null (find spec2 (cdr (member spec1 (closer-mop:class-precedence-list arg-class)))))))
     ((classp-specializer classp-specializer) (sub-specializer-p (the class (slot-value spec1 'object-class)) (the class (slot-value spec2 'object-class)) arg-class))
-    ;;classp-specializer in list if spec1.object-class = arg-class 
+    ;;classp-specializer in list if spec1.object-class = arg-class
     ((classp-specializer class) t)
     ((group-specializer class)
      (if (or (eq (slot-value spec1 'object-class) spec2)
@@ -200,7 +202,7 @@
 		 (let (,@(iter (for (tg g) in sym) (collect `(,tg (type-of ,(first (find-if #'(lambda (x) (eql (third x) g)) generate-args))))))
 		       (,xx (or (assoc ',dispatch-key (cdr (gethash ',name *template-generated-methods*)) :test #'equal)
 				(error "Method table missing from *template-generated-methods*!"))))
-		   ;;(format t "Compiling ~a method for dispatch ~s." ',name ,coerce-types)		   
+		   ;;(format t "Compiling ~a method for dispatch ~s." ',name ,coerce-types)
 		   (push
 		    (macrolet ((cl (,xx) (ecase ,xx ,@(mapcar #'(lambda (x) `(,(second x) (quote ,(first x))))  sym))))
 		      (compile-and-eval
@@ -213,7 +215,7 @@
 			  ,@(list ,@body))))
 		    (cdr ,xx)))
 		 ,@(let ((dargs (mapcar #'(lambda (x) (first (ensure-list x))) (subseq args 0 keypos))))
-		        (if-let (rest-pos (position '&rest args))
+			(if-let (rest-pos (position '&rest args))
 			  `((apply #',name (list* ,@dargs ,@(mapcar #'(lambda (x) (first (ensure-list x))) (set-difference (subseq args keypos rest-pos) cl:lambda-list-keywords))
 						  ,(elt args (1+ rest-pos)))))
 			  `((,@(if (symbolp name) `(,name) `(funcall #',name)) ,@dargs ,@(mapcar #'(lambda (x) (first (ensure-list x))) (set-difference (subseq args keypos) cl:lambda-list-keywords)))))))))))))

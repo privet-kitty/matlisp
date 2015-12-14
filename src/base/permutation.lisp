@@ -310,7 +310,7 @@
        :do (when (/= i (aref ret i)) (loop-finish))
        :finally (return (with-no-init-checks (make-instance 'permutation-action :store (subseq ret 0 (1+ i)) :size (1+ i)))))))
 ;;
-(definline sort-permute (seq predicate &key (key #'matlisp-utilities:id))
+(definline sort-permute (seq predicate &key (key #'identity))
   (multiple-value-bind (seq perm) (sort-index seq predicate :key key)
     (values seq (with-no-init-checks (make-instance 'permutation-action :store perm :size (length perm))))))
 

@@ -3,7 +3,7 @@
 (closer-mop:defgeneric norm (vec &optional n)
   (:generic-function-class tensor-method-generator))
 (define-tensor-method norm ((vec dense-tensor :x) &optional (n 2))
-  (let ((rtype (field-type (realified-type (cl :x)))))
+  (let ((rtype (field-type (realified-tensor (cl :x)))))
     `(cond
        ((typep n 'real)
 	(let-typed ((sum (t/fid+ ,rtype) :type ,rtype))

@@ -39,18 +39,20 @@
 	inputs)
     (values
      (make-instance 'ge-expression
-		    :expression 
+		    :expression
 		    (eval (maptree-if #'(lambda (x) t) #'(lambda (x)
-							   (cond
-							     ((and (consp x) (assoc (car x) flist)) (values (cons (second (assoc (car x) flist)) (cdr x))
-													    #'(lambda (f lst) (cons (car lst) (mapcar f (cdr lst))))))
-							     ((symbolp x) (setf inputs (union inputs (list x) :test #'equal)) `(weyl:make-ge-variable weyl:*general* (quote ,x)))
-							     ((and (consp x) (eql (car x) 'matlisp-infix::generic-ref))
-							      (let ((sym (intern (format nil  "~a_~{~a~^,~}" (second x) (cddr x)))))
+							   (match x
+							     ((list* (guard fname (assoc fname flist)) rest)
+							      (values (list* (second (assoc fname flist)) rest)
+								      #'(lambda (f lst) (list* (car lst) (mapcar f (cdr lst))))))
+							     ((symbol) (setf inputs (adjoin x inputs :test #'equal))
+							      `(weyl:make-ge-variable weyl:*general* (quote ,x)))
+							     ((list* 'matlisp-infix::generic-ref tensor subscripts)
+							      (let ((sym (intern (format nil  "~a_~{~a~^,~}" tensor subscripts))))
 								(setf inputs (union (list (list sym (cons 'ref (cdr x)))) inputs :test #'equal))
 								`(weyl:make-ge-variable weyl:*general* (quote ,sym))))
-							     ((consp x) (values x #'(lambda (f lst) (cons (car lst) (mapcar f (cdr lst))))))
-							     (t x)))
+							     ((type cons) (values x #'(lambda (f lst) (cons (car lst) (mapcar f (cdr lst))))))
+							     (_ x)))
 				      expr))
 		    :inputs inputs))))
 
@@ -103,7 +105,7 @@
 (defun deriv (f x)
   (declare (symbol x))
   (etypecase f
-    (#.(tensor 'ge-expression) 
+    (#.(tensor 'ge-expression)
        (let* ((nd (iter outer (for-mod idx from 0 below (dimensions f) with-iterator ((:stride ((of-f (strides f) (head f))))))
 			(with xd = nil)
 			(offset-ref ((ref-f of-f f :type #.(tensor 'ge-expression)))

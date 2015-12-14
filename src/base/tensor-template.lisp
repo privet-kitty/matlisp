@@ -21,36 +21,18 @@
 
 ;;tensor specializations
 (deft/generic (t/field-type #'subtypep) sym ())
+(deft/method t/field-type (sym tensor) () (field-type sym))
 (eval-every
   (defun coerceable? (clx cly)
     (handler-case (progn (macroexpand-1 `(t/strict-coerce ((t/field-type ,clx) (t/field-type ,cly)) x)) t)
       (error () nil))))
 
-(deft/method t/field-type (sym tensor) () (field-type sym))
-;;This is useful for Eigenvalue decompositions
-(deft/generic (t/complexified-type #'subtypep) sym ())
-(eval-every (defun complexified-type (type) (macroexpand-1 `(t/complexified-type ,(typecase type (symbol type) (class (class-name type)) (t (class-name (class-of type))))))))
+;;
+(deft/generic (t/complexified-tensor #'subtypep) sym ())
+(deft/method t/complexified-tensor (class tensor) () (complexified-tensor class))
 
-#+nil(mapcar #'field-type (reduce #'intersection (closer-mop:class-direct-superclasses (find-class (tensor 'double-float))) :key #'closer-mop:class-direct-subclasses))
-
-(deft/method t/complexified-type (sym tensor) ()
-  (letv* (((type accessor &optional store) (tensor-load-form sym)))
-    (cond
-      ((real-subtypep type) sym)
-      ((subtypep type 'real) (tensor (list 'complex type) accessor store))
-      (t (error "Unknown complex type for ~a" sym)))))
-
-;;Now we're just making up names
-(deft/generic (t/realified-type #'subtypep) sym ())
-(eval-every (defun realified-type (type) (macroexpand-1 `(t/realified-type ,(typecase type (symbol type) (class (class-name type)) (t (class-name (class-of type))))))))
-
-(deft/method t/realified-type (sym tensor) ()
-  (letv* (((type accessor &optional store) (tensor-load-form sym)))
-    (if (subtypep type 'complex)
-	(if (real-subtypep type)
-	    (tensor (real-subtypep type) accessor store)
-	    (tensor 'real accessor store))
-	sym)))
+(deft/generic (t/realified-tensor #'subtypep) sym ())
+(deft/method t/realified-tensor (class tensor) () (realified-tensor class))
 ;;
 (deft/generic (t/compute-store-size #'subtypep) sym (size))
 (deft/generic (t/store-size #'subtypep) sym (ele))

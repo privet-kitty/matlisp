@@ -94,7 +94,7 @@
 	   ;;
 	   #:definline #:with-optimization #:very-quickly
 	   ;;
-	   #:memoizing-let #:defmem #:with-memoization
+	   #:memoizing #:with-memoization
 	   ;;
 	   #:sap-wrap #:ptr))
 

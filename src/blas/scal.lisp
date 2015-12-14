@@ -86,11 +86,11 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
   (:method ((alpha number) (x number))
     (* alpha x))
   (:method (alpha (x dense-tensor))
-    (scal! alpha (copy x (when (complexp alpha) (complexified-type (class-name (class-of x)))))))
+    (scal! alpha (copy x (when (complexp alpha) (complexified-tensor (class-name (class-of x)))))))
   ;;TODO: There is an issue here when x is not coerceable into the tensor class of alpha.
   (:method ((alpha dense-tensor) (x t))
     ;;We assume commutation of course.
-    (scal! x (copy alpha (when (complexp x) (complexified-type alpha))))))
+    (scal! x (copy alpha (when (complexp x) (complexified-tensor alpha))))))
 
 ;;These should've been auto-generated.
 (closer-mop:defgeneric div! (alpha x)
@@ -136,10 +136,10 @@ s  Purpose
   (:method ((alpha number) (x number))
     (/ x alpha))
   (:method (alpha (x dense-tensor))
-    (div! alpha (copy x (when (complexp alpha) (complexified-type x)))))
+    (div! alpha (copy x (when (complexp alpha) (complexified-tensor x)))))
   ;;TODO: There is an issue here when x is not coerceable into the tensor class of alpha
   (:method ((alpha dense-tensor) (x t))
-    (div! alpha (copy x (when (complexp alpha) (complexified-type x))))))
+    (div! alpha (copy x (when (complexp alpha) (complexified-tensor x))))))
 
 ;;Diagonal scaling.
 (closer-mop:defgeneric scald! (x m &optional axis)

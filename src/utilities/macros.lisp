@@ -349,23 +349,33 @@
   `(eval-when (:compile-toplevel :load-toplevel :execute)
      ,@forms))
 
+
 (defmacro with-memoization ((&optional (hash-table `(make-hash-table :test 'equal))) &rest body)
   (with-gensyms (table value exists-p args)
-    (maptree '(memoizing-let defmem with-memoization)
+    (maptree '(memoizing with-memoization)
 	     #'(lambda (x)
-		 (if (eq (first x) 'with-memoization) x
-		     (let* ((id (gensym "memo-"))
-			    (def-p (eql (first x) 'defmem))
-			    (decl-p (let ((lst (nth (+ 2 (if def-p 1 0)) x)))
-				      (and (consp lst) (eql (car lst) 'declare)))))
-		       `(,(if def-p 'defun 'let) ,@(subseq x 1 (+ (if def-p 1 0) (if decl-p 3 2)))
-			  (letv* ((,args (list ',id ,@(if def-p
-							  (mapcar #'(lambda (x) (if (consp x) (car x) x)) (remove-if #'(lambda (x) (member x cl:lambda-list-keywords)) (third x)))
-							  (mapcar #'car (second x)))))
-				  (,value ,exists-p (gethash ,args ,table)))
-			    (values-list
-			     (if ,exists-p ,value
-				 (setf (gethash ,args ,table) (multiple-value-list (progn ,@(nthcdr (+ (if def-p 1 0) (if decl-p 3 2)) x)))))))))))
+		 (if (eql (first x) 'with-memoization) x
+		     (letv* (((sym code) x :type ((eql memoizing) t)))
+		       (match code
+			 ((λlist 'cl:let bindings &rest (or (list* (and (list* 'cl:declare _) decl-p) body) body)
+				 &aux (declares (if decl-p (list decl-p))) (id (gensym "memo-")))
+			  `(let (,@bindings)
+			     ,@declares
+			     (letv* ((,args (list ',id ,@(mapcar #'car bindings)))
+				     (,value ,exists-p (gethash ,args ,table)))
+			       (values-list
+				(if ,exists-p ,value
+				    (setf (gethash ,args ,table) (multiple-value-list (progn ,@body))))))))
+			 ((λlist (and def (or 'cl:defun 'cl:defmethod)) name func-args &rest (or (list* (and (list* 'cl:declare _) decl-p) body) body)
+				 &aux (declares (if decl-p (list decl-p))) (id (gensym "memo-")))
+			  (assert (not (intersection '(&rest &allow-other-keys) func-args)) nil "can't memoize functions with &rest, &allow-other-keys in their defining lambda-lists")
+			  `(,def ,name (,@func-args)
+			     ,@declares
+			     (letv* ((,args (list ',id ,@(mapcar #'(lambda (x) (first (ensure-list x))) (set-difference func-args cl:lambda-list-keywords))))
+				     (,value ,exists-p (gethash ,args ,table)))
+			       (values-list
+				(if ,exists-p ,value
+				    (setf (gethash ,args ,table) (multiple-value-list (progn ,@body))))))))))))
 	     `(let ((,table ,hash-table)) ,@body))))
 
 (defmacro curry (func &rest more-funcs)

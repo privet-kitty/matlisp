@@ -14,7 +14,7 @@
 	   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,ld.a
 	   (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,ld.b
 	   (:* ,(lisp->ffc ftype) :+ (head ,C)) (the ,(store-type sym) (store ,C)) (:& :integer) ,ld.c
-	   (:& ,(lisp->ffc (field-type (realified-type sym))) :output) (t/fid* ,(field-type (realified-type sym)))
+	   (:& ,(lisp->ffc (field-type (realified-tensor sym))) :output) (t/fid* ,(field-type (realified-tensor sym)))
 	   (:& :integer :output) 0)))))
 
 (closer-mop:defgeneric trsyl! (A B C &optional job)
