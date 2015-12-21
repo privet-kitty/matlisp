@@ -82,6 +82,7 @@
 			 (:file "einstein" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))
 			 (:file "slice" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))
 			 (:file "symbolic" :depends-on ("base-tensor" "tensor-template" "loopy"))
+			 (:file "foreign" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))
 			 ))
    #+nil
    (:module "matlisp-classes"

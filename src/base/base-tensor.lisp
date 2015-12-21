@@ -73,6 +73,7 @@
   ((parent :initform nil :initarg :parent :type (or null tensor) :documentation "This slot is bound if the tensor is the view of another."))
   (:metaclass tensor-class)
   (:documentation "Object which holds all values of its components, with a simple-vector store."))
+
 (defclass blas-mixin () ()
   (:documentation "Mixin which indicates that there exist foreign-routines for an object of this type."))
 (definline orphanize (x)
@@ -86,8 +87,8 @@
 (defclass coordinate-tensor (tensor coordinate-accessor simple-vector-store-mixin) ()
   (:metaclass tensor-class))
 ;;
-(defclass vector-mixin () ())
-(defclass matrix-mixin () ())
+#+nil(defclass vector-mixin () ())
+#+nil(defclass matrix-mixin () ())
 ;;
 (defun tensor-typep (tensor subs)
   "
@@ -144,7 +145,7 @@
 ;;
 (with-memoization ()
   (memoizing
-   (defun tensor (field &optional tensor order)
+   (defun tensor (field &optional tensor #+nil order)
      (let* ((tensor (or tensor 'dense-tensor)))
        (declare (type (member dense-tensor graph-tensor hash-tensor coordinate-tensor) tensor))
        (or (if-let (class (find field (remove-if-not #'(lambda (x) (slot-boundp x 'field-type)) (closer-mop:class-direct-subclasses (find-class tensor)))
@@ -153,7 +154,7 @@
 	   (let* ((super-classes (remove nil (list (if (and (eql tensor 'dense-tensor)
 							    (member field '(single-float double-float (complex single-float) (complex double-float)) :test #'equal))
 						       'blas-mixin)
-						   tensor (case order (1 'vector-mixin) (2 'matrix-mixin)))))
+						   tensor #+nil (case order (1 'vector-mixin) (2 'matrix-mixin)))))
 		  (cl-name (intern (format nil "<~{~a~^ ~}: ~a>" super-classes field) (find-package "MATLISP"))))
 	     (compile-and-eval
 	      `(progn

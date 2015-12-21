@@ -3,6 +3,22 @@
 (defclass foreign-tensor (dense-tensor)  ()
   (:documentation "Object which holds all values of its components, with a foreign-vector store.")
   (:metaclass tensor-class))
+
+(with-memoization ()
+  (memoizing
+   (defun foreign-tensor (field)
+     (or (if-let (class (find field (closer-mop:class-direct-subclasses (find-class 'foreign-tensor)) :key #'field-type))
+	   (class-name class))
+	 (let* ((super-classes (remove nil (list (if (member field '(single-float double-float (complex single-float) (complex double-float)) :test #'equal)
+						     'blas-mixin)
+						 'foreign-tensor)))
+		(cl-name (intern (format nil "<~{~a~^ ~}: ~a>" super-classes field) (find-package "MATLISP"))))
+	   (compile-and-eval
+	    `(progn
+	       (defclass ,cl-name (,@super-classes) ()
+		 (:metaclass tensor-class))
+	       (setf (slot-value (find-class ',cl-name) 'field-type) ',field)))
+	   cl-name)))))
 ;;
 (deft/method t/store-allocator (cl foreign-tensor) (size &rest initargs)
   (error "cannot allocate store for ~a" cl))
@@ -66,12 +82,12 @@
 ;;   )
 
 ;; (in-readtable :infix-dispatch-table)
-;; (with-field-element foreign-tensor-doub (vec nil (expt 3 2))
+
+;; (with-field-element #.(foreign-tensor 'double-float) (vec nil (expt 3 2))
 ;;   (let* ((dims (idxv 3 3))
 ;; 	 (strd (make-stride dims))
-;; 	 (ten (make-instance 'foreign-tensor-doub :head 0 :dimensions dims :strides strd :store vec)))
-;;     (print (copy! (randn '(3 3)) ten))
-;;     #i(ten[1:, 1:])))
+;; 	 (ten (make-instance (foreign-tensor 'double-float) :head 0 :dimensions dims :strides strd :store vec)))
+;;     (copy! (copy! (randn '(3 3)) ten) (zeros '(3 3)))))
 
 ;; (with-field-element foreign-tensor-doub (vec nil (expt 1000 2))
 ;;   (let* ((dims (idxv 1000 1000))
@@ -80,6 +96,5 @@
 ;;     (let ((*real-l1-fcall-lb* 0))
 ;;       (time (copy! (zeros '(1000 1000)) ten)))
 ;;     ten))
-
     
 ;;   (t/copy! (#. (tensor 'double-float) foreign-tensor-doub) (randn '(3 3)) (make-instance 'foreign-tensor-doub :head 0 :dimensions dims :strides strd :store vec )))
