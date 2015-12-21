@@ -73,8 +73,7 @@
   [3] INFO = T: successful
 	     i:  U(i,i) is exactly zero.
 ")
-  (:method :before ((A tensor))
-	   (assert (tensor-matrixp A) nil 'tensor-dimension-mismatch))
+  (:method :before ((A tensor)) (assert (tensor-matrixp A) nil 'tensor-dimension-mismatch))
   (:generic-function-class tensor-method-generator))
 
 (define-tensor-method getrf! ((A blas-mixin :x))
@@ -87,7 +86,7 @@
 	       (error "GETRF: the ~a'th argument had an illegal value." (- info))
 	       (warn 'singular-matrix :message "GETRF: U(~a, ~:*~a) is exactly zero. The factorization has been completed, but the factor U is exactly singular, and division by zero will occur if it is used to solve a system of equations." :position info)))))
      (setf (gethash 'getrf (memos A)) upiv)
-     (values A (with-no-init-checks (make-instance 'permutation-pivot-flip :store (pflip.f->l upiv) :size (length upiv))))))
+     (values A (with-no-init-checks (make-instance 'permutation-pivot-flip :store (pflip.f->l upiv) :size (dimensions A 0))))))
 
 ;;
 (deft/generic (t/lapack-getrs! #'subtypep) sym (A lda B ldb ipiv transp))
@@ -218,7 +217,7 @@
   If SPLIT-LU? is T, then return (L, U, P), otherwise
   returns (LU, P).
 "
-  (declare (type (and tensor-square-matrix blas-mixin) a))
+  (declare (type blas-mixin a))
   (multiple-value-bind (lu perm) (getrf! (copy a))
     (if (not split-lu?) (values lu perm)
 	(let* ((min.d (lvec-min (dimensions lu)))

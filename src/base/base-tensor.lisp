@@ -44,7 +44,7 @@
    (transposep :initarg :transposep :initform nil :type boolean :documentation "Choose between row-column compressed forms."))
   (:documentation "Graph store via Adjacency lists; only works for matrices."))
 ;;Store types
-(defclass simple-array-store-mixin () ())
+(defclass simple-vector-store-mixin () ())
 (defclass hash-table-store-mixin () ())
 ;;
 (defclass base-tensor () ())
@@ -69,7 +69,7 @@
   (or (slot-value x 'memos) ;;Create hash-table only when necessary
       (setf (slot-value x 'memos) (make-hash-table :test 'equal))))
 ;;
-(defclass dense-tensor (tensor stride-accessor simple-array-store-mixin)
+(defclass dense-tensor (tensor stride-accessor simple-vector-store-mixin)
   ((parent :initform nil :initarg :parent :type (or null tensor) :documentation "This slot is bound if the tensor is the view of another."))
   (:metaclass tensor-class)
   (:documentation "Object which holds all values of its components, with a simple-vector store."))
@@ -79,11 +79,11 @@
   (declare (type dense-tensor))
   (setf (slot-value x 'parent) nil) x)
 ;;
-(defclass graph-tensor (tensor graph-accessor simple-array-store-mixin) ()
+(defclass graph-tensor (tensor graph-accessor simple-vector-store-mixin) ()
   (:metaclass tensor-class))
 (defclass hash-tensor (tensor stride-accessor hash-table-store-mixin) ()
   (:metaclass tensor-class))
-(defclass coordinate-tensor (tensor coordinate-accessor simple-array-store-mixin) ()
+(defclass coordinate-tensor (tensor coordinate-accessor simple-vector-store-mixin) ()
   (:metaclass tensor-class))
 ;;
 (defclass vector-mixin () ())
@@ -147,7 +147,8 @@
    (defun tensor (field &optional tensor order)
      (let* ((tensor (or tensor 'dense-tensor)))
        (declare (type (member dense-tensor graph-tensor hash-tensor coordinate-tensor) tensor))
-       (or (if-let (class (find field (closer-mop:class-direct-subclasses (find-class tensor)) :key #'(lambda (x) (field-type (class-name x)))))
+       (or (if-let (class (find field (remove-if-not #'(lambda (x) (slot-boundp x 'field-type)) (closer-mop:class-direct-subclasses (find-class tensor)))
+				:key #'(lambda (x) (field-type (class-name x)))))
 	     (class-name class))
 	   (let* ((super-classes (remove nil (list (if (and (eql tensor 'dense-tensor)
 							    (member field '(single-float double-float (complex single-float) (complex double-float)) :test #'equal))

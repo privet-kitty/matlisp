@@ -1,29 +1,23 @@
 (in-package #:matlisp-ffi)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-;;
-(definline %ffv-types (x)
-  (member (fv-type x) '(:double :float :int32 :int64)))
-
-(deftype %ffv* ()
-  `(or cffi:foreign-pointer (and foreign-vector (satisfies allowed-fv-type?))))
 
 ;;(simple-array (or single-float double-float (signed-byte 32) (signed-byte 64)) (*))
 ;;
-(defun %ffc->cffi (type)
+(defun ffc->cffi (type)
   "Convert the given matlisp-ffi type into one understood by CFFI."
   (if (consp type)
       (ecase (first type)
 	(:& (ecase (second type)
-	      (:complex-single-float `(:pointer ,(%ffc->cffi :single-float)))
-	      (:complex-double-float `(:pointer ,(%ffc->cffi :double-float)))	      
+	      (:complex-single-float `(:pointer ,(ffc->cffi :single-float)))
+	      (:complex-double-float `(:pointer ,(ffc->cffi :double-float)))
 	      ((:double-float :single-float :character :integer :long)
-	       `(:pointer ,(%ffc->cffi (second type))))))
+	       `(:pointer ,(ffc->cffi (second type))))))
 	(:* (ecase (second type)
-	      (:complex-single-float `(:pointer ,(%ffc->cffi :single-float)))
-	      (:complex-double-float `(:pointer ,(%ffc->cffi :double-float)))
+	      (:complex-single-float `(:pointer ,(ffc->cffi :single-float)))
+	      (:complex-double-float `(:pointer ,(ffc->cffi :double-float)))
 	      ((:double-float :single-float :integer :long)
-	       `(:pointer ,(%ffc->cffi (second type)))))))
+	       `(:pointer ,(ffc->cffi (second type)))))))
       (ecase type
 	(:double-float :double)
 	(:single-float :float)
@@ -76,7 +70,7 @@
   (loop :for (type expr) :on args :by #'cddr
      :collect
      (list* :cffi
-	    (let ((ctype (%ffc->cffi type)))
+	    (let ((ctype (ffc->cffi type)))
 	      (if (consp ctype) (first ctype) ctype))
 	    (etypecase type
 	      (symbol (case type
@@ -93,7 +87,7 @@
 			    (when output (assert (eq output :output)) nil "unknown token.")
 			    (ecase sub-type
 			      ((:complex-double-float :complex-single-float)
-			       (let ((utype (second (%ffc->cffi type))))
+			       (let ((utype (second (ffc->cffi type))))
 				 (with-gensyms (var c)
 				   (list :argument `(the cffi:foreign-pointer ,var)
 					 :alloc `(,var ,utype :count 2)
@@ -101,9 +95,9 @@
 						  (setf (cffi:mem-aref ,var ,utype 0) (realpart ,c)
 							(cffi:mem-aref ,var ,utype 1) (imagpart ,c)))
 					 :output (when output
-						   `(complex (cffi:mem-aref ,var ,utype 0) (cffi:mem-aref ,var ,utype 1)))))))			      
+						   `(complex (cffi:mem-aref ,var ,utype 0) (cffi:mem-aref ,var ,utype 1)))))))
 			      ((:double-float :single-float :character :integer :long)
-			       (let ((utype (second (%ffc->cffi type))))
+			       (let ((utype (second (ffc->cffi type))))
 				 (with-gensyms (var)
 				   (list :argument `(the cffi:foreign-pointer ,var)
 					 :alloc `(,var ,utype :initial-element ,(recursive-append
@@ -116,13 +110,13 @@
 			      (list :argument (let ((ptr `(etypecase ,vec
 							    (,(%ffc->lisp type) (vector-sap-interpreter-specific ,vec))
 							    (cffi:foreign-pointer ,vec)
-							    (foreign-vector (fv-pointer ,vec)))))
+							    (foreign-vector (slot-value ,vec 'ptr)))))
 						(if +
 						    `(cffi:inc-pointer ,ptr (* (the fixnum ,+)
 									       ,(ecase sub-type
-										       (:complex-single-float (* 2 (cffi:foreign-type-size (%ffc->cffi :single-float))))
-										       (:complex-double-float (* 2 (cffi:foreign-type-size (%ffc->cffi :double-float))))
-										       ((:double-float :single-float :integer :long) (cffi:foreign-type-size (%ffc->cffi sub-type))))))
+										       (:complex-single-float (* 2 (cffi:foreign-type-size (ffc->cffi :single-float))))
+										       (:complex-double-float (* 2 (cffi:foreign-type-size (ffc->cffi :double-float))))
+										       ((:double-float :single-float :integer :long) (cffi:foreign-type-size (ffc->cffi sub-type))))))
 						    ptr))
 				    :let-bind `(,vec ,expr ,@(when (and (consp expr) (eq (first expr) 'cl:the)) `(:type ,(second expr))))))))))))))
 
@@ -135,7 +129,7 @@
 (defmacro ffuncall (name-&-return-type &rest args)
   "This macro provides a thin wrapper around cffi:foreign-funcall for making calls to Fortran functions
 that much easier. We use the F2C convention, which isn't really followed by compilers when returning
-complex values (so be wary of complex number returning functions). 
+complex values (so be wary of complex number returning functions).
 
  (FFUNCALL (name &optional (return-type :void) (mode :f2c)) *[type arg])
 
@@ -146,7 +140,7 @@ Type (credits for aesthetics goes to CCL) is of the general form:
  type -> Pass by value.
  (:& type &key output) -> Pass by reference, if 'output' return value after exiting from foreign function.
  (:* type &key +) -> Pointer/Array/Foreign-vector, if '+' increment pointer by '+' times foreign-type-size.
-There are restrictions as to what types can be used with '(:& :*), see source of %ffc->cffi and %ffc->lisp.
+There are restrictions as to what types can be used with '(:& :*), see source of ffc->cffi and %ffc->lisp.
 
 Example:
 @lisp
@@ -179,12 +173,10 @@ Example:
 		   (let ((callc `(cffi-sys:%foreign-funcall ,(ecase mode
 								    (:f2c (funcall +f77-name-mangler+ name))
 								    (:c name))
-							    (,@(apply #'append (zip (mapf :cffi) (mapf :argument))) ,@(apply #'append (mapf :aux)) ,(if (eq return-type :void) :void (first (ensure-list (%ffc->cffi return-type))))))))
+							    (,@(apply #'append (zip (mapf :cffi) (mapf :argument))) ,@(apply #'append (mapf :aux)) ,(if (eq return-type :void) :void (first (ensure-list (ffc->cffi return-type))))))))
 		     (if (eq return-type :void)
 			 `(progn ,callc (values ,@(mapf :output)))
 			 (with-gensyms (ret)
 			   `(let ((,ret ,callc))
 			      (values ,ret ,@(mapf :output))))))))))))))
 )
-
-

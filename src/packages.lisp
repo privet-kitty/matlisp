@@ -94,9 +94,7 @@
 	   ;;
 	   #:definline #:with-optimization #:very-quickly
 	   ;;
-	   #:memoizing #:with-memoization
-	   ;;
-	   #:sap-wrap #:ptr))
+	   #:memoizing #:with-memoization))
 
 (defpackage "MATLISP-DLIST"
   (:nicknames #:dlist)
@@ -123,7 +121,8 @@
   (:export #:test-infix #:string->prefix))
 
 (defpackage "MATLISP-FFI"
-  (:use #:common-lisp #:cffi #:matlisp-utilities #:matlisp-conditions)
+  (:nicknames :ffi)
+  (:use #:common-lisp #:cffi #:iterate #:trivia #:matlisp-utilities #:matlisp-conditions)
   ;; TODO: Check if this is implementation-agnostic.
   ;; #+:cmu (:use :common-lisp :c-call :cffi :utilities)
   ;; #+:sbcl (:use :common-lisp :cffi :utilities)
@@ -132,9 +131,8 @@
   ;; #+(not (or sbcl cmu allegro)) (:use :common-lisp :cffi :utilities)
   (:export
    ;;Foreign-pointer enclosing structure.
-   #:foreign-vector #:make-foreign-vector #:foreign-vector-p
-   #:fv-ref #:fv-pointer #:fv-size #:fv-type
-   #:ffuncall #:lisp->ffc
+   #:foreign-vector #:ffi-type #:fvref #:ptr
+   #:ffuncall #:lisp->ffc #:ffc->cffi
    ;;Interface functions
    #:def-fortran-routine #:parse-fortran-file
    #:with-vector-data-addresses)

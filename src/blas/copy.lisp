@@ -187,14 +187,14 @@
 (defmethod copy! :before ((x tensor) (y tensor))
   (assert (very-quickly (lvec-eq (dimensions x) (dimensions y) '=)) nil 'tensor-dimension-mismatch))
 
-(define-tensor-method copy! ((x array) (y tensor :y t))
+(define-tensor-method copy! ((x array) (y dense-tensor :y t))
   `(let-typed ((sto-y (store y) :type ,(store-type (cl :y))))
      (iter (for-mod idx from 0 below (dimensions y) with-iterator ((:stride ((of-y (strides y) (head y))
 									     (of-x (make-stride-rmj (coerce (array-dimensions x) 'index-store-vector)))))))
 	   (setf (t/store-ref ,(cl :y) sto-y of-y) (t/coerce ,(field-type (cl :y)) (row-major-aref x of-x))))
      y))
 
-(define-tensor-method copy! ((x tensor :x t) (y array))
+(define-tensor-method copy! ((x dense-tensor :x t) (y array))
   `(let-typed ((sto-x (store x) :type ,(store-type (cl :x))))
      (iter (for-mod idx from 0 below (dimensions x) with-iterator ((:stride ((of-x (strides x) (head x))
 									     (of-y (make-stride-rmj (coerce (array-dimensions y) 'index-store-vector)))))))
@@ -205,7 +205,7 @@
 (defmethod copy! :before ((a base-tensor) (b compressed-sparse-matrix))
   (assert (<= (store-size a) (store-size b)) nil 'tensor-insufficient-store))
 
-(define-tensor-method copy! ((x tensor :x) (y tensor :y t))
+(define-tensor-method copy! ((x dense-tensor :x) (y dense-tensor :y t))
   (recursive-append
    (when (and (eql (cl :x) (cl :y)) (subtypep (cl :y) 'blas-mixin))
      `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl :y) 1)) (blas-copyablep x y)))

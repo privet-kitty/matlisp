@@ -4,13 +4,14 @@
 (deft/generic (t/store-type #'subtypep) sym (&optional size))
 (eval-every
   (defun store-type (cl &optional (size '*)) (macroexpand-1 `(t/store-type ,cl ,size)))
-  (defun linear-storep (cl) (eql (first (ensure-list (store-type cl))) 'simple-array))
+  (defun linear-storep (cl) (or (eql (first (ensure-list (store-type cl))) 'simple-array)
+				(subtypep (store-type cl) 'ffi:foreign-vector)))
   (defun hash-table-storep (x) (eql (store-type x) 'hash-table))
   (defun clinear-storep (x) (and (subtypep x 'tensor) (linear-storep x) (real-subtypep (field-type x))))
   (defun float-tensorp (type) (member (field-type type) '(single-float double-float (complex single-float) (complex double-float)) :test #'equal)))
 
 ;(closer-mop:class-direct-subclasses (find-class (tensor 'double-float)))
-(deft/method t/store-type (type simple-array-store-mixin) (&optional (size '*))
+(deft/method t/store-type (type simple-vector-store-mixin) (&optional (size '*))
   `(simple-array ,(or (real-subtypep (field-type type)) (field-type type)) (,size)))
 (deft/method t/store-type (type hash-table-store-mixin) (&optional (size '*))
   'hash-table)
