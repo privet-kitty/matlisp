@@ -140,7 +140,7 @@
 (defun decrease-key (id key fib)
   (let ((node (gethash id (node-table fib))))
     (declare (type hnode node))
-    (assert (fib-order key (hnode-key node) fib) nil 'invalid-value :message "new key is greater than the current.")
+    (assert (not (fib-order (hnode-key node) key fib)) nil 'invalid-value :message "new key is greater than the current.")
     (setf (hnode-key node) key)
     (when (hnode-dcons node)
       ;;cut node

@@ -1,44 +1,28 @@
 (in-package :matlisp)
 (defvar *current-octave-process* nil)
 
-(defun open-octave-stream (&key (octave-binary "/usr/bin/octave"))
-  (setf *current-octave-process* (#+:sbcl
-				   sb-ext:run-program
-				   #+:ccl
-				   ccl:run-program
-				   octave-binary nil :input :stream :wait nil :output :stream))
+(defun open-octave-stream (&key (octave-binary "/usr/bin/octave")
+			   &aux (process (setf *current-octave-process* (sb-ext:run-program #+nil external-program:run octave-binary '("--no-gui" "--silent") :input :stream :wait nil :output :stream))))
   (octave-send "format long E; 1 ~%")
-  (let ((stream (#+:sbcl
-		 sb-ext:process-output
-		 *current-octave-process*)))
+  (let ((stream (external-program:process-output-stream process)))
     (loop :repeat 1000
-       :do (let ((out (car (split-seq #'(lambda (x) (char= x #\Space)) (read-line stream)))))
-	     (when (string= out "ans")
-	       (return *current-octave-process*))))))
+       :do (let ((out (car (split-seq #'(lambda (x) (char= x #\Space)) (print (read-line stream))))))
+	     (when (string= out "ans") (return process))))))
 
 (defun close-octave-stream ()
   (when *current-octave-process*
     (octave-send "quit~%")
     (setf *current-octave-process* nil)))
 ;;
-(defun octave-send (str &rest args)
-  (unless *current-octave-process*
-    (setf *current-octave-process* (open-octave-stream)))
-  (let ((stream (#+:sbcl
-		 sb-ext:process-input
-		 #+:ccl
-		 ccl:external-process-input-stream
-		 *current-octave-process*)))
+(defun octave-send (str &rest args &aux (process (or *current-octave-process* (setf *current-octave-process* (open-octave-stream)))))
+  (let ((stream (external-program:process-input-stream process)))
     (apply #'format (append (list stream str) args))
     (finish-output stream)))
 
-(defun octave-clear ()
-  (octave-send "clear~%"))
+(defun octave-clear () (octave-send "clear~%"))
 
-(defun octave-readnum ()
-  (let ((stream (#+:sbcl
-		 sb-ext:process-output
-		 *current-octave-process*)))
+(defun octave-readnum (&aux (process *current-octave-process*))
+  (let ((stream (external-program:process-output-stream process)))
     (let ((str (split-seq #'(lambda (c) (char= c #\Space)) (read-line stream))))
       (cond
 	((= (length str) 5)
@@ -56,20 +40,17 @@
 	   (nth-value 0 (read-from-string real))))))))
 
 (defun octave-send-tensor (mat name)
-  (octave-send "~a = zeros(~{~a~^, ~});~%" name (if (> (order mat) 1) (dims mat) (append (dims mat) (list 1))))
-  (mod-dotimes (idx (dimensions mat))
-    :do (let ((ref (ref mat idx)))
+  (octave-send "~a = zeros(~{~a~^, ~});~%" name (if (> (order mat) 1) (dimensions mat t) (append (dimensions mat t) (list 1))))
+  (iter (for-mod idx from 0 below (dimensions mat))
+	(let ((ref (apply #'ref (list* mat (lvec->list idx)))))
 	  (if (complexp ref)
-	      (octave-send "~a(~{~a~^, ~}) = ~a + ~a * 1i;~%" name (mapcar #'1+ (lvec->list idx)) (realpart ref) (imagpart ref)) 
+	      (octave-send "~a(~{~a~^, ~}) = ~a + ~a * 1i;~%" name (mapcar #'1+ (lvec->list idx)) (realpart ref) (imagpart ref))
 	      (octave-send "~a(~{~a~^, ~}) = ~a;~%" name (mapcar #'1+ (lvec->list idx)) ref)))))
 
-(defun octave-read-tensor (name)
-  (let ((stream (#+:sbcl
-		 sb-ext:process-output
-		 *current-octave-process*))
-	(dims nil)
-	(ret nil)
-	(complex? nil))
+(defun octave-read-tensor (com &aux (process *current-octave-process*) (name (symbol-name (gensym "_tmp"))))
+  (octave-send (format nil "~a = ~a;~%" name com))
+  (let ((stream (external-program:process-output-stream process))
+	dims ret complex?)
     (clear-input stream)
     ;;
     (octave-send "size(~a)~%" name)
@@ -83,9 +64,9 @@
     (octave-send "sum(abs(imag(~a(:))))~%" name)
     (setq ret
 	  (if (= (octave-readnum) 0d0)
-	      (zeros dims 'real-tensor)
-	      (prog1 (zeros dims 'complex-tensor) (setq complex? t))))
+	      (zeros dims (tensor 'double-float))
+	      (prog1 (zeros dims (tensor '(complex double-float))) (setq complex? t))))
     ;;
-    (mod-dotimes (idx (dimensions ret))
-      :do (setf (ref ret idx) (progn (octave-send "~a(~{~a~^, ~})~%" name (mapcar #'1+ (lvec->list idx))) (octave-readnum))))
+    (iter (for-mod idx from 0 below (dimensions ret))
+	  (setf (apply #'ref (list* ret (lvec->list idx))) (progn (octave-send "~a(~{~a~^, ~})~%" name (mapcar #'1+ (lvec->list idx))) (octave-readnum))))
     ret))

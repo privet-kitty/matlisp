@@ -9,7 +9,7 @@
 
 (defmethod print-object ((obj union-find) stream)
   (print-unreadable-object (obj stream :type t)
-    (format stream "size: ~A" (matlisp::total-size obj))))
+    (format stream "size: ~A" (length (slot-value obj 'id)))))
 
 (defmethod initialize-instance :after ((obj union-find) &rest initargs)
   (declare (ignore initargs))

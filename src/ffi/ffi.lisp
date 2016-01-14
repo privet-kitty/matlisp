@@ -27,7 +27,7 @@
 	(:long :int64)
 	((:* :callback) `(:pointer :void)))))
 
-(defun %ffc->lisp (type)
+(defun ffc->lisp (type)
   "Convert the given matlisp-ffi type into one understood by Lisp"
   (if (consp type)
       (ecase (first type)
@@ -35,12 +35,12 @@
 	      (:complex-single-float `(complex single-float))
 	      (:complex-double-float `(complex double-float))
 	      ((:double-float :single-float :character :integer :long)
-	       (%ffc->lisp (second type)))))
+	       (ffc->lisp (second type)))))
 	(:* (ecase (second type)
 	      (:complex-single-float `(simple-array single-float (*)))
 	      (:complex-double-float `(simple-array double-float (*)))
 	      ((:double-float :single-float :integer :long)
-	       `(simple-array ,(%ffc->lisp (second type)) (*))))))
+	       `(simple-array ,(ffc->lisp (second type)) (*))))))
       (ecase type
 	(:double-float 'double-float)
 	(:single-float 'single-float)
@@ -74,13 +74,13 @@
 	      (if (consp ctype) (first ctype) ctype))
 	    (etypecase type
 	      (symbol (case type
-			(:callback (list :argument `(cffi-sys:%callback (the ,(%ffc->lisp type) ,expr))))
+			(:callback (list :argument `(cffi-sys:%callback (the ,(ffc->lisp type) ,expr))))
 			(:string (if append-string-length?
 				     (with-gensyms (s)
-				       (list  :argument s :let-bind `(,s ,expr :type ,(%ffc->lisp type))
+				       (list  :argument s :let-bind `(,s ,expr :type ,(ffc->lisp type))
 					      :aux `(:int32 (the fixnum (length ,s)))))
-				     (list :argument `(the ,(%ffc->lisp type) ,expr))))
-			(t (list :argument `(the ,(%ffc->lisp type) ,expr)))))
+				     (list :argument `(the ,(ffc->lisp type) ,expr))))
+			(t (list :argument `(the ,(ffc->lisp type) ,expr)))))
 	      (cons (ecase (first type)
 		      (:& (destructuring-bind (tok sub-type &optional output) type
 			    (declare (ignore tok))
@@ -91,7 +91,7 @@
 				 (with-gensyms (var c)
 				   (list :argument `(the cffi:foreign-pointer ,var)
 					 :alloc `(,var ,utype :count 2)
-					 :init `(let-typed ((,c ,expr :type ,(%ffc->lisp type)))
+					 :init `(let-typed ((,c ,expr :type ,(ffc->lisp type)))
 						  (setf (cffi:mem-aref ,var ,utype 0) (realpart ,c)
 							(cffi:mem-aref ,var ,utype 1) (imagpart ,c)))
 					 :output (when output
@@ -102,13 +102,13 @@
 				   (list :argument `(the cffi:foreign-pointer ,var)
 					 :alloc `(,var ,utype :initial-element ,(recursive-append
 										 (when (eq sub-type :character) `(char-code))
-										 `(the ,(%ffc->lisp type) ,expr)))
+										 `(the ,(ffc->lisp type) ,expr)))
 					 :output (when output `(cffi:mem-ref ,var ,utype)))))))))
 		      (:* (destructuring-bind (tok sub-type &key +) type
 			    (declare (ignore tok))
 			    (with-gensyms (vec)
 			      (list :argument (let ((ptr `(etypecase ,vec
-							    (,(%ffc->lisp type) (vector-sap-interpreter-specific ,vec))
+							    (,(ffc->lisp type) (vector-sap-interpreter-specific ,vec))
 							    (cffi:foreign-pointer ,vec)
 							    (foreign-vector (slot-value ,vec 'ptr)))))
 						(if +
@@ -140,7 +140,7 @@ Type (credits for aesthetics goes to CCL) is of the general form:
  type -> Pass by value.
  (:& type &key output) -> Pass by reference, if 'output' return value after exiting from foreign function.
  (:* type &key +) -> Pointer/Array/Foreign-vector, if '+' increment pointer by '+' times foreign-type-size.
-There are restrictions as to what types can be used with '(:& :*), see source of ffc->cffi and %ffc->lisp.
+There are restrictions as to what types can be used with '(:& :*), see source of ffc->cffi and ffc->lisp.
 
 Example:
 @lisp
@@ -158,7 +158,7 @@ Example:
 "
   (destructuring-bind (name &optional (return-type :void) (mode :f2c)) (ensure-list name-&-return-type)
     (if (member return-type '(:complex-single-float :complex-double-float))
-	`(ffuncall (,name :void ,mode) (:& ,return-type :output) ,(coerce #c(0 0) (%ffc->lisp `(:& ,return-type))) ,@args)
+	`(ffuncall (,name :void ,mode) (:& ,return-type :output) ,(coerce #c(0 0) (ffc->lisp `(:& ,return-type))) ,@args)
 	(let ((pargs (%ffc.parse-ffargs args (when (eq mode :f2c) t))))
 	  (labels ((mapf (place) (remove-if #'null (mapcar #'(lambda (x) (getf x place)) pargs))))
 	    `(with-fortran-float-modes

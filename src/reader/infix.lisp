@@ -277,7 +277,7 @@
 			body)))
     (if (or decls (cdr code))
 	`(let (,@decls) ,@code)
-	`(progn ,@code))))
+	(car code))))
 ;;
 (defun infix-reader (stream subchar arg)
   ;; Read either #I(...) or #I"..."

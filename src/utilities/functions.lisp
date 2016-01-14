@@ -87,10 +87,10 @@
 		  (let ((alist (mapcar #'(lambda (x y) (cons x y)) keys transformer)))
 		    #'(lambda (x) (values (cons (cdr (assoc (car x) alist)) (cdr x)) #'mapcar))))  tree))
 
-(defun maptreeu (transformer tree)
+(defun maptree-eki (transformer tree)
   (multiple-value-bind (t-tree control) (funcall transformer tree)
     (if (and (consp t-tree) control)
-	(funcall control #'(lambda (x) (maptreeu transformer x)) t-tree)
+	(funcall (if (eql control t) #'mapcar control) #'(lambda (x) (maptree-eki transformer x)) t-tree)
 	t-tree)))
 
 (defun flatten (x)
@@ -320,9 +320,8 @@ superclasses.  This class is generated automatically, if necessary."
 (declaim (inline modproj))
 (defun modproj (i d &optional open? def)
   (cond
-    ((not i) def)
-    ((not d) i)
-    (t (assert (if open? (<= (- (1+ d)) i d) (< (- (1+ d)) i d)) nil 'invalid-value)
+    ((not i) def) ((not d) i)
+    (t (assert (if open? (<= (- (1+ d)) i d) (< (- (1+ d)) i d)) nil 'tensor-index-out-of-bounds)
        (if (< i 0) (if (and open? (= i (- (1+ d)))) -1 (mod i d)) i))))
 
 ;;

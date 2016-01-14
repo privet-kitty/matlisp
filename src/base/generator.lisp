@@ -218,5 +218,5 @@
 			(if-let (rest-pos (position '&rest args))
 			  `((apply #',name (list* ,@dargs ,@(mapcar #'(lambda (x) (first (ensure-list x))) (set-difference (subseq args keypos rest-pos) cl:lambda-list-keywords))
 						  ,(elt args (1+ rest-pos)))))
-			  `((,@(if (symbolp name) `(,name) `(funcall #',name)) ,@dargs ,@(mapcar #'(lambda (x) (first (ensure-list x))) (set-difference (subseq args keypos) cl:lambda-list-keywords)))))))))))))
+			  `((,@(if (symbolp name) `(,name) `(funcall #',name)) ,@dargs ,@(mapcar #'(lambda (x) (first (ensure-list x))) (remove-if #'(lambda (x) (member x cl:lambda-list-keywords)) (subseq args keypos))))))))))))))
 )

@@ -211,17 +211,18 @@ elements ~a:~a of WR and WI contain eigenvalues which have converged." info n)))
 	  ((:n :v)
 	   (heev! (copy x) job uplo))))))
 
+;;Must add tests.
+;; #+nil
 ;; (let ((a  #i(randn([3, 3]) + 1i * randn ([3, 3]))))
-;;   ;;(octave-send-tensor a "a")
-;;   ;;(octave-send "[v, l] = eig(a);~%")
-;;   (letv* ((s vl vr (eig a :vv)))
-;;     (values #i(a - (/vl)' * diag(s, 2) * vl')
-;; 	    #i(a - vr * diag(s, 2) * /vr))
-    
+;;   (octave-send-tensor a "a")
+;;   (octave-send "[v, l] = eig(a);~%")
+;;   (letv* ((s vl vr (eig a :vv))
+;; 	  (m/s (slice~ (octave-read-tensor "diag(l)") -1))
+;; 	  (m/vr (octave-read-tensor "v")))
+;;     (mapcar #'norm (list #i(a - (/vl)' * diag(s) * vl') #i(a - vr * diag(s, 2) * /vr) #i(\m/s - s) #i(\m/vr - vr)))
 ;;     ;;(geev! a nil (zeros (dims a) (class-of a)))
    
 ;;     #+nil(norm #i(vr * diag(s, 2) * /vr - a))
 ;;     #+nil(norm (t- a (t* v (diag s 2) (inv v))))
 ;;     #+nil(values (norm (t- (diag~ (octave-read-tensor "l")) s))
-;; 	    (norm (t- (octave-read-tensor "v") v))
-;; 	    )))
+;; 		 (norm (t- (octave-read-tensor "v") v)))))

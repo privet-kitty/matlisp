@@ -1,24 +1,28 @@
-(in-package :matlisp)
+(in-package #:matlisp)
 
-(defun graph->adlist (g &optional invert-orientation?)
-  (declare (type graph-accessor g))
-  (if invert-orientation?
-      (let ((ret (make-array (1- (length (fence g))) :initial-element nil)))
-	(iter (for u from 0 below (1- (length (fence g))))
-	      (letv* ((ll rr (fence g u)))
-		(iter (for v in-vector (δ-i g) from ll below rr) (push u (aref ret v)))))
-	(iter (for i from 0 below (length ret)) (setf (aref ret i) (sort ret #'<)))
-	ret)
-      (iter (for i from 0 below (1- (length (fence g))))
-	    (collect (δ-i g i t) result-type vector))))
+(closer-mop:defgeneric graph->adlist (g)
+  (:generic-function-class tensor-method-generator))
+(define-tensor-method graph->adlist ((g graph-accessor :x))
+  `(with-memoization ()
+     (iter (for i from 0 below (1- (length (memoizing (fence g) :type index-store-vector)))) (with ret = (make-array (1- (length (memoizing (fence g)))) :initial-element nil))
+	   (iter (for j in-vector (memoizing (δ-i g) :type index-store-vector) from (aref (memoizing (fence g)) i) below (aref (memoizing (fence g)) (1+ i)) with-index m)
+		 (push ,@(if (subtypep (cl :x) 'tensor) `((cons j (t/store-ref ,(cl :x) (memoizing (t/store ,(cl :x) g) :type ,(store-type (cl :x))) m))) `(j)) (aref ret i)))
+	   (finally (return ret)))))
 
-(defun adlist->graph (ag &optional type)
+(defgeneric adlist->graph (g)
+  (:generic-function-class tensor-method-generator))
+
+(defun adlist->graph (ag &optional type &aux (type (or type 'graph-accessor)))
   (let*-typed ((ag (coerce ag 'vector))
-	       (ret (zeros (list (length ag) (length ag)) (or type 'graph-accessor) (iter (for ai in-vector ag) (summing (length ai)))) :type graph-accessor))
-    (iter (for i from 0 below (length ag))
-	  (iter (for u in (setf (aref ag i) (sort (aref ag i) #'<)))
-		(setf (aref (δ-i ret) (+ (fence ret i) j)) u) (counting t into j)
-		(finally (setf (aref (fence ret) (1+ i)) (+ (fence ret i) j)))))
+	       (ret (zeros (list (length ag) (length ag)) type (iter (for ai in-vector ag) (summing (length ai)))) :type graph-accessor))
+    (with-memoization ()
+      (iter (for i from 0 below (length ag))
+	    (iter (for u in (setf (aref ag i) (sort (aref ag i) #'< :key #'(lambda (x) (etypecase x (cons (the index-type (first x))) (index-type x))))))
+		  (initially (setf (aref (memoizing (δ-i ret)) (1+ i)) (aref (memoizing (δ-i ret)) i)))
+		  (letv* ((u/ value (etypecase u (cons (the index-type (values (first u) (cdr u)))) (index-type u)))
+			  (m (1- (incf (aref (memoizing (fence ret)) (1+ i))))))
+		    (setf (aref (memoizing (δ-i ret)) m) u/)
+		    (if value (setf (store-ref ret m) value))))))
     ret))
 
 (defun hyper->bipartite (hh &optional type full)
@@ -200,7 +204,7 @@
   (letv* ((cliques (or (nth-value 1 (max-cardinality-search g)) (nth-value 1 (max-cardinality-search (chordal-cover g (triangulate-graph g heuristic))))))
 	  (k (length cliques)))
     (values
-     (let ((ret (zeros (list k k) '(index-type stride-accessor hash-table))))
+     (let ((ret (zeros (list k k) (tensor 'index-type 'hash-tensor))))
        (iter (for cc on cliques)
 	     (iter (for cp in (cdr cc))
 		   (counting t into j)
@@ -208,7 +212,7 @@
 		     (setf (ref ret i (+ i j)) (- (length int))
 			   (ref ret (+ i j) i) (ref ret i (+ i j)))))
 	     (counting t into i))
-       (order->tree (dijkstra-prims (copy ret '(index-type graph-accessor))) type))
+       (order->tree (dijkstra-prims (copy ret (tensor 'index-type 'graph-tensor))) type))
      (coerce cliques 'vector))))
 
 #+nil
@@ -226,10 +230,12 @@
   )
 
 #+nil
-(let* ((n 100)
+(let* ((n 10)
        (n-cycle (symmetrize! (coerce (append (mapcar #'list (range 1 n :list-output? t)) (list '(0))) 'vector)))
        (g (adlist->graph n-cycle)))
-  (letv* ((tt ci (time (tree-decomposition g))))
+					;(display-graph (t))
+  (max-cardinality-search (chordal-cover g (triangulate-graph g :min-size)))
+  #+nil(letv* ((tt ci (time (tree-decomposition g))))
     t
     ))
 
@@ -274,6 +280,63 @@
 		       (setf (fib:node-key j fib) w-ij
 			     (aref tree j) i)))))))
       tree)))
+;;
+(defun directed-subgraph (g)
+  (let ((adg (graph->adlist g)))
+    (iter (for u from 0 below (length adg)) (setf (aref adg u) (remove-if #'(lambda (x) (declare (type index-type x u)) (δ-i g x u)) (aref adg u))))
+    (adlist->graph adg (class-of g))))
+
+;;1/2 approximation,
+(defun max-dag (g)
+  "1/2 approximation to the Maximum acyclic subgraph problem (anything better is NP-hard assuming UGC)."
+  (let* ((g (directed-subgraph g)) (gt (transpose g))
+	 (adg (make-array (dimensions g -1) :initial-element nil)))
+    (graphfib (g g :order #'(lambda (a b) (< (first a) (first b))))
+      (:init (i) (list (δ-i g i :size) (δ-i gt i :size)))
+      (:update (i d-i fib)
+	 (map nil #'(lambda (v) (when (fib:node-existsp v fib)
+				  (letv* (((a b) (fib:node-key v fib)))
+				    (setf (fib:node-key v fib) (list (1- a) b))))) (δ-i gt i t))
+	 (map nil #'(lambda (v) (when (fib:node-existsp v fib)
+				  (letv* (((a b) (fib:node-key v fib)))
+				    (setf (fib:node-key v fib) (list a (1- b)))))) (δ-i g i t))
+	 (if (>= (first d-i) (second d-i))
+	     (map nil #'(lambda (v) (if (fib:node-existsp v fib) (pushnew v (aref adg i)))) (δ-i g i t))
+	     (map nil #'(lambda (v) (if (fib:node-existsp v fib) (pushnew i (aref adg v)))) (δ-i gt i t))))
+      (adlist->graph adg (type-of g)))))
+
+(defun topological-order (dag)
+  (let ((dagt (transpose dag))
+	(order (t/store-allocator index-store-vector (dimensions dag -1)))
+	(visited (make-array (dimensions dag -1) :element-type 'boolean :initial-element nil)))
+    (iter outer (for cu in-vector visited with-index u) (with ii = -1)
+	  (unless cu
+	    (iter (for tu in-graph dag from u in-order :sfd with-parent tp with-color color with-visited-array visited)
+		  (setf (aref order (incf ii)) tu)
+		  (when (some #'(lambda (x) (aref color x)) (δ-i dagt tu t))
+		    (return-from outer))))
+	  (finally (return-from outer order)))))
+
+#+nil
+(let ((g (display-graph (primal-graph '((<- 0 1) (<- 1 2) (<- 2 0)) nil t) nil t)))
+  (topological-order g)
+  #+nil(iter (for tu in-graph g with-parent tp in-order :dfs)
+	(print (list tu tp)))
+  )
+
+#+nil
+(let ((g *dbg*))
+  (topological-order g)
+  #+nil(iter (for tu in-graph g with-parent tp in-order :dfs)
+	(print (list tu tp)))
+  )
+
+#+nil
+(let ((g (display-graph (primal-graph '((<- 0 1) (<- 1 2) (<- 2 0)) nil t) nil t)))
+  (topological-order g)
+  #+nil(iter (for tu in-graph g with-parent tp in-order :dfs)
+	(print (list tu tp)))
+  )
 
 #+nil(defparameter *wiki-graph* (copy (let ((mat (zeros '(6 6) '(index-type stride-accessor hash-table))))
 				   (map nil #'(lambda (x)

@@ -39,11 +39,11 @@
 	 body))))
 
 (defmacro binding-gensyms ((mname &optional (fname (gensym))) &rest body)
-  (with-gensyms (htbl)
-    `(let ((,htbl (make-hash-table)))
-       (labels ((,fname (x) (or (gethash x ,htbl) (setf (gethash x ,htbl) (gensym (symbol-name x))))))
-	 (macrolet ((,mname (x) `(,', fname ',x)))
-	   ,@body)))))
+  `(with-memoization ()
+     (memoizing
+      (flet ((,fname (x) (gensym (symbol-name x))))
+	(macrolet ((,mname (x) `(,', fname ',x)))
+	  ,@body)))))
 
 (defmacro ziprm ((r m) &rest args)
   "
@@ -89,12 +89,11 @@
 (defmacro values-n (n &rest values)
   (using-gensyms (decl (n))
     (labels ((make-cd (i rets vrets)
-	       `((let ((,(first (car rets)) ,(maptree '(values-n previous-value) #'(lambda (x) (case (car x)
-												 (values-n x)
-												 (previous-value
-												  (destructuring-bind (&optional (idx (- i 2))) (cdr x)
-												    (assert (< -1 idx (length vrets)) nil 'invalid-arguments)
-												    (elt (reverse vrets) idx)))))
+	       `((let ((,(first (car rets)) ,(maptree '(values-n :previous) #'(lambda (x) (match x
+											    ((list* 'values-n _) x)
+											    ((λlist :previous &optional (idx (- i 2)))
+											     (assert (< -1 idx (length vrets)) nil 'invalid-arguments)
+											     (elt (reverse vrets) idx))))
 						      (second (car rets)))))
 		   ,(recursive-append
 		     (when (cdr rets)
@@ -140,7 +139,7 @@
 	      (mapcan #'(lambda (x)
 			  (destructuring-bind (bind expr type) (let ((tpos (position :type x)) (len (length x)))
 								 (list (deconsify (subseq x 0 (1- (or tpos len))) consy) (nth (1- (or tpos len)) x) (when tpos (deconsify (nthcdr (1+ tpos) x) consy))))
-			    (let ((flt (remove consy (flatten bind))))
+			    #+nil(let ((flt (remove consy (flatten bind))))
 			      (assert (= (length flt) (length (remove-duplicates flt))) nil "Duplicates present in binding ~a" flt))
 			    (let* ((typa (maptree t #'(lambda (x) (if (atom (car x))
 								      (unless (or (eql (car x) consy) (member (car x) cl:lambda-list-keywords)) (list x))
@@ -350,34 +349,49 @@
      ,@forms))
 
 
-(defmacro with-memoization ((&optional (hash-table `(make-hash-table :test 'equal))) &rest body)
+(defmacro with-memoization ((&optional (hash-table `(make-hash-table :test 'equal))) &rest body &aux cache need-hashtablep)
   (with-gensyms (table value exists-p args)
-    (maptree '(memoizing with-memoization)
-	     #'(lambda (x)
-		 (if (eql (first x) 'with-memoization) x
-		     (letv* (((sym code) x :type ((eql memoizing) t)))
-		       (match code
-			 ((λlist 'cl:let bindings &rest (or (list* (and (list* 'cl:declare _) decl-p) body) body)
-				 &aux (declares (if decl-p (list decl-p))) (id (gensym "memo-")))
-			  `(let (,@bindings)
-			     ,@declares
-			     (letv* ((,args (list ',id ,@(mapcar #'car bindings)))
-				     (,value ,exists-p (gethash ,args ,table)))
-			       (values-list
-				(if ,exists-p ,value
-				    (setf (gethash ,args ,table) (multiple-value-list (progn ,@body))))))))
-			 ((λlist (and def (or 'cl:defun 'cl:defmethod)) name func-args &rest (or (list* (and (list* 'cl:declare _) decl-p) body) body)
-				 &aux (declares (if decl-p (list decl-p))) (id (gensym "memo-")))
-			  (assert (not (intersection '(&rest &allow-other-keys) func-args)) nil "can't memoize functions with &rest, &allow-other-keys in their defining lambda-lists")
-			  `(,def ,name (,@func-args)
-			     ,@declares
-			     (letv* ((,args (list ',id ,@(mapcar #'(lambda (x) (first (ensure-list x))) (set-difference func-args cl:lambda-list-keywords))))
-				     (,value ,exists-p (gethash ,args ,table)))
-			       (values-list
-				(if ,exists-p ,value
-				    (setf (gethash ,args ,table) (multiple-value-list (progn ,@body))))))))
-			 (_ (error "don't know how to memoize ~a" code))))))
-	     `(let ((,table ,hash-table)) ,@body))))
+    (labels ((transformer (x)
+	       (if (eql (first x) 'with-memoization) x
+		   (letv* (((sym &rest body) x :type ((eql memoizing) t)))
+		     (match body
+		       ((list (λlist 'cl:let bindings &rest (or (list* (and (list* 'cl:declare _) decl-p) body) body)
+				     &aux (declares (if decl-p (list decl-p))) (id (gensym "memo-"))))
+			(setf need-hashtablep t)
+			`(let (,@bindings)
+			   ,@declares
+			   (letv* ((,args (list ',id ,@(mapcar #'car bindings)))
+				   (,value ,exists-p (gethash ,args ,table)))
+			     (values-list
+			      (if ,exists-p ,value
+				  (setf (gethash ,args ,table) (multiple-value-list (progn ,@body))))))))
+		       ((list (λlist (and def (or 'cl:defun 'cl:defmethod)) name func-args &rest (or (list* (and (list* 'cl:declare _) decl-p) body) body)
+				     &aux (declares (if decl-p (list decl-p))) (id (gensym "memo-"))))
+			(setf need-hashtablep t)
+			(assert (not (intersection '(&rest &allow-other-keys) func-args)) nil "can't memoize functions with &rest, &allow-other-keys in their defining lambda-lists")
+			`(,def ,name (,@func-args)
+			   ,@declares
+			   (letv* ((,args (list ',id ,@(mapcar #'(lambda (x) (first (ensure-list x))) (set-difference func-args cl:lambda-list-keywords))))
+				   (,value ,exists-p (gethash ,args ,table)))
+			     (values-list
+			      (if ,exists-p ,value
+				  (setf (gethash ,args ,table) (multiple-value-list (progn ,@body))))))))
+		       ((list (λlist (and def (or 'cl:labels 'cl:flet)) definitions &rest body))
+			(setf need-hashtablep t)
+			`(,def (,@(mapcar #'(lambda (x) (cdr (transformer `(memoizing (cl:defun ,@x))))) definitions))
+			     ,@body))
+		       ((λlist code &key (type nil type?) (bind (gensym)))
+			(if-let (cv (rassoc code cache :key #'first :test #'equal))
+			  (first cv)
+			  (values (list* bind code (if type? `(:type ,type)))
+				  #'(lambda (f decl)
+				      (push (list* (first decl) (funcall f (second decl)) (cddr decl)) cache)
+				      (first decl))))
+			  #+nil(error "don't know how to memoize ~a" code)))))))
+      (let ((transformed-body (maptree '(memoizing with-memoization) #'transformer body)))
+	`(let*-typed (,@(if need-hashtablep `((,table ,hash-table)))
+			,@(reverse cache))
+	   ,@transformed-body)))))
 
 (defmacro curry (func &rest more-funcs)
   (with-gensyms (x)
@@ -423,4 +437,11 @@
   (let ((keypos (or (position-if #'(lambda (x) (member x cl:lambda-list-keywords)) args) (length args))))
     `(labels ((,name (,@(mapcar #'first (subseq args 0 keypos)) ,@(subseq args keypos)) ,@body))
        (,name ,@(mapcar #'second (subseq args 0 keypos))))))
+
+(defmacro gethash! (key table default)
+  (using-gensyms (decl (key table) (value exists-p))
+    `(let (,@decl)
+       (letv* ((,value ,exists-p (gethash ,key ,table)))
+	 (if ,exists-p (values ,value t) (setf (gethash ,key ,table) ,default))))))
+
 )

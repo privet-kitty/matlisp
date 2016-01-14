@@ -82,11 +82,10 @@
 ;;   )
 
 ;; (in-readtable :infix-dispatch-table)
-
 ;; (with-field-element #.(foreign-tensor 'double-float) (vec nil (expt 3 2))
 ;;   (let* ((dims (idxv 3 3))
 ;; 	 (strd (make-stride dims))
-;; 	 (ten (make-instance (foreign-tensor 'double-float) :head 0 :dimensions dims :strides strd :store vec)))
+;; 	 (ten (t/zeros #.(foreign-tensor 'double-float) (list 4 3) vec)))
 ;;     (copy! (copy! (randn '(3 3)) ten) (zeros '(3 3)))))
 
 ;; (with-field-element foreign-tensor-doub (vec nil (expt 1000 2))

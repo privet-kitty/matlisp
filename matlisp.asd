@@ -31,7 +31,7 @@
 (in-package #:matlisp-system)
 
 (asdf:defsystem :matlisp-basic
-  :depends-on (#:cffi #:iterate #:trivia #:named-readtables #:lambda-reader #:yacc #:trivial-garbage #:closer-mop #:weyl #:external-program)
+  :depends-on (#:cffi #:iterate #:trivia #:trivia.ppcre #:named-readtables #:lambda-reader #:yacc #:trivial-garbage #:closer-mop #:weyl #:external-program #:bordeaux-threads)
   :pathname "src"
   :components
   ((:file "packages")
@@ -139,9 +139,9 @@
 	    :pathname "graph"
 	    :depends-on ("matlisp-base" #+nil"matlisp-classes" #+nil"matlisp-blas" #+nil"matlisp-lapack")
 	    :components ((:file "fibonacci")
-			 (:file "graph")
 			 (:file "dfs")
-			 (:file "graphviz")))))
+			 (:file "graph" :depends-on ("dfs" "fibonacci"))
+			 (:file "graphviz" :depends-on ("dfs" "fibonacci"))))))
 
 ;; (defclass f2cl-cl-source-file (asdf:cl-source-file)
 ;;   ())

@@ -59,7 +59,7 @@
   `(nth-value 1 (fence ,ele -1)))
 
 (deft/method t/total-size (sym coordinate-accessor) (ele)
-  `(slot-value ,ele 'boundary))
+  `(slot-value ,ele 'tail))
 ;;
 (deft/method t/store-allocator (sym index-store) (size &rest initargs)
   (letv* ((() initargs))
@@ -200,7 +200,7 @@
 (define-tensor-method store-ref ((tensor tensor :x) idx)
   `(t/store-ref ,(cl :x) (t/store ,(cl :x) tensor) idx))
 (define-tensor-method (setf store-ref) (value (tensor tensor :x) idx)
-  `(t/store-set ,(cl :x) value (t/store ,(cl :x) tensor) idx))
+  `(t/store-set ,(cl :x) (t/coerce ,(field-type (cl :x)) value) (t/store ,(cl :x) tensor) idx))
 
 (closer-mop:defgeneric ref (tensor &rest subscripts)
   (:documentation "

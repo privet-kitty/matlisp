@@ -6,6 +6,8 @@
 ;;that you use lexical scoping to affect local changes to
 ;;code (global variables are only bad if you overwrite them :)
 
+(defparameter *sparse-tensor-realloc-on-setf* nil)
+
 (defparameter *default-sparse-store-increment* 100
   "
   Determines the increment by which the store of a compressed sparse matrix is increased,

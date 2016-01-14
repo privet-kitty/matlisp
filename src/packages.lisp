@@ -69,13 +69,13 @@
 ))
 
 (defpackage "MATLISP-UTILITIES"
-  (:use #:common-lisp #:iterate #:trivia #:matlisp-conditions)
+  (:use #:common-lisp #:iterate #:trivia #:trivia.ppcre #:matlisp-conditions)
   (:export #:pophash
 	   #:vectorify #:copy-n #:ensure-list
 	   #:zip #:zipsym
 	   #:slot-values #:remmeth
 	   #:list-dimensions
-	   #:maprange #:maptree-if #:maptree #:maptreeu #:flatten #:pair #:ziptree #:cart #:mapcart
+	   #:maprange #:maptree-if #:maptree #:maptree-eki #:flatten #:pair #:ziptree #:cart #:mapcart
 	   #:recursive-append #:unquote-args
 	   #:compile-and-eval #:modproj
 	   ;;mop
@@ -84,12 +84,12 @@
 	   #:string+ #:string-join #:file->string #:split-seq #:splitlines
 	   ;;lvec
 	   #:lvec-foldl #:lvec-foldr #:lvec-max #:lvec-min #:lvec-eq
-	   #:lvec-map-foldl! #:lvec-map-foldr!
+	   #:lvec-map-foldl! #:lvec-map-foldr! #:lvec-copy
 	   #:lvec->list #:lvec->list! #:binary-search #:sort-index
 	   ;;Macros
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:binding-gensyms #:values-n
 	   #:letv* #:let-typed #:let*-typed #:make-array-allocator #:ziprm #:inline-member
-	   #:define-constant #:eval-every #:recurse-maadi
+	   #:define-constant #:eval-every #:recurse-maadi #:gethash!
 	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase #:curry #:pushcar #:mapcase #:rec
 	   ;;
 	   #:definline #:with-optimization #:very-quickly
@@ -109,7 +109,7 @@
 (defpackage "MATLISP-UNION-FIND"
   (:nicknames :ufd)
   (:use #:common-lisp #:matlisp-utilities #:matlisp-dlist #:iterate)
-  (:export #:union-find #:insert-item #:find-items #:unite-items #:values #:id))
+  (:export #:union-find #:insert-item #:find-items #:unite-items #:root #:values #:id))
 
 (defpackage "MATLISP-TEMPLATE"
   (:use #:common-lisp #:iterate #:matlisp-utilities)
@@ -132,7 +132,7 @@
   (:export
    ;;Foreign-pointer enclosing structure.
    #:foreign-vector #:ffi-type #:fvref #:ptr
-   #:ffuncall #:lisp->ffc #:ffc->cffi
+   #:ffuncall #:lisp->ffc #:ffc->cffi #:ffc->lisp
    ;;Interface functions
    #:def-fortran-routine #:parse-fortran-file
    #:with-vector-data-addresses)
@@ -143,7 +143,7 @@
   (:export #:destruct-parser #:λlist-keyword #:variable-symbol))
 
 (defpackage "MATLISP"
-  (:use #:common-lisp #:iterate #:trivia #:named-readtables #:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template)
+  (:use #:common-lisp #:iterate #:trivia #:trivia.ppcre #:named-readtables #:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template)
   (:import-from :λ-reader #:λ)
   (:nicknames :m)
   ;;Shadow iterate:sum
@@ -166,7 +166,8 @@
    ;;
    #:copy! #:copy #:swap! #:swap
    ;;
-   #:conjugate #:realpart #:realpart~ #:imagpart #:imagpart~)
+   #:conjugate #:realpart #:realpart~ #:imagpart #:imagpart~
+   #:-cliques)
   (:documentation "MATLISP routines"))
 
 (defpackage "MATLISP-USER"

@@ -164,9 +164,95 @@
 		  :do (loop :for ,i :from (aref ,vi ,j) :below (aref ,vi (1+ ,j))
 			 :do (setf (ref ,y (aref ,vr ,i) ,j) (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx ,vd ,i))))))))
        ,y)))
+
+(deft/method t/copy! ((clx graph-tensor) (cly graph-tensor)) (x y)
+  (using-gensyms (decl (x y) (idx i j m))
+    (binding-gensyms (gm gf)
+      (flet ((macro-expander (transpose-p)
+	       `((loop :for ,(gm j) :of-type index-type :from 0 :below (1- (length (memoizing (fence ,x))))
+		    :do (loop :for ,(gm m) :of-type index-type :from (aref (memoizing (fence ,x)) ,j) :below (aref (memoizing (fence ,x)) (1+ ,j))
+			   :do (let-typed ((,i (aref (memoizing (δ-i ,x) :type index-store-vector) ,m) :type index-type))
+				 (setf ;;set hash
+				  (aref ,idx 0) ,i (aref ,idx 1) ,j
+				  (aref (memoizing (slot-value ,y 'stride-hash) :type index-store-vector) ,m) (stride-hash ,idx (memoizing (strides ,y) :type index-store-vector))
+				  ;;set index
+				  (aref (memoizing (indices ,y) :type index-store-matrix) ,m 0) (aref ,idx ,(if transpose-p 1 0))
+				  (aref (memoizing (indices ,y) :type index-store-matrix) ,m 1) (aref ,idx ,(if transpose-p 0 1))
+				  ;;Set value
+				  (t/store-ref ,cly (memoizing (slot-value ,y 'store) :type ,(store-type cly)) ,m) (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx (memoizing (slot-value ,x 'store) :type ,(store-type clx)) ,i)))))))))
+	`(let (,@decl)
+	   (declare (type ,clx ,x) (type ,cly ,y))
+	   (with-memoization ()
+	     (let-typed ((,idx (t/store-allocator index-store-vector 2)))
+	       (if (eql (slot-value ,x 'transposep) (slot-value ,x 'transposep))
+		   (progn ,@(macro-expander t)) (progn ,@(macro-expander nil)))
+	       (setf (slot-value ,y 'tail) (total-size ,x))))
+	   ,y)))))
+
+(deft/method t/copy! ((clx graph-tensor) (cly coordinate-tensor)) (x y)
+  (using-gensyms (decl (x y) (idx i j m))
+    (flet ((macro-expander (transpose-p)
+	     `((loop :for ,j :of-type index-type :from 0 :below (1- (length (memoizing (fence ,x))))
+		  :do (loop :for ,m :of-type index-type :from (aref (memoizing (fence ,x)) ,j) :below (aref (memoizing (fence ,x)) (1+ ,j))
+			 :do (let-typed ((,i (aref (memoizing (δ-i ,x) :type index-store-vector) ,m) :type index-type))
+			       (setf ;;set hash
+				(aref ,idx 0) ,i (aref ,idx 1) ,j
+				(aref (memoizing (slot-value ,y 'stride-hash) :type index-store-vector) ,m) (stride-hash ,idx (memoizing (strides ,y) :type index-store-vector))
+				;;set index
+				(aref (memoizing (indices ,y) :type index-store-matrix) ,m 0) (aref ,idx ,(if transpose-p 1 0))
+				(aref (memoizing (indices ,y) :type index-store-matrix) ,m 1) (aref ,idx ,(if transpose-p 0 1))
+				;;Set value
+				(t/store-ref ,cly (memoizing (slot-value ,y 'store) :type ,(store-type cly)) ,m) (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx (memoizing (slot-value ,x 'store) :type ,(store-type clx)) ,i)))))))))
+      `(let (,@decl)
+	 (declare (type ,clx ,x) (type ,cly ,y))
+	 (with-memoization ()
+	   (let-typed ((,idx (t/store-allocator index-store-vector 2)))
+	     (if (slot-value ,x 'transposep) (very-quickly ,@(macro-expander t)) (very-quickly ,@(macro-expander nil)))
+	     (setf (slot-value ,y 'tail) (total-size ,x))))
+	 ,y))))
+
+#+nil
+(deft/method t/copy! ((clx coordinate-tensor) (cly graph-tensor)) (x y)
+  (using-gensyms (decl (x y) (idx i j m))
+    (binding-gensyms (gm gf)
+      (flet ((macro-expander (transpose-p)
+	       `((loop :for ,(gm m) :of-type index-type :from 0 :below (1- (memoizing (slot-value ,x 'tail) :type index-type))
+		    :do (loop :for ,m :of-type index-type :from (aref (memoizing (fence ,x)) ,j) :below (aref (memoizing (fence ,x)) (1+ ,j))
+			   :do (let-typed ((,i (aref (memoizing (δ-i ,x) :type index-store-vector) ,m) :type index-type))
+				 (setf ;;set hash
+				  (aref ,idx 0) ,i (aref ,idx 1) ,j
+				  (aref (memoizing (slot-value ,y 'stride-hash) :type index-store-vector) ,m) (stride-hash ,idx (memoizing (strides ,y) :type index-store-vector))
+				  ;;set index
+				  (aref (memoizing (indices ,y) :type index-store-matrix) ,m 0) (aref ,idx ,(if transpose-p 1 0))
+				  (aref (memoizing (indices ,y) :type index-store-matrix) ,m 1) (aref ,idx ,(if transpose-p 0 1))
+				  ;;Set value
+				  (t/store-ref ,cly (memoizing (slot-value ,y 'store) :type ,(store-type cly)) ,m) (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx (memoizing (slot-value ,x 'store) :type ,(store-type clx)) ,i)))))))))
+	`(let (,@decl)
+	   (declare (type ,clx ,x) (type ,cly ,y))
+	   (with-memoization ()
+	     (let-typed ((,idx (t/store-allocator index-store-vector 2)))
+	       (if (slot-value ,x 'transposep) (very-quickly ,@(macro-expander t)) (very-quickly ,@(macro-expander nil)))
+	       (setf (slot-value ,y 'tail) (total-size ,x))))
+	   ,y)))))
+
+#+nil
+(define-tensor-method transpose ((g graph-accessor :x) &optional permutation)
+  `(if (and permutation (= (permutation-size permutation) 1)) (copy g)
+       (let ((adj (make-array (dimensions g (if (slot-value g 'transposep) 1 0)) :initial-element nil))
+	     (ret (zeros (if (slot-value g 'transposep) (dimensions g) (reverse (dimensions g))) ',(cl :x) (store-size g))))
+	 (when (slot-value g 'transposep) (setf (slot-value ret 'dimensions) (reverse (dimensions ret))
+						(slot-value ret 'transposep) t))
+	 (iter (for u from 0 below (1- (length (fence g))))
+	       (letv* ((ll rr (fence g u)))
+		 (iter (for v in-vector (δ-i g) from ll below rr with-index iuv) (push ,@(if (subtypep (cl :x) 'tensor) `((cons u iuv)) `(u)) (aref adj v)))))
+	 (iter (for v from 0 below (1- (length (fence ret))))
+	       (iter (for ,@(if (subtypep (cl :x) 'tensor) `((u . iuv)) `(u)) in (setf (aref adj v) (sort (aref adj v) #'< ,@(if (subtypep (cl :x) 'tensor) `(:key #'car)))))
+		     (let ((idx (+ (fence ret v) j)))
+		       (setf (aref (δ-i ret) idx) u
+			     ,@(if (subtypep (cl :x) 'tensor) `((t/store-ref ,(cl :x) (t/store ,(cl :x) ret) idx) (t/store-ref ,(cl :x) (t/store ,(cl :x) g) iuv))))
+		       (counting t into j) (finally (setf (aref (fence ret) (1+ v)) (+ (fence ret v) j))))))
+	 ret)))
 ;;
-
-
 #+nil
 (let ((a (zeros '(10 10) '((complex double-float) stride-accessor hash-table)))
       (b (zeros '(10 10) '((complex double-float) graph-accessor) 100))
@@ -185,7 +271,8 @@
 
 ;;
 (defmethod copy! :before ((x tensor) (y tensor))
-  (assert (very-quickly (lvec-eq (dimensions x) (dimensions y) '=)) nil 'tensor-dimension-mismatch))
+  (assert (and (very-quickly (lvec-eq (dimensions x) (dimensions y) '=))) nil 'tensor-dimension-mismatch)
+  (assert (<= (total-size x) (store-size y)) nil 'tensor-insufficient-store))
 
 (define-tensor-method copy! ((x array) (y dense-tensor :y t))
   `(let-typed ((sto-y (store y) :type ,(store-type (cl :y))))
@@ -205,7 +292,7 @@
 (defmethod copy! :before ((a base-tensor) (b compressed-sparse-matrix))
   (assert (<= (store-size a) (store-size b)) nil 'tensor-insufficient-store))
 
-(define-tensor-method copy! ((x dense-tensor :x) (y dense-tensor :y t))
+(define-tensor-method copy! ((x tensor :x) (y tensor :y t))
   (recursive-append
    (when (and (eql (cl :x) (cl :y)) (subtypep (cl :y) 'blas-mixin))
      `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl :y) 1)) (blas-copyablep x y)))
@@ -281,7 +368,8 @@
     ((or (not type) (consp type) (subtypep type 'tensor))
      (copy! tensor (zeros (dimensions tensor) (cond ((null type) (type-of tensor))
 						    ((symbolp type) type)
-						    (t (apply #'tensor type))))))
+						    (t (apply #'tensor type)))
+			  (if (subtypep type 'sparse-tensor) (total-size tensor)))))
     (t (error "don't know how to copy ~a into ~a." (class-name (class-of tensor)) type))))
 
 #+nil

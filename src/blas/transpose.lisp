@@ -154,7 +154,7 @@
   (tensor-imagpart~ A) <- (- (tensor-imagpart~ A)) "
   (etypecase A
     (cl:number (cl:conjugate A))
-    (dense-tensor (if (eql (realified-tensor A) (type-of A)) A
+    (dense-tensor (if (eql (realified-tensor (class-of A)) (type-of A)) A
 		      (progn (scal! -1 (imagpart~ A)) A)))))
 
 (definline conjugate (A)

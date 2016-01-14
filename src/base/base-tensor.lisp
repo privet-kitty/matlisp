@@ -34,9 +34,9 @@
   (:documentation "Vanilla stride accessor."))
 (defclass coordinate-accessor (base-accessor)
   ((indices :initarg :indices :type index-store-matrix :documentation "Non-zero indices in the tensor.")
+   (strides :initarg :strides :type index-store-vector :documentation "Strides for accesing elements of the tensor.")
    (stride-hash :initarg :stride-hash :type index-store-vector :documentation "Strides in Column major order")
-   (strides :initarg :strides :type index-store-vector :documentation "Strides in Column major order")
-   (boundary :initform 0 :initarg :boundary :type index-type :documentation "Row bound for indices"))
+   (tail :initform 0 :initarg :boundary :type index-type :documentation "Row bound for indices"))
   (:documentation "Bi-partite graph/Hypergraph/Factor/Co-ordinate store"))
 (defclass graph-accessor (base-accessor)
   ((fence :initarg :fence :type index-store-vector :documentation "Start index for neighbourhood.")
@@ -82,10 +82,13 @@
 ;;
 (defclass graph-tensor (tensor graph-accessor simple-vector-store-mixin) ()
   (:metaclass tensor-class))
-(defclass hash-tensor (tensor stride-accessor hash-table-store-mixin) ()
+(defclass hash-tensor (tensor stride-accessor hash-table-store-mixin)
+  ((stride-pivot :initarg :stride-pivot :type index-store-vector :documentation "This slot is used to invert the hash."))
   (:metaclass tensor-class))
 (defclass coordinate-tensor (tensor coordinate-accessor simple-vector-store-mixin) ()
   (:metaclass tensor-class))
+
+(deftype sparse-tensor () `(or coordinate-tensor hash-tensor graph-tensor))
 ;;
 #+nil(defclass vector-mixin () ())
 #+nil(defclass matrix-mixin () ())
@@ -116,12 +119,11 @@
 	 (if subscripts
 	     (let-typed ((rank (order tensor) :type index-type)
 			 (dims (dimensions tensor) :type index-store-vector))
-	       (very-quickly
-		 (loop :for val :in subscripts
-		    :for i :of-type index-type := 0 :then (1+ i)
-		    :do (unless (or (eq val '*) (eq val (aref dims i)))
-			  (return nil))
-		    :finally (return (when (= (1+ i) rank) t)))))
+	       (loop :for val :in subscripts
+		  :for i :of-type index-type := 0 :then (1+ i)
+		  :do (unless (or (eq val '*) (eq val (aref dims i)))
+			(return nil))
+		  :finally (return (when (= (1+ i) rank) t))))
 	     t))))
 
 (definline tensor-matrixp (ten)

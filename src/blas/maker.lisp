@@ -7,16 +7,29 @@
     `(letv* ((,dimsv (coerce ,dims 'index-store-vector) :type index-store-vector)
 	     (,strdv ,tsize (make-stride ,dimsv) :type index-store-vector index-type)
 	     ,@(when initial-element `((,init ,initial-element))))
-       (make-instance ',class :dimensions ,dimsv :head 0 :strides ,strdv
-		      :store ,(recursive-append
-			       (when initial-element `(if ,init (t/store-allocator ,class ,tsize :initial-element (t/coerce ,(field-type class) ,init))))
-			       `(t/store-allocator ,class ,tsize))))))
+       (with-no-init-checks
+	   (make-instance ',class :dimensions ,dimsv :head 0 :strides ,strdv
+			  :store ,(recursive-append
+				   (when initial-element `(if ,init (t/store-allocator ,class ,tsize :initial-element (t/coerce ,(field-type class) ,init))))
+				   `(t/store-allocator ,class ,tsize)))))))
+
+(deft/method t/zeros (cl foreign-tensor) (dims &optional ptr)
+  (with-gensyms (dims_ strd_ ptr_ size_)
+    `(letv* ((,dims_ (coerce ,dims 'index-store-vector) :type index-store-vector)
+	     (,strd_ ,size_ (make-stride ,dims_) :type index-store-vector index-type)
+	     (,ptr_ ,ptr))
+       (make-instance ',cl :dimensions ,dims_ :head 0 :strides ,strd_
+		      :store (etypecase ,ptr_
+			       (cffi:foreign-pointer
+				(make-instance ',(store-type cl) :ptr (the cffi:foreign-pointer ,ptr_)
+					       :length ,(if (clinear-storep cl) `(the fixnum (* 2 ,size_)) size_)))
+			       (ffi:foreign-vector ,ptr_))))))
 
 (deft/method (t/zeros #'hash-table-storep) (class stride-accessor) (dims &optional size)
   (with-gensyms (dimsv strdv tsize)
     `(letv* ((,dimsv (coerce ,dims 'index-store-vector) :type index-store-vector)
 	     (,strdv ,tsize (make-stride-cmj ,dimsv) :type index-store-vector index-type))
-       (make-instance ',class :dimensions ,dimsv :head 0 :strides ,strdv
+       (make-instance ',class :dimensions ,dimsv :head 0 :strides ,strdv :stride-pivot (stride-pivot ,strdv)
 		      :store (t/store-allocator ,class ,tsize :size (cl:max (cl:ceiling (cl:* *default-sparsity* ,tsize)) (or ,size 0)))))))
 
 (deft/method t/zeros (class graph-accessor) (dims &optional size)
@@ -113,12 +126,11 @@
     > (zeros '(10000 10000) 'real-compressed-sparse-matrix 10000)
     #<REAL-COMPRESSED-SPARSE-MATRIX #(10000 10000), store-size: 10000>
 "
-  (with-no-init-checks
-      (let ((type (let ((type (or type *default-tensor-type*)))
-		    (etypecase type (standard-class (class-name type)) (symbol type) (list (apply #'tensor type))))))
-	(etypecase dims
-	  (list (zeros-generic dims type initarg))
-	  (vector (zeros-generic (lvec->list dims) type initarg))
-	  (fixnum (zeros-generic (list dims) type initarg))))))
+  (let ((type (let ((type (or type *default-tensor-type*)))
+		(etypecase type (standard-class (class-name type)) (symbol type) (list (apply #'tensor type))))))
+    (etypecase dims
+      (list (zeros-generic dims type initarg))
+      (vector (zeros-generic (lvec->list dims) type initarg))
+      (fixnum (zeros-generic (list dims) type initarg)))))
 
 (declaim (ftype (function ((or list vector fixnum) &optional t t) t) zeros))
