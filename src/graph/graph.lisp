@@ -9,9 +9,6 @@
 		 (push ,@(if (subtypep (cl :x) 'tensor) `((cons j (t/store-ref ,(cl :x) (memoizing (t/store ,(cl :x) g) :type ,(store-type (cl :x))) m))) `(j)) (aref ret i)))
 	   (finally (return ret)))))
 
-(defgeneric adlist->graph (g)
-  (:generic-function-class tensor-method-generator))
-
 (defun adlist->graph (ag &optional type &aux (type (or type 'graph-accessor)))
   (let*-typed ((ag (coerce ag 'vector))
 	       (ret (zeros (list (length ag) (length ag)) type (iter (for ai in-vector ag) (summing (length ai)))) :type graph-accessor))
