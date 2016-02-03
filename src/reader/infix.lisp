@@ -349,6 +349,10 @@
 	  (ff ff))
 	(funcall default-paren-reader stream char))))
 
+(defun memoization-reader (stream subchar char)
+  (declare (ignore subchar char))
+  `(memoizing ,@(read stream t nil t)))
+
 ;;Define a readtable with dispatch characters
 (macrolet ((tensor-symbol-enumerate ()
 	     `(named-readtables:defreadtable :infix-dispatch-table
@@ -357,5 +361,6 @@
 		(:dispatch-macro-char #\# #\I #'infix-reader)
 		(:dispatch-macro-char #\# #\S #'permutation-cycle-reader)
 		,@(mapcar #'(lambda (x) `(:dispatch-macro-char #\# ,(car x) #'tensor-reader)) *tensor-symbol*)
-		(:dispatch-macro-char #\# #\स #'symbolic-reader))))
+		(:dispatch-macro-char #\# #\स #'symbolic-reader)
+		(:dispatch-macro-char #\# #\m #'memoization-reader))))
   (tensor-symbol-enumerate))

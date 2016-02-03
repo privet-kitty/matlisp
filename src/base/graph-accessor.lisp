@@ -32,12 +32,17 @@
     (very-quickly (binary-search (aref idx 0) l r (δ-i tensor)))))
 
 (define-tensor-method ref ((x graph-accessor :x) &rest subscripts)
-  `(if-let (idx (graph-indexing! (subscripts-check subscripts (dimensions x)) x))
+  `(if-let (idx (graph-indexing! (match subscripts
+				   ((list* (and subs/v (type index-store-vector)) _) (subscripts-check (the index-store-vector subs/v) (dimensions x)))
+				   (_ (subscripts-check (the list subscripts) (dimensions x))))
+				 x))
      (values (t/store-ref ,(cl :x) (t/store ,(cl :x) x) (the index-type idx)) t)
      (values (t/fid+ (t/field-type ,(cl :x))) nil)))
 
 (define-tensor-method (setf ref) (value (x graph-accessor :x) &rest subscripts)
-  `(letv* ((sub/v (subscripts-check subscripts (dimensions x)) :type index-store-vector)
+  `(letv* ((sub/v (match subscripts
+		    ((list* (and subs/v (type index-store-vector)) _) (subscripts-check (the index-store-vector subs/v) (dimensions x)))
+		    (_ (subscripts-check (the list subscripts) (dimensions x)))) :type index-store-vector)
 	   (m lb (graph-indexing! sub/v x)))
      (if m
 	 (values (setf (t/store-ref ,(cl :x) (t/store ,(cl :x) x) (the index-type m)) (t/coerce ,(field-type (cl :x)) value)) t)

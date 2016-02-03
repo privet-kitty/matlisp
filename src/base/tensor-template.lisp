@@ -142,9 +142,10 @@
     (using-gensyms (decl (store idx value))
       `(let (,@decl)
 	 (declare (type ,fty ,value))
-	 (if (t/f= ,fty ,value (t/fid+ ,fty))
+	 (setf (gethash (the index-type ,idx) (the hash-table ,store)) (the ,(field-type sym) ,value))
+	 #+nil(if (t/f= ,fty ,value (t/fid+ ,fty))
 	     (progn (remhash ,idx (the hash-table ,store)) (t/fid+ ,fty))
-	     (setf (gethash (the index-type ,idx) (the hash-table ,store)) (the ,(field-type sym) ,value)))))))
+	     )))))
 ;;
 (deft/generic (with-field-element #'subtypep) sym (decl &rest body))
 (defmacro with-field-elements (sym decls &rest body)

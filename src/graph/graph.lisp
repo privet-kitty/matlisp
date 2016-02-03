@@ -14,12 +14,14 @@
 	       (ret (zeros (list (length ag) (length ag)) type (iter (for ai in-vector ag) (summing (length ai)))) :type graph-accessor))
     (with-memoization ()
       (iter (for i from 0 below (length ag))
+	    (initially (setf (aref (memoizing (fence ret) :type index-store-vector) 0) 0))
+	    (setf (aref (memoizing (fence ret)) (1+ i)) (aref (memoizing (fence ret)) i))
 	    (iter (for u in (setf (aref ag i) (sort (aref ag i) #'< :key #'(lambda (x) (etypecase x (cons (the index-type (first x))) (index-type x))))))
-		  (initially (setf (aref (memoizing (δ-i ret)) (1+ i)) (aref (memoizing (δ-i ret)) i)))
 		  (letv* ((u/ value (etypecase u (cons (the index-type (values (first u) (cdr u)))) (index-type u)))
-			  (m (1- (incf (aref (memoizing (fence ret)) (1+ i))))))
-		    (setf (aref (memoizing (δ-i ret)) m) u/)
-		    (if value (setf (store-ref ret m) value))))))
+			  (m (aref (memoizing (fence ret)) (1+ i))))
+		    (setf (aref (memoizing (δ-i ret) :type index-store-vector) m) u/)
+		    (if value (setf (store-ref (the graph-tensor ret) m) value)))
+		  (incf (aref (memoizing (fence ret)) (1+ i))))))
     ret))
 
 (defun hyper->bipartite (hh &optional type full)
@@ -51,7 +53,7 @@
 (defun gnp (n p)
   ;;TODO: Implement fast version from "Efficient generation of large random networks" - V. Batagelj, U. Brandes, PRL E 71
   ;;Current alg is O(n^2) and is way too slow.
-  (let ((ret (zeros (list n n) '(index-type stride-accessor hash-table))))
+  (let ((ret (zeros (list n n) (hash-tensor 'index-type))))
     (iter (for i from 0 below n)
 	  (iter (for j from (1+ i) below n)
 		(if (< (random 1d0) p)
@@ -189,7 +191,7 @@
 
 (defun line-graph (hh)
   (letv* ((hh (coerce hh 'vector)) (m (length hh))
-	  (ret (zeros (list m m) '(t stride-accessor hash-table))))
+	  (ret (zeros (list m m) (hash-tensor t))))
     (iter (for i from 0 below (length hh))
 	  (iter (for j from (1+ i) below (length hh))
 		(when-let (int (intersection (aref hh i) (aref hh j)))
@@ -209,7 +211,7 @@
 		     (setf (ref ret i (+ i j)) (- (length int))
 			   (ref ret (+ i j) i) (ref ret i (+ i j)))))
 	     (counting t into i))
-       (order->tree (dijkstra-prims (copy ret (tensor 'index-type 'graph-tensor))) type))
+       (order->tree (dijkstra-prims (copy ret (graph-tensor 'index-type))) type))
      (coerce cliques 'vector))))
 
 #+nil
@@ -220,7 +222,7 @@
     ;;(moralize! #(() (0) (0) (0) (2) (2)))
     ;;(values (copy tt '(index-type)) (dijkstra-prims tt))
 
-    ;;(tree-decomposition ag)  
+    ;;(tree-decomposition ag)
   (letv* ((tt ci (tree-decomposition g)))
     (graph->adlist tt)
     )

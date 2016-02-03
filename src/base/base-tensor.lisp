@@ -62,18 +62,21 @@
 ;;This is probably unnecessary now that the reader does not compile at read time.
 (defmethod make-load-form ((tensor base-tensor) &optional env)
   (make-load-form-saving-slots tensor :environment env))
-
 (declaim (ftype (function (tensor) hash-table) memos))
 (definline memos (x)
   (declare (type tensor x))
-  (or (slot-value x 'memos) ;;Create hash-table only when necessary
-      (setf (slot-value x 'memos) (make-hash-table :test 'equal))))
+  (or (slot-value x 'memos) (setf (slot-value x 'memos) (make-hash-table :test 'equal))))
 ;;
-(defclass dense-tensor (tensor stride-accessor simple-vector-store-mixin)
+(deftype sparse-tensor () `(or coordinate-tensor hash-tensor graph-tensor))
+;;
+(defclass stride-tensor (tensor stride-accessor) () (:metaclass tensor-class))
+(defclass dense-tensor (stride-tensor simple-vector-store-mixin)
   ((parent :initform nil :initarg :parent :type (or null tensor) :documentation "This slot is bound if the tensor is the view of another."))
   (:metaclass tensor-class)
   (:documentation "Object which holds all values of its components, with a simple-vector store."))
-
+(defclass hash-tensor (stride-tensor hash-table-store-mixin)
+  ((stride-pivot :initarg :stride-pivot :type index-store-vector :documentation "This slot is used to invert the hash."))
+  (:metaclass tensor-class))
 (defclass blas-mixin () ()
   (:documentation "Mixin which indicates that there exist foreign-routines for an object of this type."))
 (definline orphanize (x)
@@ -82,13 +85,8 @@
 ;;
 (defclass graph-tensor (tensor graph-accessor simple-vector-store-mixin) ()
   (:metaclass tensor-class))
-(defclass hash-tensor (tensor stride-accessor hash-table-store-mixin)
-  ((stride-pivot :initarg :stride-pivot :type index-store-vector :documentation "This slot is used to invert the hash."))
-  (:metaclass tensor-class))
 (defclass coordinate-tensor (tensor coordinate-accessor simple-vector-store-mixin) ()
   (:metaclass tensor-class))
-
-(deftype sparse-tensor () `(or coordinate-tensor hash-tensor graph-tensor))
 ;;
 #+nil(defclass vector-mixin () ())
 #+nil(defclass matrix-mixin () ())
@@ -164,6 +162,10 @@
 		   (:metaclass tensor-class))
 		 (setf (slot-value (find-class ',cl-name) 'field-type) ',field)))
 	     cl-name))))))
+(definline dense-tensor (type) (tensor type 'dense-tensor))
+(definline graph-tensor (type) (tensor type 'graph-tensor))
+(definline hash-tensor (type) (tensor type 'hash-tensor))
+(definline coordinate-tensor (type) (tensor type 'coordinate-tensor))
 
 ;;This is useful for Eigenvalue decompositions
 (defgeneric complexified-tensor (class)

@@ -8,14 +8,14 @@
       `(let (,@decl)
 	 (declare (type ,sym ,A)
 		  (type index-type ,lda)
-		  (type (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*)) ,jpvt)
+		  (type (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,jpvt)
 		  (type ,(store-type sym) ,tau))
 	 (with-field-elements ,sym (,@(when complex? `((,xxr (t/fid+ ,ftype) (dimensions ,A 1)))))
 	   (with-lapack-query ,sym (,xxx ,lwork)
 	     (ffuncall ,(blas-func "geqp3" ftype)
 	       (:& :integer) (dimensions ,A 0) (:& :integer) (dimensions ,A 1)	     
 	       (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-	       (:* :integer) (the (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*)) ,jpvt)
+	       (:* :integer) (the (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,jpvt)
 	       (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,tau)
 	       (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxx) (:& :integer) ,lwork
 	       ,@(when complex? `((:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxr)))
@@ -46,7 +46,7 @@
 (define-tensor-method qr! ((a blas-mixin :x) &optional pivot?)
   `(let-typed ((tau (zeros (lvec-min (dimensions a)) ',(cl :x)) :type ,(cl :x)))
      (if pivot?
-	 (let-typed ((jpvt (make-array (dimensions a 1) :element-type ',(matlisp-ffi::%ffc->lisp :integer) :initial-element 0) :type (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*))))
+	 (let-typed ((jpvt (make-array (dimensions a 1) :element-type ',(matlisp-ffi:ffc->lisp :integer) :initial-element 0) :type (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*))))
 	   (with-columnification (() (a))
 	     (let ((info (t/lapack-geqp! ,(cl :x) a (or (blas-matrix-compatiblep a #\N) 0) jpvt (store tau))))
 	       (unless (= info 0) (error "GEQP3: the ~a'th argument had an illegal value." (- info)))))

@@ -88,3 +88,12 @@
 	  (setf ref (coerce (random arg) 'double-float)))
 	ret)
       (random arg)))
+
+#+nil
+(defun bin-sampler (ps &optional (n most-positive-fixnum) (state *mt-random-state*))
+  (letv* ((cvec (iter (for pp in ps) (summing (floor (* pp n)) into zz)
+		      (collect zz into ret)
+		      (finally (return (coerce (cons 0 ret) 'simple-vector))))
+		:type simple-vector)
+	  (jj lb (binary-search (mt-random (aref cvec (1- (length cvec))) state) 0 (length cvec) (the simple-vector cvec))))
+    (or jj (1- lb))))

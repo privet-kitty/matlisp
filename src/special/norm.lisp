@@ -19,7 +19,7 @@
 (define-tensor-method tensor-max ((vec dense-tensor :x) &optional key)
   `(if key
        (let* ((ridx (make-list (order vec) :initial-element 0))
-	      (rval (funcall key (ref vec ridx))))
+	      (rval (funcall key (ref vec (coerce ridx 'index-store-vector)))))
 	 (dorefs (idx (dimensions vec))
 	   ((ref vec :type ,(cl :x)))
 	   (let ((kval (funcall key ref)))
@@ -42,7 +42,7 @@
 (define-tensor-method tensor-min ((vec dense-tensor :x) &optional key)
     `(if key
        (let* ((ridx (make-list (order vec) :initial-element 0))
-	      (rval (funcall key (ref vec ridx))))
+	      (rval (funcall key (ref vec (coerce ridx 'index-store-vector)))))
 	 (dorefs (idx (dimensions vec))
 		 ((ref vec :type ,(cl :x)))
 	   (let ((kval (funcall key ref)))

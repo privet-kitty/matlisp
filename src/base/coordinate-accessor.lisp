@@ -1,14 +1,15 @@
 (in-package #:matlisp)
 
 ;;Skip for now.
-(declaim (ftype (function (coordinate-accessor &optional index-type) (or index-store-matrix list)) indices))
+(declaim (ftype (function (coordinate-accessor &optional index-type) (or index-store-matrix index-store-vector)) indices))
 
 (definline indices (x &optional idx)
   (declare (type coordinate-accessor x))
   (typecase idx
     (null (the index-store-matrix (slot-value x 'indices)))
-    (index-type (let-typed ((midx (slot-value x 'indices) :type index-store-matrix)) ;;(array-row-major-index idx 0)
-		  (loop :for i :of-type index-type :from 0 :below (array-dimension midx 1) :collect (aref midx idx i))))))
+    (index-type (let*-typed ((midx (slot-value x 'indices) :type index-store-matrix)
+			     (order (array-dimension midx 1) :type index-type))
+		  (lvec-copy order midx (* idx order) (t/store-allocator index-store-vector order) 0 :key #'row-major-aref :lock #'(setf aref))))))
 
 (definline coordinate-indexing (idx tensor)
   (declare (type index-store-vector idx) (type coordinate-accessor tensor))
@@ -17,12 +18,18 @@
     (very-quickly (binary-search hash-value 0 (the index-type (slot-value tensor 'tail)) hash-vector))))
 
 (define-tensor-method ref ((x coordinate-tensor :x) &rest subscripts)
-  `(if-let (idx (coordinate-indexing (subscripts-check subscripts (dimensions x)) x))
+  `(if-let (idx (coordinate-indexing (match subscripts
+				       ((list* (and subs/v (type index-store-vector)) _) (subscripts-check (the index-store-vector subs/v) (dimensions x)))
+				       (_ (subscripts-check (the list subscripts) (dimensions x))))
+				     x))
      (values (t/store-ref ,(cl :x) (t/store ,(cl :x) x) (the index-type idx)) t)
      (values (t/fid+ (t/field-type ,(cl :x))) nil)))
 
 (define-tensor-method (setf ref) (value (x coordinate-tensor :x) &rest subscripts)
-  `(letv* ((subs/v (subscripts-check subscripts (dimensions x)) :type index-store-vector)
+  `(letv* ((subs/v (match subscripts
+		     ((list* (and subs/v (type index-store-vector)) _) (subscripts-check (the index-store-vector subs/v) (dimensions x)))
+		     (_ (subscripts-check (the list subscripts) (dimensions x))))
+		   :type index-store-vector)
 	   (m lb (coordinate-indexing subs/v x)))
      (if m
 	 (values (setf (t/store-ref ,(cl :x) (t/store ,(cl :x) x) (the index-type m)) (t/coerce ,(field-type (cl :x)) value)) t)

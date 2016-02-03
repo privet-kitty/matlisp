@@ -75,6 +75,7 @@
 			 ;;
 			 (:file "stride-accessor" :depends-on ("tensor-template"))
 			 (:file "graph-accessor" :depends-on ("tensor-template"))
+			 (:file "coordinate-accessor" :depends-on ("tensor-template"))
 			 ;;
 			 (:file "permutation" :depends-on ("base-tensor" "generic/copy"))
 			 ;;

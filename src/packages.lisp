@@ -73,7 +73,7 @@
   (:export #:pophash
 	   #:vectorify #:copy-n #:ensure-list
 	   #:zip #:zipsym
-	   #:slot-values #:remmeth
+	   #:slot-values #:remmeth #:values-append
 	   #:list-dimensions
 	   #:maprange #:maptree-if #:maptree #:maptree-eki #:flatten #:pair #:ziptree #:cart #:mapcart
 	   #:recursive-append #:unquote-args

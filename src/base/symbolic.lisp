@@ -199,11 +199,11 @@
 			 ,ret)))
 		 (ge-expression
 		  (setf inputs (union inputs (slot-value expr 'inputs) :test #'equal))
-		  (maptreeu #'(lambda (x)
-				(trivia:match x
-				  ((trivia:guard x (numberp x)) (coerce x type))
-				  ((list 'expt m e) x)
-				  (_ (values x #'mapcar))))
-			    (weyli::lispify (slot-value expr 'expression)))))))
-      (let ((kern (maptreeu #'(lambda (x) (if (typep x `(or ge-expression ,(tensor 'ge-expression))) (compiler x) (values x #'mapcar))) (eval expr))))
+		  (maptree-eki #'(lambda (x)
+				   (trivia:match x
+				     ((trivia:guard x (numberp x)) (coerce x type))
+				     ((list 'expt m e) x)
+				     (_ (values x t))))
+			       (weyli::lispify (slot-value expr 'expression)))))))
+      (let ((kern (maptree-eki #'(lambda (x) (if (typep x `(or ge-expression ,(tensor 'ge-expression))) (compiler x) (values x t))) (eval expr))))
 	`(let (,@(remove-if-not #'consp inputs)) ,kern)))))

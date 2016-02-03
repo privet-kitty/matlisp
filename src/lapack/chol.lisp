@@ -196,12 +196,12 @@
     (using-gensyms (decl (A lda uplo ipiv) (xxx lwork))
       `(let* (,@decl)
 	 (declare (type ,sym ,A) (type index-type ,lda) (type character ,uplo)
-		  (type (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*)) ,ipiv))
+		  (type (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,ipiv))
 	 (with-lapack-query ,sym (,xxx ,lwork)
 	   (ffuncall ,(blas-func (if (or (not het?) (not complex?)) "sytrf" "hetrf") ftype)
 	     (:& :character) ,uplo
 	     (:& :integer) (dimensions ,A 0) (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-	     (:* :integer) (the (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*)) ,ipiv)
+	     (:* :integer) (the (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,ipiv)
 	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxx) (:& :integer) ,lwork
 	     (:& :integer :output) 0))))))
 
@@ -215,7 +215,7 @@
 (define-tensor-method ldl! ((a blas-mixin :x) &optional (hermitian? t) (uplo *default-uplo*))
   '(declare (ignorable hermitian?))
   (let ((complex? (subtypep (field-type (cl :x)) 'cl:complex)))
-    `(let ((ipiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type ',(matlisp-ffi::%ffc->lisp :integer))))
+    `(let ((ipiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type ',(matlisp-ffi:ffc->lisp :integer))))
        (with-columnification (() (A))
 	 ,(recursive-append
 	   (if complex?

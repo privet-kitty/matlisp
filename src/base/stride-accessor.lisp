@@ -112,10 +112,16 @@
 			    (assert (>= (the index-type (store-size tensor)) (the index-type (+ (the index-type (head tensor)) lidx)) 0) nil 'tensor-insufficient-store :store-size (store-size tensor) :max-idx (the index-type (+ (head tensor) lidx)) :tensor tensor)))))))))
 ;;
 (define-tensor-method ref ((x stride-accessor :x) &rest subscripts)
-  `(let-typed ((off (+ (head x) (stride-hash (subscripts-check (the list subscripts) (dimensions x)) (strides x))) :type index-type))
+  `(let-typed ((off (+ (head x) (stride-hash (match subscripts
+					       ((list* (and subs/v (type index-store-vector)) _) (subscripts-check (the index-store-vector subs/v) (dimensions x)))
+					       (_ (subscripts-check (the list subscripts) (dimensions x))))
+					     (strides x))) :type index-type))
      (t/store-ref ,(cl :x) (t/store ,(cl :x) x) off)))
 
 (define-tensor-method (setf ref) (value (x stride-accessor :x) &rest subscripts)
-  `(let-typed ((off (+ (head x) (stride-hash (subscripts-check (the list subscripts) (dimensions x)) (strides x))) :type index-type))
+  `(let-typed ((off (+ (head x) (stride-hash (match subscripts
+					       ((list* (and subs/v (type index-store-vector)) _) (subscripts-check (the index-store-vector subs/v) (dimensions x)))
+					       (_ (subscripts-check (the list subscripts) (dimensions x))))
+					     (strides x))) :type index-type))
      (t/store-set ,(cl :x) (t/coerce ,(field-type (cl :x)) value) (t/store ,(cl :x) x) off)))
 ;;

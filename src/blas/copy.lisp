@@ -165,6 +165,7 @@
 			 :do (setf (ref ,y (aref ,vr ,i) ,j) (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx ,vd ,i))))))))
        ,y)))
 
+#+nil
 (deft/method t/copy! ((clx graph-tensor) (cly graph-tensor)) (x y)
   (using-gensyms (decl (x y) (idx i j m))
     (binding-gensyms (gm gf)
@@ -210,6 +211,26 @@
 	     (if (slot-value ,x 'transposep) (very-quickly ,@(macro-expander t)) (very-quickly ,@(macro-expander nil)))
 	     (setf (slot-value ,y 'tail) (total-size ,x))))
 	 ,y))))
+
+(deft/method t/copy! ((clx hash-tensor) (cly coordinate-tensor)) (x y)
+  (using-gensyms (decl (x y) (idx ii k v))
+    `(let (,@decl)
+       (declare (type ,clx ,x) (type ,cly ,y))
+       (with-memoization ()
+	 (let ((,idx (t/store-allocator index-store-vector (memoizing (total-size ,x)))))
+	   (iter (for (,k ,v) in-hashtable (store ,x))
+		 (setf (aref ,idx ,ii) ,k)
+		 (counting t into ,ii))
+	   (lvec-copy (memoizing (total-size ,x)) (sort ,idx #'<) 0 (memoizing (slot-value ,y 'stride-hash) :type index-store-vector) 0))
+	 (setf (slot-value ,y 'tail) (memoizing (total-size ,x)))
+	 ;;
+	 (iter (for ,k in-vector (memoizing (slot-value ,y 'stride-hash)) with-index ,ii below (memoizing (total-size ,x)))
+	       (lvec-copy (memoizing (order ,x))
+			  (the index-store-vector (invert-hash (- ,k (memoizing (head ,x))) (memoizing (slot-value ,x 'stride-pivot)) (memoizing (strides ,x)) (memoizing (dimensions ,x)))) 0
+			  (memoizing (indices ,y) :type index-store-matrix) (* (memoizing (order ,x)) ,ii))
+	       (setf (t/store-ref ,cly (memoizing (t/store ,cly ,y) :type ,(store-type cly)) ,ii)
+		     (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx (memoizing (slot-value ,x 'store) :type ,(store-type clx)) ,k)))))
+       ,y)))
 
 #+nil
 (deft/method t/copy! ((clx coordinate-tensor) (cly graph-tensor)) (x y)
@@ -306,6 +327,14 @@
      `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl :y) 1)) (consecutive-storep y)))
 	(t/blas-copy! ,(cl :y) (t/coerce ,(field-type (cl :y)) x) nil y strd)))
    `(t/copy! (t ,(cl :y)) x y)))
+
+(define-tensor-method copy! ((x t) (y coordinate-tensor :y t))
+  `(with-memoization ()
+     (loop :for i :from 0 :below (slot-value y 'tail)
+	:do (setf (t/store-ref ,(cl :y) (memoizing (store y) :type ,(store-type (cl :y))) i)
+		  (memoizing (t/coerce ,(field-type (cl :y)) x) :type ,(field-type (cl :y)))))
+     y))
+
 ;;
 (closer-mop:defgeneric tricopy! (a b uplo?)
   (:documentation "Copy upper order, lower order, or diagonal.")
