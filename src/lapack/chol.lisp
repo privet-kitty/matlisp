@@ -183,11 +183,11 @@
     (tricopy! 0d0 l (ecase uplo (:u :lo) (:l :uo)))))
 ;;
 
-#+nil
-(let* ((a #i(a := randn([10, 10]), a + a' + 20 * eye([10, 10])))
-       (x (randn '(10 5)))
-       (b #i(a * x)))
-  (norm (t- x (potrs! (chol a) b))))
+;;
+;; (let* ((a #i(a := randn([10, 10]), a + a' + 20 * eye([10, 10])))
+;;        (x (randn '(10 5)))
+;;        (b #i(a * x)))
+;;   (norm (t- x (potrs! (chol a) b))))
 
 
 (deft/generic (t/lapack-ldl! #'subtypep) sym (A lda uplo ipiv &optional het?))

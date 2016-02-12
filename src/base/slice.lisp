@@ -199,7 +199,8 @@
   (:documentation "Copy minors of x corresponding to indices.")
   (:generic-function-class tensor-method-generator))
 
-(with-memoization ((trivial-garbage:make-weak-hash-table :weakness :key-or-value :test 'equalp))
+(with-memoization (#+sbcl (trivial-garbage:make-weak-hash-table :weakness :key-or-value :test 'equalp)
+		   #-sbcl (make-hash-table :test 'equalp))
   (memoizing
    (defun minors-strides-precompute (dims std indices)
      (declare (type index-store-vector dims std))

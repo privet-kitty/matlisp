@@ -307,6 +307,7 @@
       (#\( (let ((expr (cdr (infix-reader stream #\I nil))))
 	     `(matlisp::zeros (list ,@expr) ',cl))))))
 
+#+weyl
 (defun symbolic-reader (stream subchar arg)
   (assert (null arg) nil "given arg where none was required.")
   (let ((cl (matlisp::tensor 'matlisp::ge-expression)))
@@ -361,6 +362,7 @@
 		(:dispatch-macro-char #\# #\I #'infix-reader)
 		(:dispatch-macro-char #\# #\S #'permutation-cycle-reader)
 		,@(mapcar #'(lambda (x) `(:dispatch-macro-char #\# ,(car x) #'tensor-reader)) *tensor-symbol*)
+		#+weyl
 		(:dispatch-macro-char #\# #\स #'symbolic-reader)
 		(:dispatch-macro-char #\# #\m #'memoization-reader))))
   (tensor-symbol-enumerate))

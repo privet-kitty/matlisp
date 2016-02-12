@@ -57,8 +57,7 @@
 	       (t/blas-trsm! ,(cl :x) side uplo opa diag alpha a lda b (or (blas-matrix-compatiblep b) 0)))))))
   'B)
 
-#+nil
-(let* ((A (tricopy! 0 (randn '(10 10)) :uo))
-       (b (randn '(2 10)))
-       (x (trs! 1 A (copy b) :nur :l)))
-  #i(x - (/ tricopy! (1, A,\ :d) * b)))
+;; (let* ((A (tricopy! 0 (randn '(10 10)) :uo))
+;;        (b (randn '(2 10)))
+;;        (x (trs! 1 A (copy b) :nur :l)))
+;;   #i(x - (/ tricopy! (1, A,\ :d) * b)))
