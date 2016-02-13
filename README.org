@@ -1,9 +1,10 @@
 # -*- Mode: org -*-
-Matlisp is a scientific computation library for Common Lisp. Lisp is generally a wonderful language
-for explorative computing, but often lacks tools for numerical computing. This project is an attempt
-at plugging this perceived shortcoming.
+Matlisp is a scientific computation library for Common Lisp.
 
 * Overview
+  Lisp is generally a wonderful language for explorative computing, but often lacks tools for numerical computing.
+  This project is an attempt at plugging this perceived shortcoming.
+
   Lisp allows interesting new constructs without being tied down to a particular language vendor,
   and we make full use of this facility. Most classes/methods are dynamically generated in Matlisp.
   Custom method dispatch under MOP allows us to treat templates and CLOS methods without much
@@ -50,6 +51,9 @@ at plugging this perceived shortcoming.
   ANSI standard, and consequently only seems to work now on SBCL. Clozure seems to have strange bugs, which
   need fixing; your luck with other implementations may wary.
 
+- Trivia
+  You may also want to use the latest version of [[https://github.com/guicho271828/trivia/][Trivia]] pattern matching library.
+
 * Install
   Matlisp has been successfully built on SBCL. Getting it running is thematic of quicklisp,
 - Install quicklisp http://www.quicklisp.org/beta/.
@@ -65,7 +69,7 @@ Fire up your lisp implementation and load as usual with quicklisp:
   M> (named-readtables:in-readtable :infix-dispatch-table)
 #+END_SRC
 
-* Example
+* Examples
   #+BEGIN_SRC lisp
   ;;Creation
   M> (copy! (randn '(2 2)) (zeros '(2 2) '((complex double-float))))
