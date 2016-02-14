@@ -179,10 +179,9 @@
 (defun reshape~ (x dims) (reshape! (subtensor~ x nil) dims))
 
 ;;
-(defun tensor-append (axis tensor &rest more-tensors)
+(defun join (axis tensor &rest more-tensors)
   (if (null tensor)
-      (when more-tensors
-	(apply #'tensor-append axis (car more-tensors) (cdr more-tensors)))
+      (when more-tensors (apply #'join (list* axis more-tensors)))
       (let ((dims (copy-seq (dimensions tensor))))
 	(iter (for ele in more-tensors) (incf (aref dims axis) (aref (dimensions ele) axis)))
 	(let* ((ret (zeros dims (class-of tensor)))

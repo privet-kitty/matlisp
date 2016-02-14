@@ -162,7 +162,7 @@
    #:tensor-vector #:tensor-matrix #:tensor-square-matrix
    ;;
    #:einstein-sum #:for-mod #:with-strides #:loop-order #:uplo #:dorefs
-   #:subtensor~ #:slice~ #:suptensor~ #:reshape! #:matrixify~ #:tensor-append
+   #:subtensor~ #:slice~ #:suptensor~ #:reshape! #:matrixify~ #:join
    ;;
    #:copy! #:copy #:swap! #:swap
    ;;
