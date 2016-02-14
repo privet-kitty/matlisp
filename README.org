@@ -1,15 +1,8 @@
 # -*- Mode: org -*-
-Matlisp is a scientific computation library for Common Lisp.
+
+Common Lisp is a wonderful language for explorative computing, but often lacks tools for numerical computing. This project is an attempt at plugging this perceived shortcoming.
 
 * Overview
-  Lisp is generally a wonderful language for explorative computing, but often lacks tools for numerical computing.
-  This project is an attempt at plugging this perceived shortcoming.
-
-  Lisp allows interesting new constructs without being tied down to a particular language vendor,
-  and we make full use of this facility. Most classes/methods are dynamically generated in Matlisp.
-  Custom method dispatch under MOP allows us to treat templates and CLOS methods without much
-  difference.
-
   Matlisp provides an infix reader for evaluating mathematical expressions. We use '/' as both a binary
   and unary operator within matlisp's infix reader, this allows us to ensure semantic uniformity even when
   dealing with non-commutativity rings.
@@ -34,8 +27,56 @@ Matlisp is a scientific computation library for Common Lisp.
   code to avoid FFI overheads. This functionality can be used (with minimal tweaking) without the need for
   a a BLAS library, or for commutative-ring types which don't have BLAS routines available.
 
+** CLOS, Metaobjects
+   Most classes/methods in Matlisp are dynamically generated for specialized types at run-time. Generating class specialized for certain field-types is not particularly interesting, and takes place along usual lines.
+   #+BEGIN_SRC lisp
+  M> (tensor 'double-float 'dense-tensor)
+  |<BLAS-MIXIN DENSE-TENSOR: DOUBLE-FLOAT>|
+  M> (tensor 'double-float 'graph-tensor)
+  |<GRAPH-TENSOR: DOUBLE-FLOAT>|
+   #+END_SRC
+
+   Tying method generation with CLOS, however, comes with its own set of complications. Consider this not-so-hypothetical situation: we're given an abstract class /dense-tensor/, and one wishes to write a method for computing the square of a matrix. This sounds simple enough, and as a first pass, one ends up with something like,
+  #+BEGIN_SRC lisp
+  (defgeneric sqmm (x)
+    (:method :before ((x tensor))
+       (assert (typep x 'tensor-square-matrix) nil "X must be square")))
+  #+END_SRC
+  A first solution can be as simple as,
+  #+BEGIN_SRC lisp
+  (defmethod sqmm ((x dense-tensor) &aux (cl-x (class-name (class-of x))))
+    (compile-and-eval
+      `(defmethod sqmm ((x ,cl-x) &aux (ret (zeros (dimensions x) (class-of x))))
+	 (einstein-sum ,cl-x (j k i) (ref ret i j) (* (ref x i j) (ref x j k)))))
+    (sqmm x))
+  #+END_SRC
+  This works because when a subclass of /dense-tensor/ is encountered which isn't specialized, a method is generated and this method is subsequently called. The next time /sqmm/ is called with an instance of this class, /closer-mop:compute-applicable-methods-using-classes/ places this method at the top of the list. This scheme works perfectly if /dense-tensor/ only has descendents at distance 1 and no more (why ?). Fixing this within the confines of CLOS is troublesome, because every method then needs to check if it is 'special enough'. Cue: Metaobjects to the rescue.
+
+  This is solved in Matlisp in three steps,
+  - Define a subclass /tensor-method-generator/ of /closer-mop:funcallable-standard-class/ (a subclass of a function).
+  - Define subclasses of /closer-mop:specializer/, one each for marking generated function arguments, and generator arguments.
+  - Define custom method dispatch /closer-mop:compute-applicable-methods-using-classes/ for this subclass of generic-functions.
+  These definitions can be found in 'src;base;generator.lisp'.
+
+  The solution to the question posed is then simply,
+  #+BEGIN_SRC lisp
+  (defgeneric sqmm (x)
+    (:method :before ((x tensor))
+       (assert (typep x 'tensor-square-matrix) nil "X must be square"))
+    (:generic-function-class tensor-method-generator))
+  (defmethod sqmm ((x #.(make-instance 'group-specializer :object-class 'dense-tensor :group-name :x)) &aux (cl-x (class-name (class-of x))))
+    (compile-and-eval
+      `(defmethod sqmm ((x ,(make-instance 'classp-specializer :object-class (find-class cl-x))) &aux (ret (zeros (dimensions x) ',cl-x)))
+	 (einstein-sum ,cl-x (j k i) (ref ret i j) (* (ref x i j) (ref x j k)))))
+    (sqmm x))
+  #+END_SRC
+  The methods with classp-specializer are only selected by /closer-mop:compute-applicable-methods-using-classes/ if the argument class match that of the classp-specializer instances which are passed as specializers of the method. Similarly, the group-specializer is only selected if all arguments are subclasses of /object-class/, and all class for a given /group-name/ are the same. The CLOS discriminator also ensures that the latter method has a very low precedence. This solves the problem posed earlier and code-generating 'Templates' essentially end up becoming first-class functions.
+
+For debuggability and other reasons, this mechanism is abstracted away inside the macro /matlisp:define-tensor-method/.
+
 * Dependencies
 - CFFI
+
   Matlisp uses CFFI for interfacing with foreign libraries. CFFI support varies between lisp implementations;
   Matlisp assumes that certain simple-vectors in the lisp implementation are in unboxed form, and have a SAP
   that can be passed to Fortran functions. It might be possible to replace this with static/pinned arrays, as
@@ -47,11 +88,13 @@ Matlisp is a scientific computation library for Common Lisp.
   CFFI is provided by quicklisp.
 
 - MOP
-  Matlisp now uses the Meta-Object protocol to generate and maintain classes & methods. This is *not* in the 
+
+  Matlisp now uses the Meta-Object protocol to generate and maintain classes & methods. This is *not* in the
   ANSI standard, and consequently only seems to work now on SBCL. Clozure seems to have strange bugs, which
   need fixing; your luck with other implementations may wary.
 
 - Trivia
+
   You may also want to use the latest version of [[https://github.com/guicho271828/trivia/][Trivia]] pattern matching library.
 
 * Install
@@ -108,9 +151,11 @@ Fire up your lisp implementation and load as usual with quicklisp:
 
 * Enchancements
 - [[https://github.com/matlisp/matlisp-forbi][matlisp-forbi]]
+
   The API for BLAS functions dot ensures inconsistent ABIs between compilers. This package provides a Fortran wrapper (and Lisp methods for `dot`) that fixes these issues. It also provides F77 methods for elementwise division, which follow the `scal` API.e
 
 - Weyl
+
   Weyl is a CAS written in Lisp (and for Lisp!) at Cornell by Richard Zippel's group. Currently, this used only within
   'src;base;symbolic.lisp' (and assoc. infix readers), for working with symbolic expressions. In order to use this functionality,
   Weyl must be loaded before Matlisp.
