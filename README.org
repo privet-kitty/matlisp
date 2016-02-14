@@ -36,7 +36,7 @@ Common Lisp is a wonderful language for explorative computing, but often lacks t
   |<GRAPH-TENSOR: DOUBLE-FLOAT>|
    #+END_SRC
 
-   Tying method generation with CLOS, however, comes with its own set of complications. Consider this not-so-hypothetical situation: we're given an abstract class /dense-tensor/, and one wishes to write a method for computing the square of a matrix. This sounds simple enough, and as a first pass, one ends up with something like,
+   Tying method generation with CLOS, however, comes with its own set of complications. Consider this not-so-hypothetical situation: we're given an abstract class /dense-tensor/, and we wish to write a method for computing the square of a matrix. This sounds simple enough, and as a first pass, one ends up with something like,
   #+BEGIN_SRC lisp
   (defgeneric sqmm (x)
     (:method :before ((x tensor))
@@ -70,7 +70,7 @@ Common Lisp is a wonderful language for explorative computing, but often lacks t
 	 (einstein-sum ,cl-x (j k i) (ref ret i j) (* (ref x i j) (ref x j k)))))
     (sqmm x))
   #+END_SRC
-  The methods with classp-specializer are only selected by /closer-mop:compute-applicable-methods-using-classes/ if the argument class match that of the classp-specializer instances which are passed as specializers of the method. Similarly, the group-specializer is only selected if all arguments are subclasses of /object-class/, and all class for a given /group-name/ are the same. The CLOS discriminator also ensures that the latter method has a very low precedence. This solves the problem posed earlier and code-generating 'Templates' essentially end up becoming first-class functions.
+  Methods with classp-specializer are only selected by /closer-mop:compute-applicable-methods-using-classes/ if the argument class match that of the classp-specializer instances which are passed as specializers of the method. Similarly, the group-specializer is only selected if all arguments are subclasses of /object-class/, and all argument classes for a given /group-name/ are the same. The CLOS discriminator also ensures that the latter method has very low precedence. This solves the problem posed earlier and code-generating 'Templates' essentially end up becoming first-class functions.
 
 For debuggability and other reasons, this mechanism is abstracted away inside the macro /matlisp:define-tensor-method/.
 
@@ -87,15 +87,16 @@ For debuggability and other reasons, this mechanism is abstracted away inside th
 
   CFFI is provided by quicklisp.
 
-- MOP
+- closer-MOP
 
-  Matlisp now uses the Meta-Object protocol to generate and maintain classes & methods. This is *not* in the
-  ANSI standard, and consequently only seems to work now on SBCL. Clozure seems to have strange bugs, which
-  need fixing; your luck with other implementations may wary.
+  Matlisp now uses the Meta-Object protocol to generate and maintain classes & methods. This is *not* part of the
+  ANSI standard, and consequently only seems to work on SBCL at the moment. Your luck with other implementations
+  may wary.
 
 - Trivia
 
   You may also want to use the latest version of [[https://github.com/guicho271828/trivia/][Trivia]] pattern matching library.
+  Matlisp uses the λlist matcher which is a recent addition to the project.
 
 * Install
   Matlisp has been successfully built on SBCL. Getting it running is thematic of quicklisp,
