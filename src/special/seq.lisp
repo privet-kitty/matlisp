@@ -27,18 +27,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(defun realtype-max (lst)
-  (let ((x (first (sort lst
-			#'(lambda (x y)
-			    (cart-typecase (x y)
-			      ((integer integer) (> (integer-length x) (integer-length y)))
-			      ((ratio integer) t)
-			      ((float t) t)
-			      ((float float) (> (float-digits x) (float-digits y)))))))))
-    (etypecase x
-      ((or integer float) (type-of x))
-      (ratio 'rational))))
-
 (defun range (start end &key (h 1) list-output?)
   (declare (type real start end h))
   (let ((quo (ceiling (if (> start end) (- start end) (- end start)) h))

@@ -94,28 +94,25 @@
 		   (values (sort (copy-list applicable-methods) #'(lambda (m1 m2) (method-more-specific-p m1 m2 required-classes)))
 			   class-info-enoughp)))))
 
-#+nil
-(defmethod compute-applicable-methods ((gf tensor-method-generator) arguments)
+(defmethod compute-applicable-methods ((gf tensor-method-generator) arguments &aux (argument-classes (mapcar #'class-of arguments)))
   (iter mc
 	(for m in (closer-mop:generic-function-methods gf))
 	(iter (for s in (closer-mop:method-specializers m))
-	      (for c in required-classes) (with group-keys = nil)
+	      (for a in arguments) (with group-keys = nil)
 	      (always
 	       (etypecase s
-		 (class (subtypep c s))
-		 (closer-mop:eql-specializer (and (eql c (class-of (closer-mop:eql-specializer-object s)))
-						  (not (setf class-info-enoughp nil))))
+		 (class (typep a s))
+		 (closer-mop:eql-specializer (and (eql a (closer-mop:eql-specializer-object s))))
 		 (group-specializer
 		  (let ((key-name (slot-value s 'group-name)))
 		    (if-let (key (assoc key-name group-keys))
-		      (eql (cdr key) c)
-		      (when (subtypep c (slot-value s 'object-class))
-			(push (cons key-name c) group-keys) t))))
-		 (classp-specializer (eq c (slot-value s 'object-class)))))
+		      (eql (cdr key) (class-of a))
+		      (when (typep a (slot-value s 'object-class))
+			(push (cons key-name (class-of a)) group-keys) t))))
+		 (classp-specializer (eq (class-of a) (slot-value s 'object-class)))))
 	      (finally (in mc (collect m into applicable-methods))))
-	(finally (return-from mc
-		   (values (sort (copy-list applicable-methods) #'(lambda (m1 m2) (method-more-specific-p m1 m2 required-classes)))
-			   class-info-enoughp)))))
+	(finally (return-from mc (sort (copy-list applicable-methods) #'(lambda (m1 m2) (method-more-specific-p m1 m2 argument-classes)))))))
+
 ;;Add closer-mop:compute-applicable-methods
 ;;Borrowed from AMOP p.122
 (defun method-more-specific-p (method1 method2 required-classes)

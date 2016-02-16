@@ -64,7 +64,11 @@
 (defmacro cart-case ((&rest vars) &body cases)
   (let ((decl (zipsym vars)))
     `(let (,@decl)
-       (cond ,@(mapcar #'(lambda (clause) `((and ,@(mapcar #'(lambda (x) (list* 'eql x)) (remove-if #'(lambda (x) (eql (cadr x) t)) (zip (mapcar #'car decl) (first clause))))) ,@(cdr clause))) cases)))))
+       (cond ,@(mapcar #'(lambda (clause) `((and ,@(mapcar #'(lambda (x)
+							       (if (consp (second x))
+								   `(or ,@(mapcar #'(lambda (u) `(eql ,(first x) (quote ,u))) (second x)))
+								   `(eql ,(first x) (quote ,(second x)))))
+							   (remove t (zip (mapcar #'car decl) (first clause)) :key #'second))) ,@(cdr clause))) cases)))))
 
 (defmacro cart-ecase ((&rest vars) &body cases)
   (let ((decl (zipsym vars)))

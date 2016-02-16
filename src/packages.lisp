@@ -146,309 +146,122 @@
   (:use #:common-lisp #:iterate #:trivia #:trivia.ppcre #:named-readtables #:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template)
   (:import-from :λ-reader #:λ)
   (:nicknames :m)
-  ;;Shadow iterate:sum
-  (:shadow :sum :conjugate :realpart :imagpart)
   (:export
    ;;Tweakable
-   #:*default-sparse-store-increment* #:*default-sparsity* #:*max-sparse-size* #:*default-stride-ordering* #:*default-tensor-type*
-   #:*check-after-initializing?* #:*default-rcond* #:*default-uplo* #:*real-l1-fcall-lb* #:*real-l2-fcall-lb* #:*real-l3-fcall-lb*
+   #:*sparse-tensor-realloc-on-setf* #:*default-sparse-store-increment* #:*default-sparsity* #:*max-sparse-size*
+   #:*default-stride-ordering* #:*default-tensor-type*
+   #:*check-after-initializing?* #:*default-rcond* #:*default-uplo*
+   #:*real-l1-fcall-lb* #:*real-l2-fcall-lb* #:*real-l3-fcall-lb*
    #:*complex-l1-fcall-lb* #:*complex-l2-fcall-lb* #:*complex-l3-fcall-lb*
-   ;;
-   #:pick-random #:shuffle! #:permute! #:permute
-   #:inv #:compose #:sort-permute
-   ;;
-   #:tensor #:dimensions #:total-size #:order #:ref
-   #:tensor-typep #:tensor-matrixp #:tensor-vectorp #:tensor-squarep
+   ;;base
+   #:dimensions #:order #:field-type #:ref #:einstein-sum
+   #:base-tensor #:tensor #:memos #:store-size #:total-size
+   #:dorefs #:for-mod #:with-iterator #:loop-order #:uplo
+
+   #:sparse-tensor #:stride-tensor #:dense-tensor #:hash-tensor #:foreign-tensor
+   #:orphanize #:graph-tensor #:coordinate-tensor #:tensor-typep
+   #:tensor-method-generator #:define-tensor-method #:cl
+   ;;#:tensor-matrixp #:tensor-vectorp #:tensor-squarep
    #:tensor-vector #:tensor-matrix #:tensor-square-matrix
+   #:complexified-tensor #:realified-tensor
+   ;;coo, graph
+   #:indices #:fence #:δ-I #:strides
+   ;;permutation
+   #:idxv #:pick-random #:shuffle! #:permutation #:permutation-action #:permutation-cycle
+   #:permutation-pivot-flip #:permute! #:permute #:permutation/ #:permutation*
+   #:sort-permute #:subtensor~ #:slice~ #:suptensor~ #:reshape! #:reshape~
+   #:matrixify~ #:join #:minors
    ;;
-   #:einstein-sum #:for-mod #:with-strides #:loop-order #:uplo #:dorefs
-   #:subtensor~ #:slice~ #:suptensor~ #:reshape! #:matrixify~ #:join
-   ;;
-   #:copy! #:copy #:swap! #:swap
-   ;;
-   #:conjugate #:realpart #:realpart~ #:imagpart #:imagpart~
-   #:-cliques)
+   #:zeros
+   #:tensor-realpart~ #:tensor-realpart #:tensor-imagpart~ #:tensor-imagpart
+   #:transpose! #:transpose~ #:transpose #:ctranspose! #:ctranspose #:tensor-conjugate! #:tensor-conjugate
+   ;;L1
+   #:copy! #:copy #:tricopy! #:swap! #:swap #:axpy! #:axpy #:dot #:scal! #:scal #:div! #:div #:scald!
+   #:tensor-sum! #:tensor-sum #:prod! #:prod #:mean #:normalize!
+   ;;Boolean
+   #:ge= #:ga= #:go=
+   ;;L2, L3
+   #:ger! #:ger #:trs! #:gem! #:gem #:gett! #:gekr!
+   ;;LAPACK
+   #:potrf! #:chol! #:chol #:potrs! #:potri! #:ldl! #:ldl-permute! #:ldl
+   #:geev! #:geev-complexify-eigvec  #:heev! #:eig
+   #:gelsy #:lstsq
+   #:getrf! #:getrs! #:getri! #:lu
+   #:qr! #:qr #:schur #:svd #:trsyl! #:syl
+   ;;graph
+   #:in-graph #:in-order #:with-color #:with-parent #:with-visited-array
+   #:graph->adlist #:alist->graph #:hyper->bipartite #:order->tree #:gnp #:moralize! #:symmetrize! #:graphfib #:max-cardinality-search #:triangulate-graph #:elimination-tree #:cholesky-cover #:chordal-cover #:line-graph #:tree-decomposition #:dijkstra #:dijkstra-prims #:directed-subgraph #:max-dag #:topological-order #:graph->dot #:display-graph
+   ;;special
+   ;;map
+   #:mapsor! #:mapsor #:map-tensor! #:mapslice #:mapslice~ #:mapslicec~ #:tensor-foldl
+   #:for #:slicing #:along #:from #:below #:to #:downto #:with-index #:by
+   #:in-vectors #:in-lists #:meshgrid
+   #:norm #:psd-proj #:tensor-max #:tensor-min #:tr
+   #:ones #:eye! #:eye #:diag #:diag~
+   #:rand #:randn #:randi #:rande
+   #:range #:linspace)
   (:documentation "MATLISP routines"))
 
+;;Shadowed symbols.
 (defpackage "MATLISP-USER"
-  (:nicknames :μ)
-  (:use #:common-lisp #:iterate #:matlisp-utilities)
-  (:import-from :λ-reader #:λ)
+  (:nicknames :t)
+  (:use #:common-lisp #:iterate #:matlisp-utilities #:matlisp)
   ;;Shadow iterate:sum
-  (:shadowing-import-from #:matlisp #:sum #:conjugate #:imagpart #:realpart)
-  (:shadow #:+ #:- #:* #:/)
-  ;;Let's keep everything in house for now.
-  #+nil(:export #:index-type #:index-array #:allocate-index-store #:make-index-store
-	   ;;Standard-tensor
-	   #:standard-tensor
-	   #:order #:dimensions #:number-of-elements
-	   #:head #:strides #:store-size #:store
-	   #:parent-tensor
-	   ;;Sub-tensor
-	   #:subtensor~
-	   ;;Store indexers
-	   #:store-indexing
-	   #:store-indexing-vec #:store-indexing-lst
-	   ;;Store accessors
-	   #:ref #:store-ref
-	   ;;Type checking
-	   #:tensor-typep #:tensor-vectorp #:tensor-matrixp #:tensor-squarep)
-  (:documentation "MATLISP internals"))
-
-;;Transitioning to using the tensor-datastructures; eventually move things back to :matlisp
-
-;; Stolen from f2cl.
-;; (defpackage :f2cl-lib
-;;   (:use :cl)
-;;   (:documentation "The package holding all symbols used by the fortran to lisp library.")
-;;   (:nicknames :fortran-to-lisp-library)
-;;   (:export
-;;    ;; constants
-;;    #:%false% #:%true%
-;;    ;; user-settable runtime options
-;;    #:*check-array-bounds*
-;;    ;; types
-;;    #:integer4 #:integer2 #:integer1 #:real8 #:real4 #:complex8 #:complex16
-;;    #:array-double-float #:array-single-float #:array-integer4 #:array-strings
-;;    #:logical
-;;    ;; macros
-;;    #:fref #:fset #:with-array-data #:with-multi-array-data
-;;    #:f2cl-init-string #:fref-string #:fset-string #:f2cl-set-string
-;;    #:f2cl-// #:fstring-/= #:fstring-= #:fstring-> #:fstring->= #:fstring-< #:fstring-<=
-;;    #:fortran_comment #:fdo #:f2cl/ #:arithmetic-if #:computed-goto
-;;    #:assigned-goto
-;;    #:fformat
-;;    #:data-implied-do
-;;    #:int-add #:int-sub #:int-mul
-;;    ;; utilities
-;;    #:array-slice #:array-initialize
-;;    ;; intrinsic functions
-;;    #:abs #:acos #:aimag #:aint #:alog #:alog10 #:amax0 #:amax1
-;;    #:amin1 #:amod #:anint #:asin #:atan #:atan2
-;;    #:cabs #:cexp #:fchar #:clog #:cmplx #:conjg #:ccos
-;;    #:csin #:csqrt #:dabs #:dacos #:dasin
-;;    #:datan #:datan2 #:dble #:dcos #:dcosh #:dexp #:dim
-;;    #:dint #:dlog #:dlog10 #:dmax1 #:dmin1 #:dmod
-;;    #:dnint #:dprod #:dsign #:dsin #:dsinh #:dsqrt #:dtan
-;;    #:dtanh #:ffloat #:iabs #:ichar #:idim #:idint
-;;    #:idnint #:ifix #:index #:int #:isign #:le #:len
-;;    #:lge #:lgt #:flog #:log10 #:lt #:max #:max0
-;;    #:max1 #:min0 #:min1 #:nint #:freal
-;;    #:sign #:sngl #:fsqrt
-;;    ;; other functions
-;;    #:d1mach #:r1mach #:i1mach
-;;    ))
-
-;; (defpackage :fortran-to-lisp
-;;     (:use :cl)
-;;   (:documentation "the package holding all symbols need by the fortran to lisp converter")
-;;   (:nicknames :f2cl)
-;;   (:export
-;;    ;; main routines
-;;    #:f2cl
-;;    #:f2cl-compile
-;;    ))
-
-;; (defpackage "QUADPACK"
-;;   (:use "COMMON-LISP" "FORTRAN-TO-LISP")
-;;   (:export
-;;    ;; Do we want to export the core integration routines too?
-
-;;    ;; The basic integrators
-;;    "DQAGE" "DQAGIE" "DQAGPE" "DQAGSE" "DQAWFE" "DQAWOE" "DQAWSE" "DQAWCE"
-;;    ;; Simplified interface routines
-;;    "DQNG" "DQAG" "DQAGS" "DQAGI" "DQAWS" "DQAWC")
-;;   (:documentation "QUADPACK routines for numerical integration"))
-
-;; (defpackage "MINPACK"
-;;   (:use "COMMON-LISP" "FORTRAN-TO-LISP")
-;;   (:export
-;;    "LMDIF1")
-;;   (:documentation "MINPACK routines for minimization"))
-
-;; (defpackage "MATLISP-LIB"
-;;   (:use "COMMON-LISP" "F2CL")
-;;   (:export
-;;    "ZEROIN")
-;;   (:documentation "Other useful routines"))
-
-
-;; (defpackage :matlisp
-;;   (:use :common-lisp :fortran-ffi-accessors :blas :lapack :dfftpack :quadpack :matlisp-lib :utilities)
-;;   (:shadow #:real)
-;;   (:export #:*print-matrix*
-;;	   ;;
-;;	   #:integer4-type #:integer4-array #:allocate-integer4-store
-;;	   #:index-type #:index-array #:allocate-index-store #:make-index-store
-;;	   ;;Standard-tensor
-;;	   #:standard-tensor
-;;	   #:rank #:dimensions #:number-of-elements
-;;	   #:head #:strides #:store-size #:store
-;;	   ;;Sub-tensor
-;;	   #:sub-tensor
-;;	   #:parent-tensor
-;;	   ;;Store indexers
-;;	   #:store-indexing
-;;	   #:store-indexing-internal #:store-indexing-vec #:store-indexing-lst
-;;	   ;;Store accessors
-;;	   #:tensor-store-ref
-;;	   #:tensor-ref
-;;	   ;;Type checking
-;;	   #:tensor-type-p #:vector-p #:matrix-p #:square-p
-
-;;	   ;;Level 1 BLAS
-;;	   #:axpy! #:axpy
-;;	   #:copy! #:copy
-;;	   #:scal! #:scal
-;;	   ;;Level 2 BLAS
-;;	   #:gemv! #:gemv
-;;	   ;;Level 3 BLAS
-;;	   #:gemm! #:gemm
-;;	   ;;Fortran stuff
-;;	   #:blas-copyable-p #:blas-matrix-compatible-p
-;;	   #:fortran-op #:fortran-nop #:fortran-snop
-;;	   ;;Standard-matrix
-;;	   #:standard-matrix
-;;	   #:nrows #:ncols #:number-of-elements
-;;	   #:head #:row-stride #:col-stride
-;;	   #:store #:store-size
-;;	   ;;Generic functions on standard-matrix
-;;	   #:fill-matrix
-;;	   #:row-or-col-vector-p #:row-vector-p #:col-vector-p
-;;	   ;;Submatrix ops
-;;	   #:row~ #:row
-;;	   #:col~ #:col
-;;	   #:diag~ #:diag
-;;	   #:sub-matrix~ #:sub-matrix
-;;	   ;;Transpose
-;;	   #:transpose~ #:transpose! #:transpose
-;;	   #:ctranspose! #:ctranspose
-;;	   ;;Real-double-matrix
-;;	   #:real-matrix #:real-matrix-element-type #:real-matrix-store-type
-;;	   ;;Complex-double-matrix
-;;	   #:complex-matrix #:complex-matrix-element-type #:complex-matrix-store-type #:complex-coerce #:complex-double-float
-;;	   ;;Real and imaginary parts
-;;	   #:mrealpart~ #:mrealpart #:real
-;;	   #:mimagpart~ #:mimagpart #:imag
-;;	   ;;
-;;	   "CONVERT-TO-LISP-ARRAY"
-;;    "DOT"
-;;    "EIG"
-;;    "EYE"
-;;    "FFT"
-;;    "FFT"
-;;    "GEEV"
-;;    "GELSY!"
-;;    "GELSY"
-;;    "GESV!"
-;;    "GESV"
-;;    "GETRF!"
-;;    "GETRS"
-;;    "GETRS!"
-;;    "HELP"
-;;    "IFFT"
-;;    "JOIN"
-;;    "LOAD-BLAS-&-LAPACK-BINARIES"
-;;    "LOAD-BLAS-&-LAPACK-LIBRARIES"
-;;    "LOAD-MATLISP"
-;;    "LU"
-;;    "M*!"
-;;    "M*"
-;;    "M+!"
-;;    "M+"
-;;    "M-"
-;;    "M.*!"
-;;    "M.*"
-;;    "M.+!"
-;;    "M.+"
-;;    "M.-"
-;;    "M./!"
-;;    "M./"
-;;    "M/!"
-;;    "M/"
-;;    "MACOS"
-;;    "MACOSH"
-;;    "MAKE-COMPLEX-MATRIX"
-;;    "MAKE-COMPLEX-MATRIX-DIM"
-;;    "MAKE-FLOAT-MATRIX"
-;;    "MAKE-FLOAT-MATRIX-ARRAY"
-;;    "MAKE-FLOAT-MATRIX-DIM"
-;;    "MAKE-FLOAT-MATRIX-SEQ"
-;;    "MAKE-FLOAT-MATRIX-SEQ-OF-SEQ"
-;;    "MAKE-FLOAT-MATRIX-SEQUENCE"
-;;    "MAKE-REAL-MATRIX"
-;;    "MAKE-REAL-MATRIX-DIM"
-;;    "MAP-MATRIX!"
-;;    "MAP-MATRIX"
-;;    "MASIN"
-;;    "MASINH"
-;;    "MATAN"
-;;    "MATANH"
-;;    "MATRIX-REF"
-;;    "MCOS"
-;;    "MCOSH"
-;;    "MEXP"
-;;    "MLOG"
-;;    "MLOG10"
-;;    "MREF"
-;;    "MSIN"
-;;    "MSINH"
-;;    "MSQRT"
-;;    "MTAN"
-;;    "MTANH"
-;;    "NCOLS"
-;;    "NORM"
-;;    "ONES"
-;;    "PRINT-ELEMENT"
-;;    "QR"
-;;    "QR!"
-;;    "GEQR!"
-;;    "POTRF!"
-;;    "POTRS!"
-;;    "RAND"
-;;    "RESHAPE!"
-;;    "RESHAPE"
-;;    "SAVE-MATLISP"
-;;    "SEQ"
-;;    "SET-M*!-SWAP-SIZE"
-;;    "SIZE"
-;;    "SQUARE-MATRIX-P"
-;;    "STORE-INDEXING"
-;;    "SUM"
-;;    "SVD"
-;;    "SWAP!"
-;;    "TR"
-;;    "UNLOAD-BLAS-&-LAPACK-LIBRARIES"
-;;    "ZEROS"
-;;    ;; From Quadpack
-;;    "INTEGRATE-QNG"
-;;    "INTEGRATE-QAG"
-;;    "INTEGRATE-QAGS"
-;;    "INTEGRATE-QAGI"
-;;    "INTEGRATE-QAWS"
-;;    "INTEGRATE-QAWC"
-;;    ;; From CPOLY
-;;    "POLYROOTS"
-;;    ;; From TOMS-715
-;;    "M-NORMAL-CDF"
-;;    "M-BESSEL-SCALED-I0" "M-BESSEL-SCALED-I1"
-;;    "M-BESSEL-SCALED-K0" "M-BESSEL-SCALED-K1"
-;;    "M-BESSEL-I0" "M-BESSEL-I1"
-;;    "M-BESSEL-J0" "M-BESSEL-J1"
-;;    "M-BESSEL-K0" "M-BESSEL-K1"
-;;    "M-BESSEL-Y0" "M-BESSEL-Y1"
-;;    "M-DAWSON-INTEGRAL"
-;;    "M-ERF" "M-ERFC" "M-ERFCX"
-;;    "M-GAMMA" "M-LOG-GAMMA"
-;;    "M-BESSEL-SERIES-I"
-;;    "M-BESSEL-SERIES-J"
-;;    "M-BESSEL-SERIES-K"
-;;    "M-BESSEL-SERIES-Y")
-;;   (:documentation "MATLISP routines"))
-
-
-;; (in-package "MATLISP")
-
-;; ;; We've shadowed CL's REAL.  Re-establish the real type.
-;; (deftype real (&optional low high)
-;;   `(cl::real ,low ,high))
+  (:shadow #:+ #:- #:* #:/ #:= #:conjugate #:realpart #:imagpart #:sum #:min #:max)
+  (:import-from :λ-reader #:λ)
+  (:export
+   ;;Tweakable
+   #:*sparse-tensor-realloc-on-setf* #:*default-sparse-store-increment* #:*default-sparsity* #:*max-sparse-size*
+   #:*default-stride-ordering* #:*default-tensor-type*
+   #:*check-after-initializing?* #:*default-rcond* #:*default-uplo*
+   #:*real-l1-fcall-lb* #:*real-l2-fcall-lb* #:*real-l3-fcall-lb*
+   #:*complex-l1-fcall-lb* #:*complex-l2-fcall-lb* #:*complex-l3-fcall-lb*
+   ;;base
+   #:dimensions #:order #:field-type #:ref #:einstein-sum
+   #:base-tensor #:tensor #:memos #:store-size #:total-size
+   #:dorefs #:for-mod #:with-iterator #:loop-order #:uplo
+   #:sparse-tensor #:stride-tensor #:dense-tensor #:hash-tensor #:foreign-tensor
+   #:orphanize #:graph-tensor #:coordinate-tensor #:tensor-typep
+   #:tensor-method-generator #:define-tensor-method #:cl
+   ;;#:tensor-matrixp #:tensor-vectorp #:tensor-squarep
+   #:tensor-vector #:tensor-matrix #:tensor-square-matrix
+   #:complexified-tensor #:realified-tensor
+   ;;coo, graph
+   #:indices #:fence #:δ-I #:strides
+   ;;permutation
+   #:idxv #:pick-random #:shuffle! #:permutation #:permutation-action #:permutation-cycle
+   #:permutation-pivot-flip #:permute! #:permute #:permutation/ #:permutation*
+   #:sort-permute #:subtensor~ #:slice~ #:suptensor~ #:reshape! #:reshape~
+   #:matrixify~ #:join #:minors
+   ;;
+   #:zeros
+   #:realpart~ #:realpart #:imagpart~ #:imagpart
+   #:transpose! #:transpose~ #:transpose #:ctranspose! #:ctranspose #:conjugate! #:conjugate
+   ;;L1
+   #:copy! #:copy #:tricopy! #:swap! #:swap #:axpy! #:axpy #:dot #:scal! #:scal #:div! #:div #:scald!
+   #:sum! #:sum #:prod! #:prod #:mean #:normalize!
+   ;;Boolean
+   #:ge= #:ga= #:go=
+   ;;L2, L3
+   #:ger! #:ger #:trs! #:gem! #:gem #:gett! #:gekr!
+   ;;LAPACK
+   #:potrf! #:chol! #:chol #:potrs! #:potri! #:ldl! #:ldl-permute! #:ldl
+   #:geev! #:geev-complexify-eigvec  #:heev! #:eig
+   #:gelsy #:lstsq
+   #:getrf! #:getrs! #:getri! #:lu
+   #:qr! #:qr #:schur #:svd #:trsyl! #:syl
+   ;;graph
+   #:in-graph #:in-order #:with-color #:with-parent #:with-visited-array
+   #:graph->adlist #:alist->graph #:hyper->bipartite #:order->tree #:gnp #:moralize! #:symmetrize! #:graphfib #:max-cardinality-search #:triangulate-graph #:elimination-tree #:cholesky-cover #:chordal-cover #:line-graph #:tree-decomposition #:dijkstra #:dijkstra-prims #:directed-subgraph #:max-dag #:topological-order #:graph->dot #:display-graph
+   ;;special
+   ;;arithmetic
+   #:+ #:- #:* #:.* #:/ #:./ #:@ #:· #:^ #:⊗ #:= #:.=
+   ;;map
+   #:mapsor! #:mapsor #:map-tensor! #:mapslice #:mapslice~ #:mapslicec~ #:tensor-foldl
+   #:for #:slicing #:along #:from #:below #:to #:downto #:with-index #:by
+   #:in-vectors #:in-lists #:meshgrid
+   #:norm #:psd-proj #:max #:min #:tr
+   #:ones #:eye! #:eye #:diag #:diag~
+   #:rand #:randn #:randi #:rande
+   #:range #:linspace)
+  (:documentation "MATLISP USER"))

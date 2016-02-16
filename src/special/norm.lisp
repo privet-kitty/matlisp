@@ -93,4 +93,4 @@
 	 (values rval ridx))))
 
 (defun tr (mat)
-  (sum (tricopy! mat (zeros (lvec-min (dimensions mat)) (class-of mat)) :d)))
+  (tensor-sum (tricopy! mat (zeros (lvec-min (dimensions mat)) (class-of mat)) :d)))

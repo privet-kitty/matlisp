@@ -139,7 +139,10 @@ s  Purpose
     (div! alpha (copy x (when (complexp alpha) (complexified-tensor x)))))
   ;;TODO: There is an issue here when x is not coerceable into the tensor class of alpha
   (:method ((alpha dense-tensor) (x t))
-    (div! alpha (copy x (when (complexp alpha) (complexified-tensor x))))))
+    (div! alpha (copy! x (zeros (dimensions alpha)
+				(if (or (complexp x) (subtypep (field-type (class-of alpha)) 'complex))
+				    (complexified-tensor alpha)
+				    (class-of alpha)))))))
 
 ;;Diagonal scaling.
 (closer-mop:defgeneric scald! (x m &optional axis)

@@ -335,6 +335,40 @@
 		  (memoizing (t/coerce ,(field-type (cl :y)) x) :type ,(field-type (cl :y)))))
      y))
 
+;;Generic function defined in src;base;generic-copy.lisp
+(defmethod copy! ((tensor dense-tensor) (type symbol))
+  (cond
+    ((eql type 'array) (copy! tensor (make-array (lvec->list (dimensions tensor)))))
+    ((member type '(list cons))
+     (labels ((mtree (arr idx)
+		(let ((n (length idx)))
+		  (if (= n (order arr)) (apply #'ref arr idx)
+		      (loop :for i :from 0 :below (aref (dimensions arr) n)
+			 :collect (mtree arr (append idx (list i))))))))
+       (mtree tensor nil)))
+    ((or (null type) (subtypep type 'dense-tensor))
+     (copy! tensor (zeros (dimensions tensor) (or type (type-of tensor)))))
+    (t (error "don't know how to copy ~a into ~a." (class-name (class-of tensor)) type))))
+
+(defmethod copy! ((tensor tensor) (type symbol))
+  (cond
+    ((or (null type) (subtypep type 'tensor))
+     (let ((type (or type (type-of tensor))))
+       (copy! tensor (zeros (dimensions tensor) type (if (subtypep type 'sparse-tensor) (total-size tensor))))))
+    (t (error "don't know how to copy ~a into ~a." (class-name (class-of tensor)) type))))
+
+#+nil
+(defmethod copy-generic ((tensor sparse-tensor) type)
+  (cond
+    ((or (not type) (subtypep type 'sparse-tensor))
+     (let ((ret (zeros (dimensions tensor) (or type (class-of tensor)) (store-size tensor))))
+       (copy! tensor ret)))
+    ((subtypep type 'standard-tensor)
+     (let ((ret (zeros (dimensions tensor) type (store-size tensor))))
+       (copy! tensor ret)))
+    (t (error "don't know how to copy ~a into ~a." (class-name (class-of tensor)) type))))
+
+
 ;;
 (closer-mop:defgeneric tricopy! (a b uplo?)
   (:documentation "Copy upper order, lower order, or diagonal.")
@@ -372,42 +406,38 @@
 	     :for of.b :of-type index-type := (head b) :then (the index-type (+ of.b ss.b))
 	     :do (setf (t/store-ref ,(cl :x) sto.b of.b) a)))))
      b))
+;;
+(deft/generic (t/blas-swap! #'subtypep) sym (x st-x y st-y))
+(deft/method t/blas-swap! (sym blas-mixin) (x st-x y st-y)
+  (let ((ftype (field-type sym)))
+    (using-gensyms (decl (x y))
+      `(let (,@decl)
+	 (declare (type ,sym ,x ,y))
+	 (ffuncall ,(blas-func "swap" ftype)
+		   (:& :integer) (total-size ,y)
+		   (:* ,(lisp->ffc ftype) :+ (head ,x)) (the ,(store-type sym) (store ,x)) (:& :integer) ,st-x
+		   (:* ,(lisp->ffc ftype) :+ (head ,y)) (the ,(store-type sym) (store ,y)) (:& :integer) ,st-y)
+	 ,y))))
 
-;;Generic function defined in src;base;generic-copy.lisp
-(defmethod copy-generic ((tensor dense-tensor) type)
-  (cond
-    ((eql type 'array)
-     (let ((ret (make-array (lvec->list (dimensions tensor)))))
-       (copy! tensor ret)))
-    ((member type '(list cons))
-     (labels ((mtree (arr idx)
-		(let ((n (length idx)))
-		  (if (= n (order arr)) (apply #'ref arr idx)
-		      (loop :for i :from 0 :below (aref (dimensions arr) n)
-			 :collect (mtree arr (append idx (list i))))))))
-       (mtree tensor nil)))
-    ((or (not type) (consp type) (subtypep type 'dense-tensor))
-     (copy! tensor (zeros (dimensions tensor) (cond ((null type) (type-of tensor))
-						    ((symbolp type) type)
-						    (t (apply #'tensor type))))))
-    (t (error "don't know how to copy ~a into ~a." (class-name (class-of tensor)) type))))
+(deft/generic (t/swap! #'subtypep) sym (x y))
+(deft/method t/swap! (sym dense-tensor) (x y)
+  (using-gensyms (decl (x y) (idx ref-x ref-y))
+    `(let* (,@decl)
+       (declare (type ,sym ,x ,y))
+       (very-quickly
+	 (dorefs (,idx (dimensions ,x))
+		 ((,ref-x ,x :type ,sym)
+		  (,ref-y ,y :type ,sym))
+	   (rotatef ,ref-x ,ref-y))
+	 ,y))))
+;;---------------------------------------------------------------;;
+(defmethod swap! :before ((x dense-tensor) (y dense-tensor))
+  (assert (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)) nil
+	  'tensor-dimension-mismatch))
 
-(defmethod copy-generic ((tensor tensor) type)
-  (cond
-    ((or (not type) (consp type) (subtypep type 'tensor))
-     (copy! tensor (zeros (dimensions tensor) (cond ((null type) (type-of tensor))
-						    ((symbolp type) type)
-						    (t (apply #'tensor type)))
-			  (if (subtypep type 'sparse-tensor) (total-size tensor)))))
-    (t (error "don't know how to copy ~a into ~a." (class-name (class-of tensor)) type))))
-
-#+nil
-(defmethod copy-generic ((tensor sparse-tensor) type)
-  (cond
-    ((or (not type) (subtypep type 'sparse-tensor))
-     (let ((ret (zeros (dimensions tensor) (or type (class-of tensor)) (store-size tensor))))
-       (copy! tensor ret)))
-    ((subtypep type 'standard-tensor)
-     (let ((ret (zeros (dimensions tensor) type (store-size tensor))))
-       (copy! tensor ret)))
-    (t (error "don't know how to copy ~a into ~a." (class-name (class-of tensor)) type))))
+(define-tensor-method swap! ((x dense-tensor :x t) (y dense-tensor :x t))
+  (recursive-append
+   (when (subtypep (cl :x) 'blas-mixin)
+     `(if-let (strd (and (call-fortran? x (t/blas-lb ,(cl :x) 1)) (blas-copyablep x y)))
+	(t/blas-swap! ,(cl :x) x (first strd) y (second strd)))))
+  `(t/swap! ,(cl :x) x y))

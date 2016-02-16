@@ -110,7 +110,7 @@
 
 (defmethod dot ((x number) (y number) &optional (conjugate-p t))
   (if conjugate-p
-      (* (conjugate (the number x)) y)
+      (* (cl:conjugate (the number x)) y)
       (* x y)))
 
 (define-tensor-method dot ((x dense-tensor :x) (y dense-tensor :x) &optional (conjugate-p t))

@@ -128,3 +128,4 @@
   (:method (alpha x (y dense-tensor))
     (axpy! alpha x (copy y (when (or (complexp alpha) (complexp x) (clinear-storep (type-of x)))
 			     (complexified-tensor (type-of y)))))))
+

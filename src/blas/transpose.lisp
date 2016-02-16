@@ -141,11 +141,11 @@
      ,@body
      ,@(mapcar #'(lambda (mat) `(transpose! ,mat)) matlst)))
 ;;
-(definline conjugate! (A)
+(definline tensor-conjugate! (A)
   "
   Syntax
   ======
-  (conjugate! A)
+  (tensor-conjugate! A)
 
   Purpose
   =======
@@ -157,18 +157,18 @@
     (dense-tensor (if (eql (realified-tensor (class-of A)) (type-of A)) A
 		      (progn (scal! -1 (imagpart~ A)) A)))))
 
-(definline conjugate (A)
+(definline tensor-conjugate (A)
   "
   Syntax
   ======
-  (conjugate A)
+  (tensor-conjugate A)
 
   Purpose
   =======
   Like conjugate!, but non-destructive."
   (typecase A
     (cl:number (cl:conjugate A))
-    (t (conjugate! (copy A)))))
+    (t (tensor-conjugate! (copy A)))))
 
 ;;
 (definline ctranspose! (A &optional permutation)

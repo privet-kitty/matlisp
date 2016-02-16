@@ -28,11 +28,11 @@
 
 (in-package #:matlisp)
 
-(definline realpart~ (tensor)
+(definline tensor-realpart~ (tensor)
   "
   Syntax
   ======
-  (realpart~ tensor)
+  (tensor-realpart~ tensor)
  
   Purpose
   =======
@@ -51,11 +51,11 @@
 					 :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (the index-store-vector (strides tensor)))
 					 :head (the index-type (* 2 (head tensor)))))))))
 
-(definline imagpart~ (tensor)
+(definline tensor-imagpart~ (tensor)
   "
   Syntax
   ======
-  (imagpart~ tensor)
+  (tensor-imagpart~ tensor)
  
   Purpose
   =======
@@ -76,11 +76,11 @@
 					 :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (the index-store-vector (strides tensor)))
 					 :head (1+ (the index-type (* 2 (head tensor))))))))))
 
-(definline realpart (tensor)
+(definline tensor-realpart (tensor)
   "
   Syntax
   ======
-  (realpart tensor)
+  (tensor-realpart tensor)
  
   Purpose
   =======
@@ -91,13 +91,13 @@
 "
   (etypecase tensor
     (number (cl:realpart tensor))
-    (dense-tensor (copy (realpart~ tensor)))))
+    (dense-tensor (copy (tensor-realpart~ tensor)))))
 
-(definline imagpart (tensor)
+(definline tensor-imagpart (tensor)
   "
   Syntax
   ======
-  (realpart tensor)
+  (tensor-imagpart tensor)
  
   Purpose
   =======
@@ -108,6 +108,6 @@
 "
   (etypecase tensor
     (number (cl:imagpart tensor))
-    (dense-tensor (if-let (ip (imagpart~ tensor))
+    (dense-tensor (if-let (ip (tensor-imagpart~ tensor))
 		    (copy ip)
 		    (zeros (dimensions tensor) (type-of tensor))))))

@@ -246,11 +246,11 @@
 	      (:l (rotatef (ref D i (1+ i)) (ref ret (1+ i) i))))
 	    (setf (ref D (1+ i) i) (ref D i (1+ i)))
 	    (incf i)))
-    (values (cpermute! ret ipiv uplo) D
+    (values (ldl-permute! ret ipiv uplo) D
 	    (let ((p (with-no-init-checks (make-instance 'permutation-pivot-flip :size (length ipiv) :store (pflip.f->l ipiv uplo)))))
 	      (ecase uplo (:u (permutation/ p)) (:l p))))))
 
-(defun cpermute! (m ipiv &optional (uplo *default-uplo*))
+(defun ldl-permute! (m ipiv &optional (uplo *default-uplo*))
   (declare (type (and tensor-square-matrix blas-mixin) m)
 	   (type (simple-array (signed-byte 32)) ipiv))
   (let ((rv (slice~ m 0)) (rvσ (slice~ m 0))

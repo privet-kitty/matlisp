@@ -36,6 +36,13 @@
 (definline fortran-nop (op)
   (ecase op (#\T #\N) (#\N #\T)))
 
+(definline change-jobchar (op job)
+  (cart-case (op job)
+    ;;((null (#\N #\T #\C)) job)
+    (((transpose transpose~) (#\N #\T)) (fortran-nop job))
+    (((ctranspose ctranspose~) #\N) #\C)
+    (((ctranspose ctranspose~) #\C) #\N)))
+
 (definline fortran-nuplo (op)
   (ecase op (#\U #\L) (#\L #\U)))
 
@@ -130,5 +137,24 @@
      (with-field-element ,class (,work (t/fid+ ,(field-type class)) 1)
        (progn ,@code)
        (setq ,lwork (ceiling (t/frealpart ,(field-type class) (t/store-ref ,class ,work 0)))))
-     (with-field-element ,class (,work (t/fid+ ,(field-type class)) ,lwork)
-       ,@code)))
+     (with-field-element ,class (,work (t/fid+ ,(field-type class)) ,lwork) ,@code)))
+
+(defun realtype-max (lst)
+  (let ((x (first (sort lst
+			#'(lambda (x y)
+			    (cart-typecase (x y)
+			      ((integer integer) (> (integer-length x) (integer-length y)))
+			      ((ratio integer) t)
+			      ((float t) t)
+			      ((float float) (> (float-digits x) (float-digits y)))))))))
+    (etypecase x
+      ((or integer float) (type-of x))
+      (ratio 'rational))))
+
+(defun real-type-max (x y)
+  (let ((ret (cart-etypecase (x y)
+	       ((integer integer) (type-of (if (> (integer-length x) (integer-length y)) x y)))
+	       ((ratio integer) 'ratio)
+	       ((float float) (type-of (if (> (float-digits x) (float-digits y)) x y)))
+	       ((float t) (type-of x)))))
+    (if (eq ret 'ratio) 'rational ret)))
