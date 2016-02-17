@@ -6,7 +6,7 @@
 
 (defparameter *operator-tokens*
   `(("⊗" ⊗) ;;<- CIRCLE TIMES
-    (".^" ^) ("⟼" ⟼)
+    (".^" .^) ("^" ^) ("⟼" ⟼)
     ("./" ./) ("/" /)
     ("*" *) (".*" .*) ("@" @)
     ("·" @) ;; <- MIDDLE DOT
@@ -95,13 +95,13 @@
 ;;
 (yacc:define-parser *linfix-parser*
   (:start-symbol expr)
-  (:terminals (⟼ .^ ./ / * .* @ ⊗ + - := ← = #+nil .= |(| |)| [ ] |:| |.| |,| ctranspose transpose id number))
+  (:terminals (⟼ ^ .^ ./ / * .* @ ⊗ + - := ← = .= |(| |)| [ ] |:| |.| |,| ctranspose transpose id number))
   (:precedence ((:left |.| ctranspose transpose)
-		(:right .^)
+		(:right .^ ^)
 		(:left ./ / * .* @ ⊗)
 		(:left + -)
 		(:left ⟼)
-		(:right := ← = #+nil .=)))
+		(:right := ← = .=)))
   (expr
    (expr ctranspose #'(lambda (a b) (list b a)))
    (expr transpose #'(lambda (a b) (list b a)))
@@ -115,11 +115,12 @@
    (expr @ expr #'(lambda (a b c) (list b a c)))
    (expr ⊗ expr #'(lambda (a b c) (list b a c)))
    (expr .^ expr #'(lambda (a b c) (list b a c)))
+   (expr ^ expr #'(lambda (a b c) (list b a c)))
    (list ⟼ expr #'(lambda (a b c) (declare (ignore b)) `(lambda (,@(cdr a)) ,c)))
    (expr ← expr #'(lambda (a b c) (declare (ignore b)) (list 'setf a c)))
    (expr := expr #'(lambda (a b c) (declare (ignore b)) (list :deflet a c)))
    (expr = expr #'(lambda (a b c) (list b a c)))
-   #+nil(expr .= expr #'(lambda (a b c) (list b a c)))
+   (expr .= expr #'(lambda (a b c) (list b a c)))
    term)
   ;;
   (lid
@@ -225,7 +226,10 @@
 				       (/ matlisp-user:/)
 				       (./ matlisp-user:./)
 				       (= matlisp-user:=)
-				       ;;(.= matlisp-user:.=)
+				       ;;Not yet implemented.
+				       (.= matlisp-user:=)
+				       ;;No yet implemented
+				       (^ cl:expt)
 				       (.^ cl:expt)
 				       (transpose matlisp:transpose)
 				       (ctranspose matlisp:ctranspose)))

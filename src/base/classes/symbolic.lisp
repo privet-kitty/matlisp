@@ -1,38 +1,40 @@
 (in-package #:matlisp)
 
-(defclass ge-expression ()
-  ((expression :initform (error "expression missing") :initarg :expression)
-   (inputs :initform nil :initarg :inputs)))
-
 ;;Field definitions
-(macrolet ((genari (f bf)
-	     `(deft/method ,f (ty ge-expression) (&rest nums)
-		(with-gensyms (nn)
-		  `(let ((,nn (list ,@nums)))
-		     (reduce #'(lambda (a b) (reweylify
-					      (make-instance 'ge-expression
-							     :expression (,',bf (slot-value a 'expression) (slot-value b 'expression))
-							     :inputs (union (slot-value a 'inputs) (slot-value b 'inputs) :test #'equal)))) ,nn))))))
-  (eval-every
-    (genari t/f+ weyl:+)
-    (genari t/f- weyl:-)
-    (genari t/f* weyl:*)
-    (genari t/f/ weyl:/)))
+(eval-every
+  (defclass ge-expression ()
+    ((expression :initform (error "expression missing") :initarg :expression)
+     (inputs :initform nil :initarg :inputs)))
 
-(deft/method t/fid+ (ty ge-expression) () (make-instance 'ge-expression :expression (weyl:zero weyl:*general*)))
-(deft/method t/fid* (ty ge-expression) () (make-instance 'ge-expression :expression (weyl:one weyl:*general*)))
+  (dense-tensor 'ge-expression)
+  (macrolet ((genari (f bf)
+	       `(deft/method ,f (ty ge-expression) (&rest nums)
+		  (with-gensyms (nn)
+		    `(let ((,nn (list ,@nums)))
+		       (reduce #'(lambda (a b) (reweylify
+						(make-instance 'ge-expression
+							       :expression (,',bf (slot-value a 'expression) (slot-value b 'expression))
+							       :inputs (union (slot-value a 'inputs) (slot-value b 'inputs) :test #'equal)))) ,nn))))))
+    (eval-every
+      (genari t/f+ weyl:+)
+      (genari t/f- weyl:-)
+      (genari t/f* weyl:*)
+      (genari t/f/ weyl:/)))
 
-(deft/method t/f= (ty ge-expression) (&rest nums)
-  `(weyl:= ,@(mapcar #'(lambda (x) `(slot-value ,x 'expression)) nums)))
+  (deft/method t/fid+ (ty ge-expression) () (make-instance 'ge-expression :expression (weyl:zero weyl:*general*)))
+  (deft/method t/fid* (ty ge-expression) () (make-instance 'ge-expression :expression (weyl:one weyl:*general*)))
 
-(deft/method t/fc (ty ge-expression) (num) num)
+  (deft/method t/f= (ty ge-expression) (&rest nums)
+    `(weyl:= ,@(mapcar #'(lambda (x) `(slot-value ,x 'expression)) nums)))
+
+  (deft/method t/fc (ty ge-expression) (num) num))
 
 (defun weylify (expr)
-  (let ((flist `((matlisp::tb+ weyl:+) (matlisp::+ weyl:+)
-		 (matlisp::tb- weyl:-) (matlisp::- weyl:-)
-		 (matlisp::tb*-opt weyl:*) (matlisp::* weyl:*)
-		 (matlisp::tb/ weyl:/) (matlisp::/ weyl:/)
-		 (matlisp-infix::expt weyl:expt)
+  (let ((flist `((matlisp-user:+ weyl:+) (cl:+ weyl:+)
+		 (matlisp-user:- weyl:-) (cl:- weyl:-)
+		 (matlisp-user:* weyl:*) (cl:* weyl:*)
+		 (matlisp-user:/ weyl:/) (cl:/ weyl:/)
+		 (matlisp-user::expt weyl:expt)
 		 (matlisp-infix::exp weyl::exp)
 		 (matlisp-infix::sin weyl::sin)
 		 (matlisp-infix::cos weyl::cos)))
@@ -56,11 +58,6 @@
 				      expr))
 		    :inputs inputs))))
 
-(defun reweylify (expr)
-  (let* ((rexpr (weylify (weyli::lispify (slot-value expr 'expression)))))
-    (setf (slot-value rexpr 'inputs) (mapcar #'(lambda (zz) (or (find-if #'(lambda (x) (and (consp x) (eql (car x) zz))) (slot-value expr 'inputs)) zz)) (slot-value rexpr 'inputs)))
-    rexpr))
-
 (deft/method t/coerce (ty ge-expression) (num)
   (with-gensyms (nn)
     `(let ((,nn ,num))
@@ -69,7 +66,6 @@
 	     (assert (typep ,nn '(or real list symbol)) nil "don't know how to coerce ~a into ge-expression" ,nn)
 	     (weylify ,nn))))))
 
-(eval-every (tensor 'ge-expression))
 (deft/method (t/store-allocator #'linear-storep) (sym #.(tensor 'ge-expression)) (size &rest initargs)
   (letv* (((&key initial-element) initargs))
     (with-gensyms (sitm size-sym arr idx init)
@@ -84,6 +80,11 @@
 	   ,@(when initial-element
 		   `((very-quickly (loop :for ,idx :from 0 :below ,size-sym :do (t/store-set ,sym ,init ,arr ,idx)))))
 	   ,arr)))))
+
+(defun reweylify (expr)
+  (let* ((rexpr (weylify (weyli::lispify (slot-value expr 'expression)))))
+    (setf (slot-value rexpr 'inputs) (mapcar #'(lambda (zz) (or (find-if #'(lambda (x) (and (consp x) (eql (car x) zz))) (slot-value expr 'inputs)) zz)) (slot-value rexpr 'inputs)))
+    rexpr))
 
 (defmethod print-object ((obj ge-expression) stream)
   (format stream "~a" (slot-value obj 'expression)))

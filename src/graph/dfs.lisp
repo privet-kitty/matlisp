@@ -21,9 +21,9 @@
 	`(progn
 	   (with ,(gm g) = (the graph-accessor ,g)) (with ,v = (the index-type ,(or root `(random (dimensions ,(gm g) 1)))))
 	   (repeat (dimensions ,g 1))
-	   (with ,(gm visited) = (let ((,(gm visited) ,(or visited-array `(t/store-allocator ,(tensor 'boolean) (dimensions ,(gm g) 1)))))
+	   (with ,(gm visited) = (let ((,(gm visited) ,(or visited-array `(make-array (dimensions ,(gm g) 1) :element-type 'boolean :initial-element nil))))
 				   (setf (aref ,(gm visited) ,v) t) ,(gm visited)))
-	   ,@(if colorp `((with ,color = (t/store-allocator ,(tensor 'boolean) (dimensions ,(gm g) 1)))))
+	   ,@(if colorp `((with ,color = (make-array (dimensions ,(gm g) 1) :element-type 'boolean :initial-element nil))))
 	   (with ,(gm stack) = nil)
 	   ,@(if (and p (not (eql order :sfd))) `((with ,p = nil)))
 	   ,@(if (eql order :sfd)
@@ -31,7 +31,7 @@
 		   (with ,(gm path) = nil)
 		   (initially ,path-findor ,@(if colorp `((setf (aref ,color ,v) t))) ,@(if p `((setf ,p (car ,(gm path))))))))
 	   (declare (type graph-accessor ,(gm g))
-		    (type ,(store-type (tensor 'boolean)) ,(gm visited) ,@(if (and colorp (eql order :sfd)) `(,color))))
+		    (type (simple-array boolean (*)) ,(gm visited) ,@(if (and colorp (eql order :sfd)) `(,color))))
 	   (after-each
 	    ,@(if (not (eql order :sfd)) `(,pushor (unless ,poppor (finish)) ,@(if colorp `((setf (aref ,color ,v) t))) )
 		  `((unless ,(gm path) (finish))

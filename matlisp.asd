@@ -124,7 +124,6 @@
 			 (:file "map")
 			 (:file "norm")
 			 (:file "seq")
-			 (:file "arithmetic")
 			 (:file "oneseye")))
    ;;Matlisp-user
    (:module "matlisp-user" :pathname "user"
