@@ -70,6 +70,7 @@
 
 (defpackage "MATLISP-UTILITIES"
   (:use #:common-lisp #:iterate #:trivia #:trivia.ppcre #:matlisp-conditions)
+  (:nicknames #:mu)
   (:export #:pophash
 	   #:vectorify #:copy-n #:ensure-list
 	   #:zip #:zipsym

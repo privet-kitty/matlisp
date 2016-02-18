@@ -232,6 +232,18 @@
 		     (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx (memoizing (slot-value ,x 'store) :type ,(store-type clx)) ,k)))))
        ,y)))
 
+(deft/method t/copy! ((clx coordinate-tensor) (cly dense-tensor)) (x y)
+  (using-gensyms (decl (x y) (idx ii))
+    `(let (,@decl)
+       (declare (type ,clx ,x) (type ,cly ,y))
+       (with-memoization ()
+	 (let ((,idx (t/store-allocator index-store-vector (order ,x))))
+	   (iter (for ,ii from 0 below (slot-value ,x 'tail))
+		 (lvec-copy (memoizing (order ,x)) (memoizing (indices ,x)) (* ,ii (memoizing (order ,x))) ,idx 0 :key #'row-major-aref :lock #'(setf aref))
+		 (setf (t/store-ref ,cly (memoizing (store ,y) :type ,(store-type cly)) (+ (memoizing (head ,y)) (stride-hash ,idx (memoizing (strides ,y)))))
+		       (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx (memoizing (store ,x) :type ,(store-type clx)) ,ii))))))
+       ,y)))
+
 #+nil
 (deft/method t/copy! ((clx coordinate-tensor) (cly graph-tensor)) (x y)
   (using-gensyms (decl (x y) (idx i j m))

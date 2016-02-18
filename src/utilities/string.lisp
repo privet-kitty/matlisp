@@ -26,10 +26,9 @@ returning two values: the string and the number of bytes read."
 (defun file->string (path)
   "Sucks up an entire file from PATH into a freshly-allocated string,
 returning two values: the string and the number of bytes read."
-  (let* ((fsize (with-open-file (s path)
-		  (file-length s)))
+  (let* ((fsize (with-open-file (s path) (file-length s)))
 	 (data (make-array fsize :element-type 'standard-char))
-	 (fd (sb-posix:open path 0)))
+	 (fd (sb-posix:open (translate-logical-pathname path) 0)))
     (unwind-protect (sb-posix:read fd (sb-sys:vector-sap data) fsize)
       (sb-posix:close fd))
     (values data fsize)))

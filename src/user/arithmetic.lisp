@@ -115,7 +115,7 @@
 	   (trivia:match (car objs)
 	     ((list '/ a)
 	      (if (cdr objs)
-		  `(b* ,ret (b// ,@(if (cddr objs) `((* ,@(cdr objs))) (cdr objs)) ,a))
+		  `(b* ,ret (b\\ ,@(if (cddr objs) `((* ,@(cdr objs))) (cdr objs)) ,a))
 		  `(b/ ,ret ,a)))
 	     (_ (reducer `(b* ,ret ,(car objs)) (cdr objs)))))))
 ;;
