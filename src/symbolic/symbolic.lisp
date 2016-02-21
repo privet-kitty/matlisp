@@ -29,15 +29,16 @@
 
   (deft/method t/fc (ty ge-expression) (num) num))
 
+(defparameter *function-assoc-table*
+  `(,@(mapcar #'(lambda (x) `(,x ,(find-symbol (symbol-name x) :weyl)))
+	      `(cl:+ cl:- cl:* cl:/ t::+ t::- t::* t::/
+		     cl:expt t:expt cl:exp t:exp cl:log t:log t:sin cl:sin t:asin cl:asin t:cos cl:cos t:acos cl:acos
+		     t:tan cl:tan t:atan cl:atan
+		     t:sinh cl:sinh t:cosh cl:cosh t:tanh cl:tanh t:asinh cl:asinh
+		     t:acosh cl:acosh t:atanh cl:atanh))))
+
 (defun weylify (expr)
-  (let ((flist `((matlisp-user:+ weyl:+) (cl:+ weyl:+)
-		 (matlisp-user:- weyl:-) (cl:- weyl:-)
-		 (matlisp-user:* weyl:*) (cl:* weyl:*)
-		 (matlisp-user:/ weyl:/) (cl:/ weyl:/)
-		 (matlisp-user::expt weyl:expt)
-		 (matlisp-infix::exp weyl::exp)
-		 (matlisp-infix::sin weyl::sin)
-		 (matlisp-infix::cos weyl::cos)))
+  (let ((flist *function-assoc-table*)
 	inputs)
     (values
      (make-instance 'ge-expression
@@ -195,7 +196,7 @@
 				   (collect `(setf (t/store-ref ,(tensor type) ,sto
 								(the index-type (+ (the index-type ,hd)
 										   ,@(mapcar #'(lambda (x ii) `(the index-type (* (aref ,std ,ii) (the index-type ,x))))
-											     subscripts (range 0 (length subscripts) :list-output? t)))))
+											     subscripts (range 0 (length subscripts) nil t)))))
 						   ,(compiler (apply #'ref (list* expr subscripts)))))))
 			 ,ret)))
 		 (ge-expression

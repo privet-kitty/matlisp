@@ -166,7 +166,7 @@
    #:tensor-vector #:tensor-matrix #:tensor-square-matrix
    #:complexified-tensor #:realified-tensor
    ;;coo, graph
-   #:indices #:fence #:δ-I #:strides
+   #:indices #:fence #:δ-I #:strides #:head #:store
    ;;permutation
    #:idxv #:pick-random #:shuffle! #:permutation #:permutation-action #:permutation-cycle
    #:permutation-pivot-flip #:permute! #:permute #:permutation/ #:permutation*
@@ -228,7 +228,7 @@
    #:tensor-vector #:tensor-matrix #:tensor-square-matrix
    #:complexified-tensor #:realified-tensor
    ;;coo, graph
-   #:indices #:fence #:δ-I #:strides
+   #:indices #:fence #:δ-I #:strides #:head #:store
    ;;permutation
    #:idxv #:pick-random #:shuffle! #:permutation #:permutation-action #:permutation-cycle
    #:permutation-pivot-flip #:permute! #:permute #:permutation/ #:permutation*

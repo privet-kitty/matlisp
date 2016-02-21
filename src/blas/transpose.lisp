@@ -155,7 +155,7 @@
   (etypecase A
     (cl:number (cl:conjugate A))
     (dense-tensor (if (eql (realified-tensor (class-of A)) (type-of A)) A
-		      (progn (scal! -1 (imagpart~ A)) A)))))
+		      (progn (scal! -1 (tensor-imagpart~ A)) A)))))
 
 (definline tensor-conjugate (A)
   "
@@ -183,7 +183,7 @@
 "
   (typecase A
     (cl:number (cl:conjugate A))
-    (t (conjugate! (transpose! A permutation)))))
+    (t (tensor-conjugate! (transpose! A permutation)))))
 
 (definline ctranspose (A &optional permutation)
   "

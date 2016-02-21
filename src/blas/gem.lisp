@@ -138,6 +138,9 @@
 	      nil 'tensor-dimension-mismatch)))
   (:generic-function-class tensor-method-generator))
 
+(defmethod gem! (alpha A (B dense-tensor) beta (C dense-tensor) &optional (job :n))
+  (axpy! (* alpha A) B (scal! beta C)))
+
 (define-tensor-method gem! (alpha (A dense-tensor :x) (B dense-tensor :x) beta (C dense-tensor :x t) &optional (job :n))
   `(letv* ((alpha (t/coerce ,(field-type (cl :x)) alpha))
 	   (beta (t/coerce ,(field-type (cl :x)) beta))

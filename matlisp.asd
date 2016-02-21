@@ -81,13 +81,9 @@
 				   ;;
 				   (:file "blas-helpers" :depends-on ("base-tensor" "stride-accessor" "permutation"))
 				   (:file "einstein" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))
-				   (:file "slice" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))))
-	     (:module "matlisp-classes" :pathname "base/classes"
-		      :depends-on ("matlisp-base")
-		      :components ((:file "foreign")
-				   (:file "boolean")
-				   #+weyl
-				   (:file "symbolic")))
+				   (:file "slice" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))
+				   (:file "foreign" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))
+				   (:file "boolean" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))))
 	     (:module "matlisp-blas" :pathname "blas"
 		      :depends-on ("matlisp-base")
 		      :components ((:file "maker")
@@ -123,8 +119,7 @@
 	    :components ((:file "random")
 			 (:file "map")
 			 (:file "norm")
-			 (:file "seq")
-			 (:file "oneseye")))
+			 (:file "misc")))
    ;;Matlisp-user
    (:module "matlisp-user" :pathname "user"
 	    :depends-on ("matlisp-core")
@@ -134,4 +129,9 @@
 	    :depends-on ("matlisp-core" "matlisp-user")
 	    :components ((:file "infix")
 			 #+nil
-			 (:file "loadsave")))))
+			 (:file "loadsave")))
+   #+weyl
+   (:module "matlisp-symbolic" :pathname "symbolic"
+	    :depends-on ("matlisp-user")
+	    :components ((:file "symbolic")))
+   ))

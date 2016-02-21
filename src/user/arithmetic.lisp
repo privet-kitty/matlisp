@@ -306,3 +306,7 @@
 (definline imagpart (object) (tensor-imagpart object))
 (definline sum! (x y &optional axis) (tensor-sum! x y axis))
 (definline sum (x &optional axis preserve-rankp) (tensor-sum x axis preserve-rankp))
+
+;;(tensor-max )
+
+

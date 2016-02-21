@@ -25,9 +25,9 @@
   `(optimize-expression ((res (zeros 3 ',(cl :x)) :type ,(cl :x) :strides (1))
 			 (a a :type ,(cl :x) :strides (1))
 			 (b b :type ,(cl :x) :strides (1)))
-     #i(res[0] = a[1]*b[2] - a[2]*b[1],
-	res[1] = a[2]*b[0] - a[0]*b[2],
-        res[2] = a[0]*b[1] - a[1]*b[0])
+     #i(res[0] ← a[1]*b[2] - a[2]*b[1],
+	res[1] ← a[2]*b[0] - a[0]*b[2],
+        res[2] ← a[0]*b[1] - a[1]*b[0])
      res))
 ;;
 (defun quat-vector~ (x)
@@ -46,7 +46,7 @@
   `(optimize-expression ((res (zeros 4 ',(cl :x)) :type ,(cl :x) :strides (1))
 			 (x x :type ,(cl :x) :strides (1)))
      (t/copy! (,(cl :x) ,(cl :x)) x res)
-     #i(res[0] = - res[0])
+     #i(res[0] ← - res[0])
      (t/scdi! ,(cl :x) (tb*-opt ,(coerce -1 (field-type (cl :x))) (t/dot ,(cl :x) x x nil nil)) res :scal? nil :numx? t)
      res))
 ;;
@@ -58,10 +58,10 @@
   `(optimize-expression ((res (zeros 4 ',(cl :x)) :type ,(cl :x) :strides (1))
 			 (qa qa :type ,(cl :x) :strides (1))
 			 (qb qb :type ,(cl :x) :strides (1)))
-     #i(res[0] = qa[0]*qb[0] - qa[1]*qb[1] - qa[2]*qb[2] - qa[3]*qb[3],
-	res[1] = qa[0]*qb[1] + qa[1]*qb[0] + qa[2]*qb[3] - qa[3]*qb[2],
-	res[2] = qa[0]*qb[2] - qa[1]*qb[3] + qa[2]*qb[0] + qa[3]*qb[1],
-	res[3] = qa[0]*qb[3] + qa[1]*qb[2] - qa[2]*qb[1] + qa[3]*qb[0])
+     #i(res[0] ← qa[0]*qb[0] - qa[1]*qb[1] - qa[2]*qb[2] - qa[3]*qb[3],
+	res[1] ← qa[0]*qb[1] + qa[1]*qb[0] + qa[2]*qb[3] - qa[3]*qb[2],
+	res[2] ← qa[0]*qb[2] - qa[1]*qb[3] + qa[2]*qb[0] + qa[3]*qb[1],
+	res[3] ← qa[0]*qb[3] + qa[1]*qb[2] - qa[2]*qb[1] + qa[3]*qb[0])
      res))
 ;;
 (defgeneric quat->mat (q)
@@ -80,15 +80,15 @@
 		 (q22 #i(quat[2]*quat[2]) :type ,(field-type (cl :x)))
 		 (q23 #i(quat[2]*quat[3]) :type ,(field-type (cl :x)))
 		 (q33 #i(quat[3]*quat[3]) :type ,(field-type (cl :x))))
-       #i(res[0, 0] = q00 + q11 - q22 - q33,
-	  res[1, 1] = q00 - q11 + q22 - q33,
-	  res[2, 2] = q00 - q11 - q22 + q33,
-	  res[0, 1] = 2 * (q12 - q03),
-	  res[0, 2] = 2 * (q13 + q02),
-	  res[1, 0] = 2 * (q12 + q03),
-	  res[1, 2] = 2 * (q23 - q01),
-	  res[2, 0] = 2 * (q13 - q02),
-	  res[2, 1] = 2 * (q23 + q01)))
+       #i(res[0, 0] ← q00 + q11 - q22 - q33,
+	  res[1, 1] ← q00 - q11 + q22 - q33,
+	  res[2, 2] ← q00 - q11 - q22 + q33,
+	  res[0, 1] ← 2 * (q12 - q03),
+	  res[0, 2] ← 2 * (q13 + q02),
+	  res[1, 0] ← 2 * (q12 + q03),
+	  res[1, 2] ← 2 * (q23 - q01),
+	  res[2, 0] ← 2 * (q13 - q02),
+	  res[2, 1] ← 2 * (q23 + q01)))
      res))
 ;;log map
 (defgeneric quat-log (dq)
@@ -119,15 +119,15 @@
 	     (sincos (exp (complex (t/fid+ ,(field-type (cl :x))) (tb/ angle ,(coerce 2 (field-type (cl :x)))))) :type (complex ,(field-type (cl :x)))))
        (if (< (t/fid+ ,(field-type (cl :x))) norm)
 	   (scal! (tb/ (cl:imagpart sincos) norm) (copy! axis q3)))
-       #i(quat[0] = \ (cl:realpart sincos))
+       #i(quat[0] ← \ (cl:realpart sincos))
        quat)))
 ;;
 (defun spherical-quat (delta phi theta)
   (declare (type double-float delta phi theta))
   (optimize-expression ((q (zeros (list 4) (tensor 'double-float)) :type #.(tensor 'double-float)))
     (with-memoization ()
-      #i(q[0] = memoizing(cos(delta/2d0)),
-	 q[1] = memoizing(sin(theta)) * memoizing(cos(phi)) * memoizing(sin(delta/2d0)),
-	 q[2] = memoizing(sin(theta)) * memoizing(sin(phi)) * memoizing(sin(delta/2d0)),
-	 q[3] = memoizing(cos(theta)) * memoizing(sin(delta/2d0)),
+      #i(q[0] ← memoizing(cos(delta/2d0)),
+	 q[1] ← memoizing(sin(theta)) * memoizing(cos(phi)) * memoizing(sin(delta/2d0)),
+	 q[2] ← memoizing(sin(theta)) * memoizing(sin(phi)) * memoizing(sin(delta/2d0)),
+	 q[3] ← memoizing(cos(theta)) * memoizing(sin(delta/2d0)),
 	 q))))

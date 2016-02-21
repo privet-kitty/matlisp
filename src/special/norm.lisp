@@ -46,7 +46,7 @@
 	  (if (< 0 (ref λi 0)) (ger! (ref λi 0) ui ui ret t)))
     ret))
 
-(closer-mop:defgeneric tensor-max (vec &optional key)
+(closer-mop:defgeneric tensor-max (object &optional key)
   (:generic-function-class tensor-method-generator))
 (define-tensor-method tensor-max ((vec dense-tensor :x) &optional key)
   `(if key

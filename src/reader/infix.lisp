@@ -3,7 +3,7 @@
 
 (defparameter *linfix-reader* (copy-readtable))
 (defparameter *blank-characters* '(#\Space #\Tab #\Newline))
-
+(defparameter *exponent-tokens* '(#\E #\S #\D #\F #\L))
 (defparameter *operator-tokens*
   `(("⊗" ⊗) ;;<- CIRCLE TIMES
     (".^" .^) ("^" ^) ("⟼" ⟼)
@@ -19,8 +19,6 @@
     ("," \,) ("." \.)
     ("'" ctranspose) (".'" transpose)))
 
-(defparameter *exponent-tokens* '(#\E #\S #\D #\F #\L))
-
 (defun find-token (str stream)
   (let ((stack nil))
     (iter (for r.i in-vector str)
@@ -31,54 +29,50 @@
 	      (return nil))
 	  (finally (return t)))))
 
-(defun token-reader (stream &optional (enclosing-chars '(#\( . #\))))
-  (let* ((stack nil)
-	 (expr nil)
-	 (lspe nil))
-    (labels ((read-stack (&optional (empty? t))
-	       (let* ((fstack (reverse (remove-if #'(lambda (x) (member x *blank-characters*)) stack)))
-		      (tok (and fstack (read-from-string (coerce fstack 'string)))))
-		 (prog1 tok
-		   (when empty?
-		     (when fstack (push tok expr))
-		     (setf stack nil))))))
-      (iter (for c next (peek-char nil stream t nil t))
-	    (summing (cond ((char= c (cdr enclosing-chars)) -1) ((char= c (car enclosing-chars)) +1) (t 0)) into count)
-	    (cond
-	      ((and (char= c (cdr enclosing-chars)) (= count -1))
-	       (read-char stream t nil t)
-	       (read-stack)
-	       (return (values (reverse expr) lspe)))
-	      ;;
-	      ((member c '(#\# #\\ #\"))
-	       (when (char= c #\\) (read-char stream t nil t))
-	       (let ((word (read stream))
-		     (sym (gensym)))
-		 (push sym expr)
-		 (push (list sym word) lspe)))
-	      ;;
-	      ((and (member (char-upcase c) *exponent-tokens*) (numberp (read-stack nil)))
+(defun token-reader (stream &optional (enclosing-chars '(#\( . #\))) &aux stack expr lspe)
+  (labels ((read-stack (&optional (empty? t))
+	     (let* ((fstack (reverse (remove-if #'(lambda (x) (member x *blank-characters*)) stack)))
+		    (tok (and fstack (read-from-string (coerce fstack 'string)))))
+	       (prog1 tok
+		 (when empty?
+		   (when fstack (push tok expr))
+		   (setf stack nil))))))
+    (iter (for c next (peek-char nil stream t nil t))
+	  (summing (cond ((char= c (cdr enclosing-chars)) -1) ((char= c (car enclosing-chars)) +1) (t 0)) into count)
+	  (cond
+	    ((and (char= c (cdr enclosing-chars)) (= count -1))
+	     (read-char stream t nil t)
+	     (read-stack)
+	     (return (values (reverse expr) lspe)))
+	    ;;
+	    ((member c '(#\# #\\ #\"))
+	     (when (char= c #\\) (read-char stream t nil t))
+	     (let ((word (read stream))
+		   (sym (gensym)))
+	       (push sym expr)
+	       (push (list sym word) lspe)))
+	    ;;
+	    ((and (member (char-upcase c) *exponent-tokens*) (numberp (read-stack nil)))
+	     (push (read-char stream t nil t) stack)
+	     (when (char= (peek-char nil stream t nil t) #\-)
 	       (push (read-char stream t nil t) stack)
-	       (when (char= (peek-char nil stream t nil t) #\-)
-		 (push (read-char stream t nil t) stack)
-		 (unless (find (peek-char nil stream t nil t) "0123456789")
-		   (unread-char (pop stack) stream))))
-	      ((and (char= c #\i) (numberp (read-stack nil)))
-	       (read-char stream t nil t)
-	       (push (complex 0 (read-stack nil)) expr)
-	       (setf stack nil))
-	      ;;
-	      ((when-let (tok (find-if #'(lambda (x) (find-token (first x) stream)) (sort (remove-if-not #'(lambda (x) (char= c (aref (first x) 0))) *operator-tokens*) #'> :key #'(lambda (x) (length (first x))))))
-		 (if (and (eql (second tok) '|.|) (integerp (read-stack nil)))
-		     (push #\. stack)
-		     (progn
-		       (read-stack)
-		       (push (second tok) expr)))))
-	      ((member c *blank-characters*)
-	       (read-char stream t nil t)
-	       (read-stack))
-	      (t
-	       (push (read-char stream t nil t) stack)))))))
+	       (unless (find (peek-char nil stream t nil t) "0123456789")
+		 (unread-char (pop stack) stream))))
+	    ((and (char= c #\i) (numberp (read-stack nil)))
+	     (read-char stream t nil t)
+	     (push (complex 0 (read-stack nil)) expr)
+	     (setf stack nil))
+	    ;;
+	    ((when-let (tok (find-if #'(lambda (x) (find-token (first x) stream)) (sort (remove-if-not #'(lambda (x) (char= c (aref (first x) 0))) *operator-tokens*) #'> :key #'(lambda (x) (length (first x))))))
+	       (if (and (eql (second tok) '|.|) (integerp (read-stack nil)))
+		   (push #\. stack)
+		   (progn
+		     (read-stack)
+		     (push (second tok) expr)))))
+	    ((member c *blank-characters*)
+	     (read-char stream t nil t)
+	     (read-stack))
+	    (t (push (read-char stream t nil t) stack))))))
 
 (defun list-lexer (list)
   #'(lambda () (if (null list) (values nil nil)
@@ -173,7 +167,7 @@
    (ctranspose |:| id #'(lambda (a b c) (declare (ignore a b)) (intern (symbol-name c) :keyword)))
    list callable slice
    ;;(- term)
-   (/ term #'(lambda (a b) (list a nil b)))
+   (/ term #'(lambda (a b) (list a b)))
    (./ term)))
 ;;
 (defun process-slice (args)
@@ -204,8 +198,7 @@
 
 (defmacro generic-incf (x expr &optional (alpha 1) &environment env)
   (multiple-value-bind (dummies vals new setter getter) (get-setf-expansion x env)
-    (when (cdr new)
-      (error "Can't expand this."))
+    (when (cdr new) (error "Can't expand this."))
     (with-gensyms (val)
       (let ((new (car new)))
 	`(let* (,@(zip dummies vals)
@@ -229,72 +222,48 @@
 				       ;;Not yet implemented.
 				       (.= matlisp-user:=)
 				       ;;No yet implemented
-				       (^ cl:expt)
-				       (.^ cl:expt)
+				       (^ t:expt)
+				       (.^ t:expt)
+				       (sin t:sin) (cos t:cos) (tan t:tan) (asin t:asin) (acos t:acos) (atan t:atan) (exp t:exp) (log t:log) (expt t:expt)
+				       (sinh t:sinh) (cosh t:cosh) (tanh t:tanh) (asinh t:asinh) (acosh t:acosh) (atanh t:atanh)
 				       (transpose matlisp:transpose)
-				       (ctranspose matlisp:ctranspose)))
+				       (ctranspose matlisp-user:ctranspose)))
 
-(defun op-overload (expr)
-  (labels ((walker (expr)
-	     (dwalker
-	      (cond
-		((atom expr) expr)
-		((and (member (car expr) '(+ * progn)) (not (cddr expr))) (walker (second expr)))
-		((eq (car expr) '*)
-		 (if (and (consp (second expr)) (eq (car (second expr)) '/) (not (cddr (second expr)))) ;;ldiv
-		     `(\\ (* ,@(cddr expr)) ,(cadr (second expr)))
-		     (iter (for op in (cdr expr))
-			   (for lst on (cdr expr))
-			   (if (and (consp op) (eq (car op) '/) (not (cddr op)))
-			       (return
-				 (walker
-				  (let ((left `(/ (* ,@oplist) ,(second op)) ))
-				    (if (cdr lst)
-					`(* ,left ,@(cdr lst))
-					left))))
-			       (collect op into oplist))
-			   (finally (return expr)))))
-		(t expr))))
-	   (dwalker (expr)
-	     (if (atom expr) expr
-		 (cond
-		   ((and (eq (car expr) '/) (not (cddr expr)))
-		    `(,(or (second (assoc (car expr) *operator-assoc-table*)) (car expr)) ,(walker (second expr)) nil))
-		   (t
-		    `(,(or (second (assoc (car expr) *operator-assoc-table*)) (car expr))
-		       ,@(mapcar #'walker (cdr expr))))))))
-    (walker expr)))
+(defun op-overload (expr &aux (table *operator-assoc-table*))
+  (maptree-eki #'(lambda (tree)
+		   (trivia:match tree
+		     ((list (or '+ '* 'progn) arg) (values arg #'(lambda (f tree) (funcall f tree))))
+		     ((list* func args) (values `(,(or (second (assoc func table)) func) ,@args) t))
+		     (_ (values tree t))))
+	       expr))
 
 (defun ignore-characters (ignore stream)
   (iter (for c next (peek-char nil stream t nil t))
 	(if (member c ignore :test #'char=) (read-char stream t nil t) (terminate))))
 ;;
-(defmacro inlet (&rest body)
-  (let* ((decls nil)
-	 (code (maptree '(:deflet) #'(lambda (mrk)
-				       (values (if (and (consp (second mrk)) (eql (car (second mrk)) 'list))
-						   (progn
-						     (map nil #'(lambda (x) (push x decls)) (cdr (second mrk)))
-						     `(setf (values ,@(cdr (second mrk))) ,(third mrk)))
-						   (progn
-						     (push (second mrk) decls)
-						     `(setq ,@(cdr mrk))))
-					       #'mapcar))
-			body)))
+(defmacro inlet (&rest body &aux decls)
+  (let ((code (maptree-eki #'(lambda (mrk)
+			       (trivia:ematch mrk
+				 ((list :deflet arg value) (push arg decls)
+				  (values `(setf ,arg ,value) t))
+				 ((list :deflet (list* 'list args) value)
+				  (setf decls (append (reverse args) decls))
+				  (values `(setf (values ,@args) ,value) t))
+				 (_ (values mrk t))))
+			   body)))
     (if (or decls (cdr code))
 	`(let (,@decls) ,@code)
 	(car code))))
-;;
+
 (defun infix-reader (stream subchar arg)
   ;; Read either #I(...) or #I"..."
   (declare (ignore subchar))
   (assert (null arg) nil "given arg where none was required.")
   (ignore-characters *blank-characters* stream)
-  (multiple-value-bind (iexpr bind) (token-reader stream (ecase (read-char stream t nil t) (#\( (cons #\( #\))) (#\[ (cons #\[ #\]))))
-    (setf iexpr (nconc (list 'inlet '\() iexpr (list '\))))
-    (let ((lexpr (op-overload (yacc:parse-with-lexer (list-lexer iexpr) *linfix-parser*))))
-      (map nil #'(lambda (x) (setf lexpr (subst (second x) (first x) lexpr))) bind)
-      lexpr)))
+  (letv* ((iexpr bind (token-reader stream (ecase (read-char stream t nil t) (#\( (cons #\( #\))) (#\[ (cons #\[ #\])))))
+	  (lexpr (op-overload (yacc:parse-with-lexer (list-lexer (nconc (list 'inlet '\() iexpr (list '\)))) *linfix-parser*))))
+    (map nil #'(lambda (x) (setf lexpr (subst (second x) (first x) lexpr))) bind)
+    lexpr))
 ;;
 (eval-every
   (defparameter *tensor-symbol*
@@ -336,7 +305,6 @@
 		`(matlisp::zeros (list ,@expr) ',cl))))))))
 
 ;(#\S ,(matlisp:tensor 'matlisp::ge-expression))
-
 (defun permutation-cycle-reader (stream subchar arg)
   (declare (ignore subchar))
   (assert (null arg) nil "given arg where none was required.")
@@ -347,7 +315,7 @@
 	     `(let ((,sto (mapcar #'(lambda (x) (apply #'matlisp::idxv x)) (list ,@expr))))
 		(make-instance 'matlisp::permutation-cycle :store ,sto )))))))
 
-(defun function-cell-reader (stream char)
+(defun curry-reader (stream char)
   (let ((default-paren-reader (get-macro-character #\( (named-readtables:find-readtable :common-lisp))))
     (if (char= (peek-char nil stream t nil t) #\∘)
 	(trivia:match (macroexpand `(curry ,@(cdr (let ((*readtable* (named-readtables:find-readtable :common-lisp)))
@@ -364,7 +332,7 @@
 (macrolet ((tensor-symbol-enumerate ()
 	     `(named-readtables:defreadtable :infix-dispatch-table
 		(:merge :λ-standard)
-		(:macro-char #\( #'function-cell-reader nil)
+		(:macro-char #\( #'curry-reader nil)
 		(:dispatch-macro-char #\# #\I #'infix-reader)
 		(:dispatch-macro-char #\# #\S #'permutation-cycle-reader)
 		,@(mapcar #'(lambda (x) `(:dispatch-macro-char #\# ,(car x) #'tensor-reader)) *tensor-symbol*)

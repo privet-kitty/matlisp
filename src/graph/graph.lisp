@@ -230,7 +230,7 @@
 
 #+nil
 (let* ((n 10)
-       (n-cycle (symmetrize! (coerce (append (mapcar #'list (range 1 n :list-output? t)) (list '(0))) 'vector)))
+       (n-cycle (symmetrize! (coerce (append (mapcar #'list (range 1 n nil t)) (list '(0))) 'vector)))
        (g (adlist->graph n-cycle)))
 					;(display-graph (t))
   (max-cardinality-search (chordal-cover g (triangulate-graph g :min-size)))
