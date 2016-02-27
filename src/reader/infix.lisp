@@ -120,6 +120,10 @@
   (lid
    id
    (lid |.| id #'(lambda (a b c) (declare (ignore b) (type (not number) a) (type symbol c)) `(slot-value ,a ',c)))
+   (lid |.| |.| id #'(lambda (a b c d &aux (aa (gensym "A")))
+		       (declare (ignore b c) (type (not number) a) (type symbol d))
+		       `(let ((,aa ,a))
+			  (slot-value ,aa (find-symbol ,(symbol-name d) (symbol-package (type-of ,aa)))))))
    (|(| expr |)| #'(lambda (a b c) (declare (ignore a c)) b)))
   ;;
   (args

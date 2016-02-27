@@ -162,6 +162,19 @@
   "
   (apply #'map 'list #'list args))
 
+(defun unzip (list)
+  "
+  UnZips the elements of @arg{args}.
+
+  Example:
+  @lisp
+  > (unzip ((2 A J) (3 B H) (4 C C)))
+  => ((2 3 4) (a b c) (j h c))
+  @end lisp
+  "
+  (mapcar #'(lambda (n) (mapcar #'(lambda (x) (elt x n)) list))
+	  (iter (for i from 0 below (length (first list))) (collect i))))
+
 (defun ziptree (tree &rest more-trees)
   (if (atom tree)
       (cons tree more-trees)

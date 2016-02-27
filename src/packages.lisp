@@ -73,7 +73,7 @@
   (:nicknames #:mu)
   (:export #:pophash
 	   #:vectorify #:copy-n #:ensure-list
-	   #:zip #:zipsym
+	   #:zip #:zipsym #:unzip
 	   #:slot-values #:remmeth #:values-append
 	   #:list-dimensions
 	   #:maprange #:maptree-if #:maptree #:maptree-eki #:flatten #:pair #:ziptree #:cart #:mapcart
