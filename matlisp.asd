@@ -93,7 +93,6 @@
 				   (:file "scal" :depends-on ("maker" "copy"))
 				   (:file "realimag" :depends-on ("copy"))
 				   (:file "transpose" :depends-on ("scal" "copy"))
-				   (:file "swap")
 				   (:file "sum" :depends-on ("dot" "copy"))
 				   (:file "gem" :depends-on ("copy"))
 				   (:file "ger" :depends-on ("copy"))
