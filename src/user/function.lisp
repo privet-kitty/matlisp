@@ -2,16 +2,10 @@
 
 (defmacro lift-function (fn &aux (pkg (find-package "MATLISP-USER")))
   (letv* ((fname (symbol-name fn)) (fpkg (symbol-package fn)))
-    (shadow fn pkg) (export (intern fname pkg) pkg)
     (letv* ((fn (find-symbol fname fpkg))
 	    (fn-package (intern fname pkg))
 	    (ge-fn (intern (string+ fname "-GENERIC!") pkg)))
       `(progn
-	 (eval-every
-	   (let ((package (find-package "MATLISP-USER")))
-	     (shadow ',fn-package package)
-	     (export ',fn-package package)
-	     (export (intern ,(mu:string+ fname "!") package) package)))
 	 (closer-mop:defgeneric ,ge-fn (x)
 	   (:generic-function-class tensor-method-generator))
 	 (define-tensor-method ,ge-fn ((x dense-tensor :x))
@@ -33,12 +27,6 @@
   (lift-fns cl:sin cl:cos cl:tan cl:asin cl:acos cl:exp cl:sinh cl:cosh cl:tanh cl:asinh cl:acosh cl:atanh))
 
 ;;log
-(eval-every
-  (let ((pkg (find-package "MATLISP-USER")))
-    (shadow 'cl:log pkg)
-    (export (intern "LOG" pkg) pkg)
-    (export (intern "LOG!" pkg) pkg)))
-
 (closer-mop:defgeneric log-generic! (x y)
   (:generic-function-class tensor-method-generator))
 (define-tensor-method log-generic! ((x dense-tensor :x) (y dense-tensor :y))
@@ -70,12 +58,6 @@
 											 (if (subtypep type 'complex) type `(complex ,type))))))
 				   power))))
 ;;atan
-(eval-every
-  (let ((pkg (find-package "MATLISP-USER")))
-    (shadow 'cl:atan pkg)
-    (export (intern "ATAN" pkg) pkg)
-    (export (intern "ATAN!" pkg) pkg)))
-
 (closer-mop:defgeneric atan-generic! (x y)
   (:generic-function-class tensor-method-generator))
 (define-tensor-method atan-generic! ((x dense-tensor :x) (y dense-tensor :y))
@@ -107,12 +89,6 @@
 											 (if (subtypep type 'complex) type `(complex ,type))))))
 				    x))))
 ;;expt
-(eval-every
-  (let ((pkg (find-package "MATLISP-USER")))
-    (shadow 'cl:expt pkg)
-    (export (intern "EXPT" pkg) pkg)
-    (export (intern "EXPT!" pkg) pkg)))
-
 (closer-mop:defgeneric expt-generic! (x y)
   (:generic-function-class tensor-method-generator))
 (define-tensor-method expt-generic! ((x dense-tensor :x) (y dense-tensor :y))

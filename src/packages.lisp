@@ -208,7 +208,8 @@
   (:nicknames :t)
   (:use #:common-lisp #:iterate #:matlisp-utilities #:matlisp)
   ;;Shadow iterate:sum
-  (:shadow #:+ #:- #:* #:/ #:= #:conjugate #:realpart #:imagpart #:sum #:min #:max)
+  (:shadow #:+ #:- #:* #:/ #:= #:conjugate #:realpart #:imagpart #:sum #:min #:max
+	   #:sin #:cos #:tan #:asin #:acos #:exp #:sinh #:cosh #:tanh #:asinh #:acosh #:atanh #:log #:expt #:atan)
   (:import-from :λ-reader #:λ)
   (:export
    ;;Tweakable
@@ -257,6 +258,10 @@
    ;;special
    ;;arithmetic
    #:+ #:- #:* #:.* #:/ #:./ #:@ #:· #:^ #:⊗ #:= #:.=
+   ;;function
+   #:sin! #:cos! #:tan! #:asin! #:acos! #:exp! #:sinh! #:cosh! #:tanh! #:asinh! #:acosh! #:atanh!
+   #:sin #:cos #:tan #:asin #:acos #:exp #:sinh #:cosh #:tanh #:asinh #:acosh #:atanh
+   #:log #:log! #:atan #:atan! #:expt #:expt!
    ;;map
    #:mapsor! #:mapsor #:map-tensor! #:mapslice #:mapslice~ #:mapslicec~ #:tensor-foldl
    #:for #:slicing #:along #:from #:below #:to #:downto #:with-index #:by
