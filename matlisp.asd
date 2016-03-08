@@ -50,6 +50,9 @@
    (:file "lazy-loader" :depends-on ("utilities"))))
 
 (asdf:defsystem :matlisp
+  :licence "LLGPL"
+  :author "See AUTHORS"
+  :homepage "https://github.com/matlisp/"
   :depends-on ("matlisp-basic") :pathname "src"
   :components
   ((:module "matlisp-core" :pathname ""

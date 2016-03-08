@@ -1,5 +1,6 @@
 Matlisp was originally written by Tunc Simsek, based on an initial prototype by Raymond Toy.
-It is now being refactored by Akshay Srinivasan.
+It is now being developed by Akshay Srinivasan.
 
-- Some of the utilities were originally written by Nicholas Neuss for Femlisp (www.femlisp.org).
-- Random number generators were borrowed from Tamas Papp's cl-random library.
+Acknowledgements
+- Tamas Papp for cl-random (https://github.com/tpapp/cl-random)
+- Nicholas Neuss for Femlisp (www.femlisp.org)
