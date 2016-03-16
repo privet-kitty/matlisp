@@ -158,6 +158,7 @@
    #:dimensions #:order #:field-type #:ref #:einstein-sum
    #:base-tensor #:tensor #:memos #:store-size #:total-size
    #:dorefs #:for-mod #:with-iterator #:loop-order #:uplo
+   #:index-type #:index-store-vector
 
    #:sparse-tensor #:stride-tensor #:dense-tensor #:hash-tensor #:foreign-tensor
    #:orphanize #:graph-tensor #:coordinate-tensor #:tensor-typep

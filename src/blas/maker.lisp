@@ -113,18 +113,18 @@
     it is used for computing the number of nonzeros slots in the store.
 
     Example:
-    > (zeros 3)
-    #<REAL-TENSOR #(3)
-      0.0000      0.0000      0.0000
+    M> (zeros 3)
+    #<MATLISP::|<BLAS-MIXIN DENSE-TENSOR: DOUBLE-FLOAT>| #(3)
+     0.000   0.000   0.000
     >
 
-    > (zeros 3 'complex-tensor 2)
-    #<COMPLEX-TENSOR #(3)
-      2.0000      2.0000      2.0000
+    M> (zeros 3 (dense-tensor '(complex double-float)) 2)
+    #<MATLISP::|<BLAS-MIXIN DENSE-TENSOR: (COMPLEX DOUBLE-FLOAT)>| #(3)
+     2.000   2.000   2.000
     >
 
-    > (zeros '(10000 10000) 'real-compressed-sparse-matrix 10000)
-    #<REAL-COMPRESSED-SPARSE-MATRIX #(10000 10000), store-size: 10000>
+    M> (zeros '(10000 10000) (graph-tensor 'fixnum) 10000)
+    #<MATLISP::|<GRAPH-TENSOR: FIXNUM>| #(10000 10000), size: 0/100000>
 "
   (let ((type (let ((type (or type *default-tensor-type*)))
 		(etypecase type (standard-class (class-name type)) (symbol type) (list (apply #'tensor type))))))
