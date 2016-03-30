@@ -23,8 +23,8 @@
 	(:single-float :float)
 	(:character :char)
 	(:string :string)
-	(:integer :int32)
-	(:long :int64)
+	(:integer :int) ;;int32
+	(:long :long) ;;int64
 	((:* :callback) `(:pointer :void)))))
 
 (defun ffc->lisp (type)
@@ -78,7 +78,7 @@
 			(:string (if append-string-length?
 				     (with-gensyms (s)
 				       (list  :argument s :let-bind `(,s ,expr :type ,(ffc->lisp type))
-					      :aux `(:int32 (the fixnum (length ,s)))))
+					      :aux `(:int (the fixnum (length ,s)))))
 				     (list :argument `(the ,(ffc->lisp type) ,expr))))
 			(t (list :argument `(the ,(ffc->lisp type) ,expr)))))
 	      (cons (ecase (first type)
