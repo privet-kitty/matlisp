@@ -132,7 +132,7 @@
   ;; #+(not (or sbcl cmu allegro)) (:use :common-lisp :cffi :utilities)
   (:export
    ;;Foreign-pointer enclosing structure.
-   #:foreign-vector #:ffi-type #:fvref #:ptr
+   #:foreign-vector #:ffi-type #:fvref #:make-wrap #:wrap #:ptr
    #:ffuncall #:lisp->ffc #:ffc->cffi #:ffc->lisp
    ;;Interface functions
    #:def-fortran-routine #:parse-fortran-file

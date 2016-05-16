@@ -55,8 +55,8 @@
     ((number number) (cl:log base power))
     ((number null) (cl:log base))
     ((tensor (or tensor number null)) (log-generic! (copy base (complexified-tensor (class-of base))) power))
-    ((number tensor) (log-generic! (copy! base (zeros (dimensions power) (dense-tensor (let ((type (type-of base)))
-											 (if (subtypep type 'complex) type `(complex ,type))))))
+    ((number tensor) (log-generic! (copy! base (zeros (dimensions power) (tensor (let ((type (type-of base)))
+										   (if (subtypep type 'complex) type `(complex ,type))))))
 				   power))))
 ;;atan
 (closer-mop:defgeneric atan-generic! (x y)
@@ -88,8 +88,8 @@
     ((number number) (cl:atan y x))
     ((number null) (cl:atan y))
     ((tensor (or tensor number null)) (atan-generic! (copy y (complexified-tensor (class-of y))) x))
-    ((number tensor) (atan-generic! (copy! y (zeros (dimensions x) (dense-tensor (let ((type (type-of y)))
-											 (if (subtypep type 'complex) type `(complex ,type))))))
+    ((number tensor) (atan-generic! (copy! y (zeros (dimensions x) (tensor (let ((type (type-of y)))
+									     (if (subtypep type 'complex) type `(complex ,type))))))
 				    x))))
 ;;expt
 (closer-mop:defgeneric expt-generic! (x y)
@@ -114,5 +114,5 @@
   (cart-etypecase (base power)
     ((number number) (cl:expt base power))
     ((tensor (or tensor number)) (expt-generic! (copy base) power))
-    ((number tensor) (expt-generic! (copy! base (zeros (dimensions power) (dense-tensor (type-of base)))) power))))
+    ((number tensor) (expt-generic! (copy! base (zeros (dimensions power) (tensor (type-of base)))) power))))
 ;;

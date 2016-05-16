@@ -13,18 +13,6 @@
 				   (when initial-element `(if ,init (t/store-allocator ,class ,tsize :initial-element (t/coerce ,(field-type class) ,init))))
 				   `(t/store-allocator ,class ,tsize)))))))
 
-(deft/method t/zeros (cl foreign-tensor) (dims &optional ptr)
-  (with-gensyms (dims_ strd_ ptr_ size_)
-    `(letv* ((,dims_ (coerce ,dims 'index-store-vector) :type index-store-vector)
-	     (,strd_ ,size_ (make-stride ,dims_) :type index-store-vector index-type)
-	     (,ptr_ ,ptr))
-       (make-instance ',cl :dimensions ,dims_ :head 0 :strides ,strd_
-		      :store (etypecase ,ptr_
-			       (cffi:foreign-pointer
-				(make-instance ',(store-type cl) :ptr (the cffi:foreign-pointer ,ptr_)
-					       :length ,(if (clinear-storep cl) `(the fixnum (* 2 ,size_)) size_)))
-			       (ffi:foreign-vector ,ptr_))))))
-
 (deft/method (t/zeros #'hash-table-storep) (class stride-accessor) (dims &optional size)
   (with-gensyms (dimsv strdv tsize)
     `(letv* ((,dimsv (coerce ,dims 'index-store-vector) :type index-store-vector)
@@ -118,12 +106,12 @@
      0.000   0.000   0.000
     >
 
-    M> (zeros 3 (dense-tensor '(complex double-float)) 2)
+    M> (zeros 3 (tensor '(complex double-float) 'simple-dense-tensor) 2)
     #<MATLISP::|<BLAS-MIXIN DENSE-TENSOR: (COMPLEX DOUBLE-FLOAT)>| #(3)
      2.000   2.000   2.000
     >
 
-    M> (zeros '(10000 10000) (graph-tensor 'fixnum) 10000)
+    M> (zeros '(10000 10000) (tensor 'fixnum 'simple-graph-tensor) 10000)
     #<MATLISP::|<GRAPH-TENSOR: FIXNUM>| #(10000 10000), size: 0/100000>
 "
   (let ((type (let ((type (or type *default-tensor-type*)))

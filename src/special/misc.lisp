@@ -9,7 +9,7 @@
 	    (let* ((type (realtype-max (list h start end (+ h start) (- end h)))))
 	      (mapsor! (let ((ori (coerce start type)) (h (coerce h type)))
 			 (lambda (idx y) (declare (ignore idx y)) (prog1 ori (incf ori h))))
-		       nil (zeros quo (dense-tensor type))))
+		       nil (zeros quo (tensor type))))
 	    (loop :for i :from 0 :below quo
 	       :for ori := start :then (+ ori h)
 	       :collect ori)))))

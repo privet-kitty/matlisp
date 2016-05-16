@@ -4,8 +4,11 @@
 (deft/generic (t/store-type #'subtypep) sym (&optional size))
 (eval-every
   (defun store-type (cl &optional (size '*)) (macroexpand-1 `(t/store-type ,cl ,size)))
-  (defun linear-storep (cl) (or (eql (first (ensure-list (store-type cl))) 'simple-array)
-				(subtypep (store-type cl) 'ffi:foreign-vector)))
+  (defun linear-storep (cl)
+    (match (store-type cl)
+      ((or (list 'simple-array _ (list '*))
+	   (guard store-type (subtypep store-type 'ffi:foreign-vector)))
+       t)))
   (defun hash-table-storep (x) (eql (store-type x) 'hash-table))
   (defun clinear-storep (x) (and (subtypep x 'tensor) (linear-storep x) (real-subtypep (field-type x))))
   (defun float-tensorp (type) (member (field-type type) '(single-float double-float (complex single-float) (complex double-float)) :test #'equal)))
@@ -16,7 +19,7 @@
 (deft/method t/store-type (type hash-table-store-mixin) (&optional (size '*))
   'hash-table)
 
-;;
+;;m
 (deft/generic (t/store #'subtypep) sym (x))
 (deft/method t/store (sym tensor) (x) `(the ,(store-type sym) (slot-value ,x 'store)))
 
@@ -96,6 +99,19 @@
 (deft/generic (t/store-set #'subtypep) sym (value store &rest idx))
 
 (define-setf-expander t/store-ref (sym store &rest idx &environment env)
+  (with-gensyms (nval)
+    (values nil nil `(,nval)
+	    `(t/store-set ,sym ,nval ,store ,@idx)
+	    `(t/store-ref ,sym ,store ,@idx)))
+  #+nil(multiple-value-bind (dummies vals newval setter getter)
+      (get-setf-expansion store env)
+    (declare (ignore newval setter))
+    (with-gensyms (nval)
+      (values dummies vals `(,nval)
+	      `(t/store-set ,sym ,nval ,getter ,@idx)
+	      `(t/store-ref ,sym ,getter ,@idx)))))
+
+(define-setf-expander t/store-ref (sym store &rest idx &environment env)
   (multiple-value-bind (dummies vals newval setter getter)
       (get-setf-expansion store env)
     (declare (ignore newval setter))
@@ -104,7 +120,7 @@
 	      `(t/store-set ,sym ,nval ,getter ,@idx)
 	      `(t/store-ref ,sym ,getter ,@idx)))))
 
-(deft/method (t/store-ref #'linear-storep) (sym tensor) (store &rest idx)
+(deft/method t/store-ref (sym simple-vector-store-mixin) (store &rest idx)
   (assert (null (cdr idx)) nil "given more than one index for linear-store")
   (let ((idx (car idx)))
     (if (clinear-storep sym)
@@ -116,7 +132,7 @@
 	       (values (complex (aref ,store ,2idx) (aref ,store (1+ ,2idx))) t))))
 	`(values (aref (the ,(store-type sym) ,store) (the index-type ,idx)) t))))
 
-(deft/method (t/store-set #'linear-storep) (sym tensor) (value store &rest idx)
+(deft/method t/store-set (sym simple-vector-store-mixin) (value store &rest idx)
   (assert (null (cdr idx)) nil "given more than one index for linear-store")
   (let ((idx (car idx)))
     (if (clinear-storep sym)

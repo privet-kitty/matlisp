@@ -346,7 +346,8 @@
        (:safety 0 :space 0 :speed 3 :float 0 :fixnum-safety 0)
        #-lispworks
        (:safety 0 :space 0 :speed 3)
-     ,@forms))
+       (let ((matlisp-ffi::*fvref-range-check* nil))
+	 ,@forms)))
 
 (defmacro eval-every (&body forms)
   `(eval-when (:compile-toplevel :load-toplevel :execute)

@@ -16,7 +16,7 @@
      (or (if-let (class (find ffi-type (closer-mop:class-direct-subclasses (find-class 'foreign-vector)) :key #'ffi-type))
 	   (class-name class))
 	 (let* ((cl-name (intern (format nil "<FOREIGN-VECTOR: ~a>"  ffi-type) (find-package "MATLISP-FFI"))))
-	   (assert (member (ffc->cffi ffi-type) '(:double :float :int32 :int64)) nil)
+	   (assert (member (ffc->cffi ffi-type) '(:double :float :int :long)) nil)
 	   (compile-and-eval
 	    `(progn
 	       (closer-mop:defclass ,cl-name (foreign-vector) ()
@@ -45,7 +45,7 @@
 	    (cffi:mem-ref (slot-value (the ,fv ,obj-v) 'ptr) ,cffi-type (the fixnum (* (the fixnum ,i-v) (the fixnum ,(cffi:foreign-type-size cffi-type)))))))))
     (_ form)))
 
-(defun (setf fvref) (value x i)
+(defun (setf fvref) (value x i)  
   (declare (type foreign-vector x))
   (let ((n (slot-value (the foreign-vector x) 'length)))
     (assert (< -1 i n) nil 'out-of-bounds-error :requested i :bound n)

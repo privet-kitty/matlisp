@@ -113,7 +113,7 @@
 			  ,@(when loop-ordering-p `(loop-order ,loop-order)) uplo ,uplo?)
 		 (lvec->list! ,idx ,lst)
 		 (symbol-macrolet (,@(mapcar #'(lambda (ref sto ten of typ) (list ref (if typ
-											  `(the ,(field-type typ) (t/store-ref ,typ ,(car sto) ,of))
+											  `(the ,(field-type typ) (t/store-ref ,typ (the ,(store-type typ) ,(car sto)) ,of))
 											  `(apply #'ref (list* ,(car ten) ,lst)))))
 					     rsyms ssyms tsyms osyms types))
 		   ,@body)))))))

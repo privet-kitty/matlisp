@@ -2,6 +2,8 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
 
+(defstruct (wrap (:constructor make-wrap (ptr)))
+  (ptr (cffi:null-pointer) :type cffi:foreign-pointer :read-only t))
 ;;(simple-array (or single-float double-float (signed-byte 32) (signed-byte 64)) (*))
 ;;
 (defun ffc->cffi (type)

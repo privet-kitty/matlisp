@@ -15,7 +15,7 @@
 
   Examples
   ========
-  > (defvar X (make-real-tensor 10 10 10))
+  > (defvar X (zeros '(10 10 10)))
   X
 
   ;; Get (:, 0, 0)
@@ -248,7 +248,7 @@
 				      (incf ,(first x) (- (aref ,(gm vv) 0) (aref ,(gm vv) ,(gm ii)))))) minors))))))
 ;;
 (define-tensor-method minors ((x stride-tensor :x) &rest indices)
-  (let ((ret-class (if (subtypep (cl :x) 'dense-tensor) (cl :x) (dense-tensor (field-type (cl :x))))))
+  (let ((ret-class (if (subtypep (cl :x) 'dense-tensor) (cl :x) (tensor (field-type (cl :x))))))
     `(letv* ((stable (minors-strides-precompute (dimensions x) (strides x) indices) :type simple-vector)
 	     (sto-x (store x) :type ,(store-type (cl :x)))
 	     (y (zeros (iter (for ss in-vector stable) (collect (length ss))) ',ret-class) :type ,ret-class)
@@ -259,7 +259,7 @@
        y)))
 
 (define-tensor-method minors ((x tensor :x) &rest indices)
-  (let ((ret-class (dense-tensor (field-type (cl :x)))))
+  (let ((ret-class (tensor (field-type (cl :x)))))
     `(letv* ((stable (map 'vector #'(lambda (x) (coerce x 'index-store-vector)) indices) :type simple-vector)
 	     (y (zeros (map 'list #'length stable) ',ret-class) :type ,ret-class)
 	     (sto-y (store y) :type ,(store-type ret-class))

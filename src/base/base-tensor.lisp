@@ -70,26 +70,36 @@
 (deftype sparse-tensor () `(or coordinate-tensor hash-tensor graph-tensor))
 ;;
 (defclass stride-tensor (tensor stride-accessor) () (:metaclass tensor-class))
-(defclass dense-tensor (stride-tensor simple-vector-store-mixin)
+;;
+(defclass dense-tensor (stride-tensor)
   ((parent :initform nil :initarg :parent :type (or null tensor) :documentation "This slot is bound if the tensor is the view of another."))
   (:metaclass tensor-class)
-  (:documentation "Object which holds all values of its components, with a simple-vector store."))
+  (:documentation "Object which holds all values of its components."))
 (defclass hash-tensor (stride-tensor hash-table-store-mixin)
   ((stride-pivot :initarg :stride-pivot :type index-store-vector :documentation "This slot is used to invert the hash."))
   (:metaclass tensor-class))
-(defclass blas-mixin () ()
-  (:documentation "Mixin which indicates that there exist foreign-routines for an object of this type."))
 (definline orphanize (x)
   (declare (type dense-tensor))
   (setf (slot-value x 'parent) nil) x)
 ;;
-(defclass graph-tensor (tensor graph-accessor simple-vector-store-mixin) ()
+(defclass simple-dense-tensor (dense-tensor simple-vector-store-mixin) ()
+  (:metaclass tensor-class)
+  (:documentation "Dense tensor with simple-vector store."))
+(defclass blas-mixin () ()
+  (:documentation "Mixin which indicates that there exist foreign-routines for an object of this type."))
+;;
+(defclass graph-tensor (tensor graph-accessor) ()
   (:metaclass tensor-class))
-(defclass coordinate-tensor (tensor coordinate-accessor simple-vector-store-mixin) ()
+(defclass simple-graph-tensor (graph-tensor simple-vector-store-mixin) ()
   (:metaclass tensor-class))
 ;;
-#+nil(defclass vector-mixin () ())
-#+nil(defclass matrix-mixin () ())
+(defclass coordinate-tensor (tensor coordinate-accessor) ()
+  (:metaclass tensor-class))
+(defclass simple-coordinate-tensor (coordinate-tensor simple-vector-store-mixin) ()
+  (:metaclass tensor-class))
+;;
+(defclass vector-mixin () ())
+(defclass matrix-mixin () ())
 ;;
 (defun tensor-typep (tensor subs)
   "
@@ -143,30 +153,34 @@
 (deftype tensor-matrix () `(and tensor (satisfies tensor-matrixp)))
 (deftype tensor-square-matrix () `(and tensor (satisfies tensor-matrixp) (satisfies tensor-squarep)))
 ;;
+(defgeneric tensor-generator (field tensor))
+
 (with-memoization ()
   (memoizing
-   (defun tensor (field &optional tensor #+nil order)
-     (let* ((tensor (or tensor 'dense-tensor)))
-       (declare (type (member dense-tensor graph-tensor hash-tensor coordinate-tensor) tensor))
-       (or (if-let (class (find field (remove-if-not #'(lambda (x) (slot-boundp x 'field-type)) (closer-mop:class-direct-subclasses (find-class tensor)))
-				:key #'(lambda (x) (field-type (class-name x)))))
-	     (class-name class))
-	   (let* ((super-classes (remove nil (list (if (and (eql tensor 'dense-tensor)
-							    (member field '(single-float double-float (complex single-float) (complex double-float)) :test #'equal))
-						       'blas-mixin)
-						   tensor #+nil (case order (1 'vector-mixin) (2 'matrix-mixin)))))
-		  (cl-name (intern (format nil "<~{~a~^ ~}: ~a>" super-classes field) (find-package "MATLISP"))))
-	     (compile-and-eval
-	      `(progn
-		 (defclass ,cl-name (,@super-classes) ()
-		   (:metaclass tensor-class))
-		 (setf (slot-value (find-class ',cl-name) 'field-type) ',field)))
-	     cl-name))))))
-(definline dense-tensor (type) (tensor type 'dense-tensor))
-(definline graph-tensor (type) (tensor type 'graph-tensor))
-(definline hash-tensor (type) (tensor type 'hash-tensor))
-(definline coordinate-tensor (type) (tensor type 'coordinate-tensor))
+   (defun tensor (field &optional tensor &aux (tensor (or tensor 'simple-dense-tensor)))
+     (or (if-let (class (find field (closer-mop:class-direct-subclasses (find-class tensor))  :key #'(lambda (x) (if (slot-boundp x 'field-type) (field-type (class-name x))))))
+	   (class-name class))
+	 (tensor-generator field tensor)))))
 
+(defmethod tensor-generator (field (tensor (eql 'simple-dense-tensor)))
+  (let* ((super-classes (remove nil (list (if (member field '(single-float double-float (complex single-float) (complex double-float)) :test #'equal) 'blas-mixin) tensor #+nil (case order (1 'vector-mixin) (2 'matrix-mixin)))))
+	 (cl-name (intern (format nil "<~{~a~^ ~}: ~a>" super-classes field) (find-package "MATLISP"))))
+    (compile-and-eval
+     `(progn
+	(defclass ,cl-name (,@super-classes) () (:metaclass tensor-class))
+	(setf (slot-value (find-class ',cl-name) 'field-type) ',field)))
+    cl-name))
+
+(defmethod tensor-generator (field (tensor symbol))
+  (assert (member tensor '(simple-graph-tensor hash-tensor simple-coordinate-tensor)) nil 'invalid-arguments)
+  (let* ((super-classes (list tensor #+nil (case order (1 'vector-mixin) (2 'matrix-mixin))))
+	 (cl-name (intern (format nil "<~{~a~^ ~}: ~a>" super-classes field) (find-package "MATLISP"))))
+    (compile-and-eval
+     `(progn
+	(defclass ,cl-name (,@super-classes) ()
+	  (:metaclass tensor-class))
+	(setf (slot-value (find-class ',cl-name) 'field-type) ',field)))
+    cl-name))
 ;;This is useful for Eigenvalue decompositions
 (defgeneric complexified-tensor (class)
   (:method ((class-name symbol))

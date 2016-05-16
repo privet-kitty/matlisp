@@ -53,7 +53,7 @@
 (defun gnp (n p)
   ;;TODO: Implement fast version from "Efficient generation of large random networks" - V. Batagelj, U. Brandes, PRL E 71
   ;;Current alg is O(n^2) and is way too slow.
-  (let ((ret (zeros (list n n) (hash-tensor 'index-type))))
+  (let ((ret (zeros (list n n) (tensor 'index-type 'hash-tensor))))
     (iter (for i from 0 below n)
 	  (iter (for j from (1+ i) below n)
 		(if (< (random 1d0) p)
@@ -191,7 +191,7 @@
 
 (defun line-graph (hh)
   (letv* ((hh (coerce hh 'vector)) (m (length hh))
-	  (ret (zeros (list m m) (hash-tensor t))))
+	  (ret (zeros (list m m) (tensor t 'hash-tensor))))
     (iter (for i from 0 below (length hh))
 	  (iter (for j from (1+ i) below (length hh))
 		(when-let (int (intersection (aref hh i) (aref hh j)))
@@ -211,7 +211,7 @@
 		     (setf (ref ret i (+ i j)) (- (length int))
 			   (ref ret (+ i j) i) (ref ret i (+ i j)))))
 	     (counting t into i))
-       (order->tree (dijkstra-prims (copy ret (graph-tensor 'index-type))) type))
+       (order->tree (dijkstra-prims (copy ret (tensor 'index-type 'simple-graph-tensor))) type))
      (coerce cliques 'vector))))
 
 #+nil

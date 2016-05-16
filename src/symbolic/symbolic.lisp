@@ -6,7 +6,7 @@
     ((expression :initform (error "expression missing") :initarg :expression)
      (inputs :initform nil :initarg :inputs)))
 
-  (dense-tensor 'ge-expression)
+  (tensor 'ge-expression)
   (macrolet ((genari (f bf)
 	       `(deft/method ,f (ty ge-expression) (&rest nums)
 		  (with-gensyms (nn)

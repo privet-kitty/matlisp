@@ -56,12 +56,12 @@
       (let ((csym (complexified-tensor sym)))
 	(using-gensyms (decl (wr wi) (ret i))
 	  `(let* (,@decl
-		  (,ret (t/store-allocator ,csym (length ,wr))))
+		  (,ret (t/store-allocator ,csym (t/store-size ,sym ,wr))))
 	     (declare (type ,(store-type sym) ,wr ,wi)
 		      (type ,(store-type csym) ,ret))
 	     (very-quickly
-	       (loop :for ,i :from 0 :below (length ,wr)
-		  :do (t/store-set ,csym (complex (aref ,wr ,i) (aref ,wi ,i)) ,ret ,i)))
+	       (loop :for ,i :from 0 :below (t/store-size ,sym ,wr)
+		  :do (t/store-set ,csym (complex (t/store-ref ,sym ,wr ,i) (t/store-ref ,sym ,wi ,i)) ,ret ,i)))
 	     ,ret)))))
 ;;
 (closer-mop:defgeneric geev! (a &optional vl vr)
