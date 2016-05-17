@@ -362,6 +362,9 @@
      (copy! tensor (zeros (dimensions tensor) (or type (type-of tensor)))))
     (t (error "don't know how to copy ~a into ~a." (class-name (class-of tensor)) type))))
 
+(defmethod copy! ((from foreign-dense-tensor) (to (eql nil)))
+  (copy! from (tensor (field-type (class-of from)) 'simple-dense-tensor)))
+
 (defmethod copy! ((tensor tensor) (type symbol))
   (cond
     ((or (null type) (subtypep type 'tensor))
