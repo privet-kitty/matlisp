@@ -67,7 +67,7 @@
 				     :aux `(:int (the fixnum (length ,s)))))
 			    (list :argument `(the ,(ffc->lisp type) ,expr))))
 	       ((type symbol) (list :argument `(the ,(ffc->lisp type) ,expr)))
-	       ((λlist :& sub-type &optional (output (or nil :output)) &aux (utype (second (ffc->cffi type))) (var (gensym "var")) (c (gensym "expr")))
+	       ((λlist :& sub-type &optional ((and output (or (null) :output))) &aux (utype (second (ffc->cffi type))) (var (gensym "var")) (c (gensym "expr")))
 		(list* :argument `(the cffi:foreign-pointer ,var)
 		       (ematch sub-type
 			 ((or :complex-double-float :complex-single-float)
