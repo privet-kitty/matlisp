@@ -12,14 +12,14 @@
 		  (type ,(store-type sym) ,wr ,wi))
 	 (with-lapack-query ,sym (,xxx ,lwork)
 	   (ffuncall ,(blas-func "gees" ftype) ,@(apply #'append (permute! (pair `(
-             (:& :character) (if ,vs #\V #\N) (:& :character) #\N :* (cffi:null-pointer)
-	     (:& :integer) (dimensions ,A 0)
-	     (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-	     (:& :integer) 0
-	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,wr) (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,wi)
-	     (:* ,(lisp->ffc ftype) :+ (if ,vs (head ,vs) 0)) (if ,vs (the ,(store-type sym) (store ,vs)) (cffi:null-pointer)) (:& :integer) (if ,vs ,ldvs 1)
-	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxx) (:& :integer) ,lwork
-	     :* (cffi:null-pointer) (:& :integer :output) 0))
+             (:& :char) (if ,vs #\V #\N) (:& :char) #\N :* (cffi:null-pointer)
+	     (:& :int) (dimensions ,A 0)
+	     (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+	     (:& :int) 0
+	     (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,wr) (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,wi)
+	     (:* ,(lisp->mffi ftype) :+ (if ,vs (head ,vs) 0)) (if ,vs (the ,(store-type sym) (store ,vs)) (cffi:null-pointer)) (:& :int) (if ,vs ,ldvs 1)
+	     (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,xxx) (:& :int) ,lwork
+	     :* (cffi:null-pointer) (:& :int :output) 0))
 									   ;;Flip rwork to the end in the case of {z,c}geev.
 									   (make-instance 'permutation-cycle
 											  :store (when (subtypep ftype 'cl:complex)

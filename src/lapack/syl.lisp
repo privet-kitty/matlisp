@@ -9,13 +9,13 @@
 		  (type ,sym ,A ,B ,C)
 		  (type index-type ,ld.a ,ld.b ,ld.c))
 	 (ffuncall ,(blas-func "trsyl" ftype)
-	   (:& :character) ,op.a (:& :character) ,op.b (:& :integer) (if (char= ,sgn #\P) 1 -1)
-	   (:& :integer) (dimensions ,C 0) (:& :integer) (dimensions ,C 1)
-	   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,ld.a
-	   (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,ld.b
-	   (:* ,(lisp->ffc ftype) :+ (head ,C)) (the ,(store-type sym) (store ,C)) (:& :integer) ,ld.c
-	   (:& ,(lisp->ffc (field-type (realified-tensor sym))) :output) (t/fid* ,(field-type (realified-tensor sym)))
-	   (:& :integer :output) 0)))))
+	   (:& :char) ,op.a (:& :char) ,op.b (:& :int) (if (char= ,sgn #\P) 1 -1)
+	   (:& :int) (dimensions ,C 0) (:& :int) (dimensions ,C 1)
+	   (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,ld.a
+	   (:* ,(lisp->mffi ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :int) ,ld.b
+	   (:* ,(lisp->mffi ftype) :+ (head ,C)) (the ,(store-type sym) (store ,C)) (:& :int) ,ld.c
+	   (:& ,(lisp->mffi (field-type (realified-tensor sym))) :output) (t/fid* ,(field-type (realified-tensor sym)))
+	   (:& :int :output) 0)))))
 
 (closer-mop:defgeneric trsyl! (A B C &optional job)
   (:documentation "

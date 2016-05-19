@@ -40,15 +40,15 @@
 	 (with-field-elements ,(realified-tensor sym) (,@(when complex? `((,xxr (t/fid+ ,rtype) (* 5 (lvec-min (dimensions ,A)))))))
 	   (with-lapack-query ,sym (,xxx ,lwork)
 	     (ffuncall ,(blas-func "gesvd" ftype)
-	       (:& :character) (if ,u #\A #\N) (:& :character) (if ,v #\A #\N)
-	       (:& :integer) (dimensions ,A 0) (:& :integer) (dimensions ,A 1)
-	       (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-	       (:* ,(lisp->ffc rtype) :+ (head ,s)) (the ,(store-type (realified-tensor sym)) (store ,s))
-	       (:* ,(lisp->ffc ftype) :+ (if ,u (head ,u) 0)) (if ,u (the ,(store-type sym) (store ,u)) (cffi:null-pointer)) (:& :integer) (if ,u ,ldu 1)
-	       (:* ,(lisp->ffc ftype) :+ (if ,v (head ,v) 0)) (if ,v (the ,(store-type sym) (store ,v)) (cffi:null-pointer)) (:& :integer) (if ,v ,ldv 1)
-	       (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxx) (:& :integer) ,lwork
-	       ,@(when complex? `((:* ,(lisp->ffc rtype)) ,xxr))
-	       (:& :integer :output) 0)))))))
+	       (:& :char) (if ,u #\A #\N) (:& :char) (if ,v #\A #\N)
+	       (:& :int) (dimensions ,A 0) (:& :int) (dimensions ,A 1)
+	       (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+	       (:* ,(lisp->mffi rtype) :+ (head ,s)) (the ,(store-type (realified-tensor sym)) (store ,s))
+	       (:* ,(lisp->mffi ftype) :+ (if ,u (head ,u) 0)) (if ,u (the ,(store-type sym) (store ,u)) (cffi:null-pointer)) (:& :int) (if ,u ,ldu 1)
+	       (:* ,(lisp->mffi ftype) :+ (if ,v (head ,v) 0)) (if ,v (the ,(store-type sym) (store ,v)) (cffi:null-pointer)) (:& :int) (if ,v ,ldv 1)
+	       (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,xxx) (:& :int) ,lwork
+	       ,@(when complex? `((:* ,(lisp->mffi rtype)) ,xxr))
+	       (:& :int :output) 0)))))))
 ;;
 (closer-mop:defgeneric svd (a &optional job)
   (:documentation

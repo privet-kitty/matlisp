@@ -27,24 +27,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-;;Fortran ABI is broken. Add CBLAS interface. The following code may have very subtle bugs.
-;; (deft/generic (t/blas-dot #'subtypep) sym (x st-x y st-y &optional conjp))
-;; (deft/method t/blas-dot (sym blas-numeric-tensor) (x st-x y st-y &optional (conjp t))
-;;   (let ((num-x? (null st-x)) (ftype (field-type sym)))
-;;     (using-gensyms (decl (x y st-x st-y) (sto))
-;;       `(let (,@decl)
-;; 	 (declare (type ,(if num-x? (field-type sym) sym) ,x) ,@(when num-x? `((ignore ,st-x)))
-;; 		  (type ,sym ,y) (type index-type ,st-y))
-;; 	 ,(recursive-append
-;; 	   (when num-x? `(with-field-element ,sym (,sto ,x)))
-;; 	   `(ffuncall (,(string+ (blas-func "dot" ftype) (if (subtypep ftype 'cl:complex)
-;; 							     (if conjp) "c" "")) ,(lisp->ffc (store-element-type sym)))
-;; 	      (:& :integer) (dimensions ,y 0)
-;; 	      (:* ,(lisp->ffc ftype) ,@(unless num-x? `(:+ (head ,x)))) ,(if num-x? sto `(the ,(store-type sym) (store ,x)))
-;; 	      (:& :integer) ,(if num-x? 0 st-x)
-;; 	      (:* ,(lisp->ffc ftype) :+ (head ,y)) (the ,(store-type sym) (store ,y))
-;; 	      (:& :integer) ,st-y))))))
-
 (deft/generic (t/dot #'subtypep) sym (x y &optional conjp num-y?))
 
 (deft/method t/dot (sym dense-tensor) (x y &optional (conjp t) (num-y? nil))

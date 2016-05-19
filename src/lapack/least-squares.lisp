@@ -6,21 +6,21 @@
 	 (rtype (field-type (realified-tensor sym))))
     (using-gensyms (decl (A lda B ldb rcond) (lwork xxx xxr jpvt))
       `(let* (,@decl
-	      (,jpvt (make-array (dimensions ,A 1) :element-type ',(matlisp-ffi:ffc->lisp :integer) :initial-element 0)))
+	      (,jpvt (make-array (dimensions ,A 1) :element-type ',(matlisp-ffi:mffi->lisp :int) :initial-element 0)))
 	 (declare (type ,sym ,A ,B)
 		  (type index-type ,lda ,ldb)
 		  (type ,(field-type (realified-tensor sym)) ,rcond)
-		  (type (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,jpvt))
+		  (type (simple-array ,(matlisp-ffi:mffi->lisp :int) (*)) ,jpvt))
 	 (with-field-elements ,sym (,@(when complex? `((,xxr (t/fid+ ,ftype) (dimensions ,A 1)))))
 	   (with-lapack-query ,sym (,xxx ,lwork)
 	     (ffuncall ,(blas-func "gelsy" ftype)
-	       (:& :integer) (dimensions ,A 0) (:& :integer) (dimensions ,A 1) (:& :integer) (dimensions ,B 1)
-	       (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-	       (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,ldb
-	       (:* :integer) (the (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,jpvt) (:& ,(lisp->ffc rtype t)) ,rcond (:& :integer :output) 0
-	       (:* ,(lisp->ffc ftype)) ,xxx (:& :integer) ,lwork
-	       ,@(when complex? `((:* ,(lisp->ffc ftype)) ,xxr))
-	       (:& :integer :output) 0)))))))
+	       (:& :int) (dimensions ,A 0) (:& :int) (dimensions ,A 1) (:& :int) (dimensions ,B 1)
+	       (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+	       (:* ,(lisp->mffi ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :int) ,ldb
+	       (:* :int) (the (simple-array ,(matlisp-ffi:mffi->lisp :int) (*)) ,jpvt) (:& ,(lisp->mffi rtype)) ,rcond (:& :int :output) 0
+	       (:* ,(lisp->mffi ftype)) ,xxx (:& :int) ,lwork
+	       ,@(when complex? `((:* ,(lisp->mffi ftype)) ,xxr))
+	       (:& :int :output) 0)))))))
 ;;
 (closer-mop:defgeneric gelsy (A B &optional rcond)
   (:documentation "

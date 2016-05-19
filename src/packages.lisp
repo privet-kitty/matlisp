@@ -132,11 +132,12 @@
   ;; #+(not (or sbcl cmu allegro)) (:use :common-lisp :cffi :utilities)
   (:export
    ;;Foreign-pointer enclosing structure.
-   #:foreign-vector #:ffi-type #:fvref #:make-wrap #:wrap #:ptr
-   #:ffuncall #:lisp->ffc #:ffc->cffi #:ffc->lisp
+   #:foreign-vector #:element-type #:fvref
+   #:ffuncall #:lisp->mffi #:mffi->lisp
+   #:with-vector-data-addresses
    ;;Interface functions
-   #:def-fortran-routine #:parse-fortran-file
-   #:with-vector-data-addresses)
+   ;;#:def-fortran-routine #:parse-fortran-file
+   )
   (:documentation "Fortran foreign function interface"))
 
 (defpackage "MATLISP-DESTRUCTURING"
@@ -156,12 +157,13 @@
    #:*complex-l1-fcall-lb* #:*complex-l2-fcall-lb* #:*complex-l3-fcall-lb*
    ;;base
    #:dimensions #:order #:field-type #:ref #:einstein-sum
-   #:base-tensor #:tensor #:memos #:store-size #:total-size
+   #:base-tensor #:tensor #:memos #:store-size #:total-size #:parent
    #:dorefs #:for-mod #:with-iterator #:loop-order #:uplo
    #:index-type #:index-store-vector
 
-   #:sparse-tensor #:stride-tensor #:dense-tensor #:hash-tensor #:foreign-tensor
-   #:orphanize #:graph-tensor #:coordinate-tensor #:tensor-typep
+   #:tensor-class #:sparse-tensor #:stride-tensor #:dense-tensor #:simple-dense-tensor #:foreign-dense-tensor
+   #:hash-tensor
+   #:orphanize #:graph-tensor #:simple-graph-tensor #:coordinate-tensor #:tensor-typep
    #:tensor-method-generator #:define-tensor-method #:cl
    ;;#:tensor-matrixp #:tensor-vectorp #:tensor-squarep
    #:tensor-vector #:tensor-matrix #:tensor-square-matrix

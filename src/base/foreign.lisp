@@ -4,7 +4,9 @@
 
 ;;
 (deft/method t/store-type (type foreign-vector-store-mixin) (&optional (size '*))
-  (ffi:foreign-vector (ffi:lisp->ffc (or (real-subtypep (field-type type)) (field-type type)))))
+  (ffi:foreign-vector (or (real-subtypep (field-type type)) (field-type type))))
+(deft/method t/compute-store-size (cl foreign-vector-store-mixin) (size)
+  (if (real-subtypep (field-type cl)) `(* 2 ,size) size))
 (deft/method t/store-size (cl foreign-vector-store-mixin) (vec)
   (if (real-subtypep (field-type cl)) `(/ (slot-value (the ,(store-type cl) ,vec) 'length) 2) `(slot-value (the ,(store-type cl) ,vec) 'length)))
 
@@ -45,19 +47,19 @@
 							  (index-store-vector (lvec-foldr #'* (the index-store-vector ,sitm)))
 							  (cons (reduce #'* ,sitm))))))
 		    ,@(when initial-element `((,init ,initial-element :type ,(field-type type))))
-		    (,vec (let* ((,sap (cffi:foreign-alloc ,(ffi:ffc->cffi (ffi:lisp->ffc element-type)) :count ,len))
-				 (,vec (make-instance (ffi:foreign-vector ',(ffi:lisp->ffc element-type)) :ptr ,sap :length ,len)))
+		    (,vec (let* ((,sap (cffi:foreign-alloc ,(ffi:lisp->mffi element-type) :count ,len))
+				 (,vec (make-instance (ffi:foreign-vector ',element-type) :ptr ,sap :length ,len)))
 			    (tg:finalize ,vec #'(lambda () (cffi:foreign-free ,sap)))
 			    ,vec)))
 	 ,@(when initial-element
 		 `((very-quickly (loop :for ,idx :from 0 :below (t/store-size ,type ,vec)
-				    :do (setf (t/store-ref ,type (the ,(ffi:foreign-vector (ffi:lisp->ffc element-type)) ,vec) ,idx) (the ,(field-type type) ,init))))))
+				    :do (setf (t/store-ref ,type (the ,(ffi:foreign-vector element-type) ,vec) ,idx) (the ,(field-type type) ,init))))))
 	 ,vec))))
 ;;
 (deft/method with-field-element (cl foreign-vector-store-mixin) (decl &rest body)
   (destructuring-bind (var init &optional (count 1)) decl
     (with-gensyms (idx size point init_)
-      (let ((type (ffi:ffc->cffi (ffi:ffi-type (store-type cl)))))
+      (let ((type (ffi:element-type (store-type cl))))
 	`(let ((,size (t/compute-store-size ,cl ,count)))
 	   (cffi:with-foreign-object (,point ,type ,size)
 	     (let ((,var (make-instance ',(store-type cl) :ptr ,point :length ,size)))
@@ -92,5 +94,5 @@
 		   :dimensions dimensions :strides str :head 0
 		   :store (etypecase sap
 			    (ffi:foreign-vector sap)
-			    (cffi:foreign-pointer (make-instance (ffi:foreign-vector (ffi:lisp->ffc type)) :ptr sap :length nz))))))
+			    (cffi:foreign-pointer (make-instance (ffi:foreign-vector type) :ptr sap :length nz))))))
 ;;

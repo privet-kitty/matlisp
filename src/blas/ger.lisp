@@ -11,11 +11,11 @@
 		  (type ,(field-type sym) ,alpha)
 		  (type index-type ,st-x ,st-y ,lda ,m ,n))
 	 (ffuncall ,(blas-func (string+ "ger" (when (subtypep ftype 'complex) (if conjp "c" "u"))) ftype)
-		   (:& :integer) ,m (:& :integer) ,n
-		   (:& ,(lisp->ffc ftype t)) ,alpha
-		   (:* ,(lisp->ffc ftype) :+ (head ,x)) (the ,(store-type sym) (store ,x)) (:& :integer) (the index-type ,st-x)
-		   (:* ,(lisp->ffc ftype) :+ (head ,y)) (the ,(store-type sym) (store ,y)) (:& :integer) (the index-type ,st-y)
-		   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda)
+		   (:& :int) ,m (:& :int) ,n
+		   (:& ,(lisp->mffi ftype)) ,alpha
+		   (:* ,(lisp->mffi ftype) :+ (head ,x)) (the ,(store-type sym) (store ,x)) (:& :int) (the index-type ,st-x)
+		   (:* ,(lisp->mffi ftype) :+ (head ,y)) (the ,(store-type sym) (store ,y)) (:& :int) (the index-type ,st-y)
+		   (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda)
 	 ,A))))
 
 ;;

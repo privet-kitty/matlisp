@@ -37,12 +37,12 @@
 	 ,(recursive-append
 	   (when apy? `(with-field-element ,sym (,sto-x (t/fid* ,ftype))))
 	   `(ffuncall ,(blas-func "axpy" ftype)
-	      (:& :integer) (the index-type (total-size ,y))
-	      (:& ,(lisp->ffc ftype t)) (the ,(field-type sym) ,a)
-	      (:* ,(lisp->ffc ftype) ,@(unless apy? `(:+ (head ,x)))) ,(if apy? sto-x `(t/store ,sym ,x))
-	      (:& :integer) (the index-type ,(if apy? 0 st-x))
-	      (:* ,(lisp->ffc ftype) :+ (head ,y)) (t/store ,sym ,y)
-	      (:& :integer) (the index-type ,st-y)))
+	      (:& :int) (the index-type (total-size ,y))
+	      (:& ,(lisp->mffi ftype)) (the ,(field-type sym) ,a)
+	      (:* ,(lisp->mffi ftype) ,@(unless apy? `(:+ (head ,x)))) ,(if apy? sto-x `(t/store ,sym ,x))
+	      (:& :int) (the index-type ,(if apy? 0 st-x))
+	      (:* ,(lisp->mffi ftype) :+ (head ,y)) (t/store ,sym ,y)
+	      (:& :int) (the index-type ,st-y)))
 	 ,y))))
 
 (deft/generic (t/axpy! #'subtypep) sym (a x y))

@@ -36,10 +36,10 @@
 		  (type index-type ,lda)
 		  (type character ,uplo))
 	 (ffuncall ,(blas-func "potrf" ftype)
-		   (:& :character) ,uplo
-		   (:& :integer) (dimensions ,A 0)
-		   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-		   (:& :integer :output) 0)))))
+		   (:& :char) ,uplo
+		   (:& :int) (dimensions ,A 0)
+		   (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+		   (:& :int :output) 0)))))
 
 ;;
 (closer-mop:defgeneric potrf! (a &optional uplo)
@@ -88,11 +88,11 @@
 		  (type index-type ,lda ,ldb)
 		  (type character ,uplo))
 	 (ffuncall ,(blas-func "potrs" ftype)
-	   (:& :character) ,uplo
-	   (:& :integer) (dimensions ,A 0) (:& :integer) (dimensions ,B 1)
-	   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-	   (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,ldb
-	   (:& :integer :output) 0)))))
+	   (:& :char) ,uplo
+	   (:& :int) (dimensions ,A 0) (:& :int) (dimensions ,B 1)
+	   (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+	   (:* ,(lisp->mffi ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :int) ,ldb
+	   (:& :int :output) 0)))))
 
 ;;
 (closer-mop:defgeneric potrs! (A B &optional uplo)
@@ -145,9 +145,9 @@
 		  (type index-type ,lda)
 		  (type character ,uplo))
 	 (ffuncall ,(blas-func "potri" ftype)
-	   (:& :character) ,uplo (:& :integer) (dimensions ,A 0)
-	   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-	   (:& :integer :output) 0)))))
+	   (:& :char) ,uplo (:& :int) (dimensions ,A 0)
+	   (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+	   (:& :int :output) 0)))))
 
 (closer-mop:defgeneric potri! (A &optional uplo)
   (:documentation "
@@ -196,14 +196,14 @@
     (using-gensyms (decl (A lda uplo ipiv) (xxx lwork))
       `(let* (,@decl)
 	 (declare (type ,sym ,A) (type index-type ,lda) (type character ,uplo)
-		  (type (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,ipiv))
+		  (type (simple-array ,(matlisp-ffi:mffi->lisp :int) (*)) ,ipiv))
 	 (with-lapack-query ,sym (,xxx ,lwork)
 	   (ffuncall ,(blas-func (if (or (not het?) (not complex?)) "sytrf" "hetrf") ftype)
-	     (:& :character) ,uplo
-	     (:& :integer) (dimensions ,A 0) (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-	     (:* :integer) (the (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,ipiv)
-	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxx) (:& :integer) ,lwork
-	     (:& :integer :output) 0))))))
+	     (:& :char) ,uplo
+	     (:& :int) (dimensions ,A 0) (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+	     (:* :int) (the (simple-array ,(matlisp-ffi:mffi->lisp :int) (*)) ,ipiv)
+	     (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,xxx) (:& :int) ,lwork
+	     (:& :int :output) 0))))))
 
 (closer-mop:defgeneric ldl! (a &optional hermitian? uplo)
   (:method :before ((a tensor) &optional hermitian? uplo)
@@ -215,7 +215,7 @@
 (define-tensor-method ldl! ((a blas-mixin :x) &optional (hermitian? t) (uplo *default-uplo*))
   '(declare (ignorable hermitian?))
   (let ((complex? (subtypep (field-type (cl :x)) 'cl:complex)))
-    `(let ((ipiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type ',(matlisp-ffi:ffc->lisp :integer))))
+    `(let ((ipiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type ',(matlisp-ffi:mffi->lisp :int))))
        (with-columnification (() (A))
 	 ,(recursive-append
 	   (if complex?

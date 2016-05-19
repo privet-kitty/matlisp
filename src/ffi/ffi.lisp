@@ -1,104 +1,111 @@
 (in-package #:matlisp-ffi)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-
-(defstruct (wrap (:constructor make-wrap (ptr)))
-  (ptr (cffi:null-pointer) :type cffi:foreign-pointer :read-only t))
-;;(simple-array (or single-float double-float (signed-byte 32) (signed-byte 64)) (*))
 ;;
 
-(labels ((ffc->rest (type)
-	   (ematch type
-	     (:double-float (values :double 'double-float))
-	     (:single-float (values :float 'single-float))
-	     (:character (values :char 'character))
-	     (:string (values :string 'string))
-	     (:integer (values :int '(signed-byte 32))) ;;int32
-	     (:long (values :long '(signed-byte 64)))	;;int64
-	     (:* (values `(:pointer :void) 'cffi:foreign-pointer))
-	     (:callback (values `(:pointer :void) 'symbol))
-	     ((λlist :& ref-type &rest _)
-	      (ecase ref-type
-		(:complex-single-float
-		 (values `(:pointer ,(ffc->rest :single-float)) `(complex single-float)))
-		(:complex-double-float
-		 (values `(:pointer ,(ffc->rest :double-float)) `(complex double-float)))
-		((:double-float :single-float :character :integer :long)
-		 (letv* ((cffi lisp (ffc->rest ref-type)))
-		   (values `(:pointer ,cffi) lisp)))))
-	     ((λlist :* ptr-type &rest _)
-	      (ematch ptr-type
-		(:complex-single-float (values `(:pointer ,(ffc->rest :single-float)) `(simple-array single-float (*))))
-		(:complex-double-float (values `(:pointer ,(ffc->cffi :double-float)) `(simple-array double-float (*))))
-		((or (and pointer-type (or :double-float :single-float :integer :long :character))
-		     (list (and pointer-type (or :double-float :single-float :integer :long :character)) (guard n (< 0 n))))
-		 (values `(:pointer ,(ffc->cffi pointer-type)) `(simple-array ,(ffc->lisp pointer-type) (*)))))))))
-  (defun ffc->lisp (type)
-    "Convert the given matlisp-ffi type into one understood by CFFI."
-    (nth-value 1 (ffc->rest type)))
-  (defun ffc->cffi (type)
-    "Convert the given matlisp-ffi type into one understood by Lisp"
-    (nth-value 0 (ffc->rest type))))
-
-(defun lisp->ffc (type &optional refp)
+(defun lisp->mffi (type)
   "Convert the given matlisp-ffi type into one understood by Lisp"
   (ematch type
-    ('cl:character :character)
-    ('cl:string :string)
-    ((list 'cl:signed-byte 32) :integer)
-    ((list 'cl:signed-byte 64) :long)
-    ('cl:single-float :single-float)
-    ('cl:double-float :double-float)
-    ((list 'cl:complex type)
-     (if refp
-	 (ecase type (:single-float :complex-single-float) (:double-float :complex-double-float))
-	 (list (lisp->ffc type) 2)))))
+    ('character :char)
+    ('string :string)
+    ;;int types
+    ((list 'signed-byte 8) :char)
+    ((list 'unsigned-byte 8) :uchar)
+    ((list 'signed-byte 16) :short)
+    ((list 'usigned-byte 16) :ushort)
+    ((list 'signed-byte 32) :int)
+    ((list 'unsigned-byte 32) :uint)
+    ((list 'signed-byte 64) :long)
+    ((list 'unsigned-byte 64) :ulong)
+    ('single-float :float)
+    ('double-float :double)
+    ;;
+    ((list 'cl:complex element-type)
+     (let ((ffi-type (lisp->mffi element-type)))
+       (values `(:complex ,ffi-type) `(:pointer (,ffi-type 2)))))
+    ((list 'simple-array element-type '(*))
+     (letv* ((element-ffi-type element-cffi-type (lisp->mffi element-type)))
+       (values `(:* ,element-ffi-type) (match element-ffi-type
+					 ((list :complex _) element-cffi-type)
+					 (_ `(:pointer ,element-ffi-type))))))))
 
-;; type -> Pass by value
-;; (:& type &key output) -> Pass by reference, if 'output' return value after exiting from foreign function.
-;; (:* type &key +) -> Pointer/Array/Foreign-vector, if '+' increment pointer by '+' times foreign-type-size.
-(defun %ffc.parse-ffargs (args &optional append-string-length?)
+#+nil
+(mffi->lisp '(:& (:complex :double)))
+
+(defun mffi->lisp (type)
+  "Convert the given matlisp-ffi type into one understood by CFFI."
+  (ematch type
+    (:char 'character)
+    (:string 'string)
+    (:char (list 'signed-byte 8))
+    (:uchar (list 'unsigned-byte 8))
+    (:short (list 'signed-byte 16))
+    (:ushort (list 'usigned-byte 16))
+    (:int (list 'signed-byte 32))
+    (:uint (list 'unsigned-byte 32))
+    (:long (list 'signed-byte 64))
+    (:ulong (list 'unsigned-byte 64))
+    (:float 'single-float)
+    (:double 'double-float)
+    ;;Incompatibilities
+    (:* (values 'cffi:foreign-pointer `(:pointer :void)))
+    (:callback (values 'symbol `(:pointer :void)))
+    ((λlist :& ref-type &rest _)
+     (ematch ref-type
+       ((list :complex element-type) (values `(complex ,(mffi->lisp element-type)) `(:pointer (,element-type 2))))
+       ((or :char :uchar :short :ushort :int :uint :long :ulong :float :double) (values (mffi->lisp ref-type) `(:pointer ,ref-type)))))
+    ((λlist :* ptr-type &rest _)
+     (ematch ptr-type
+       ((list :complex element-type) (values `(simple-array ,(mffi->lisp element-type) (*)) `(:pointer (,element-type 2))))
+       ((or (and pointer-type (or :char :uchar :short :ushort :int :uint :long :ulong :float :double))
+	    (list (and pointer-type (or :char :uchar :short :ushort :int :uint :long :ulong :float :double)) (guard n (< 0 n))))
+	(values `(simple-array ,(mffi->lisp pointer-type) (*)) `(:pointer ,@(if n `((,pointer-type ,n)) `(,pointer-type)))))))))
+;;
+(defun parse-ffargs (args &optional append-string-length?)
   (labels ((argument-decl (type expr)
 	     (ematch type
-	       (:callback (list :argument `(cffi-sys:%callback (the ,(ffc->lisp type) ,expr))))
+	       (:callback (list :argument `(cffi-sys:%callback (the ,(mffi->lisp type) ,expr))))
 	       (:string (if append-string-length?
 			    (with-gensyms (s)
-			      (list  :argument s :let-bind `(,s ,expr :type ,(ffc->lisp type))
-				     :aux `(:int (the fixnum (length ,s)))))
-			    (list :argument `(the ,(ffc->lisp type) ,expr))))
-	       ((type symbol) (list :argument `(the ,(ffc->lisp type) ,expr)))
-	       ((λlist :& sub-type &optional (output (or nil :output)) &aux (utype (second (ffc->cffi type))) (var (gensym "var")) (c (gensym "expr")))
+			      (list  :argument s :let-bind `(,s ,expr :type ,(mffi->lisp type))
+				     :aux `(:uint (the (unsigned-byte 32) (length ,s)))))
+			    (list :argument `(the ,(mffi->lisp type) ,expr))))
+	       ((type symbol) (list :argument `(the ,(mffi->lisp type) ,expr)))
+	       ((λlist :& sub-type &optional ((and output (or nil :output))) &aux (utype (second (nth-value 1 (mffi->lisp type)))) (var (gensym "var")) (c (gensym "expr")))
 		(list* :argument `(the cffi:foreign-pointer ,var)
 		       (ematch sub-type
-			 ((or :complex-double-float :complex-single-float)
-			  (list :alloc `(,var ,utype :count 2)
-				:init `(let-typed ((,c ,expr :type ,(ffc->lisp type)))
-					 (setf (cffi:mem-aref ,var ,utype 0) (realpart ,c)
-					       (cffi:mem-aref ,var ,utype 1) (imagpart ,c)))
-				:output (when output `(complex (cffi:mem-aref ,var ,utype 0) (cffi:mem-aref ,var ,utype 1)))))
-			 ((or :double-float :single-float :character :integer :long)
+			 ((list :complex (type symbol))
+			  (ematch utype
+			    ((list utype 2)
+			     (list :alloc `(,var ,utype :count 2)
+				   :init `(let-typed ((,c ,expr :type ,(mffi->lisp type)))
+					    (setf (cffi:mem-aref ,var ,utype 0) (cl:realpart ,c)
+						  (cffi:mem-aref ,var ,utype 1) (cl:imagpart ,c)))
+				   :output (when output `(complex (cffi:mem-aref ,var ,utype 0) (cffi:mem-aref ,var ,utype 1)))))))
+			 ((or :char :uchar :short :ushort :int :uint :long :ulong :float :double)
 			  (list :alloc `(,var ,utype :initial-element ,(recursive-append
-									(when (eq sub-type :character) `(char-code))
-									`(the ,(ffc->lisp type) ,expr)))
+									(when (eq sub-type :char) `(char-code))
+									`(the ,(mffi->lisp type) ,expr)))
 				:output (when output `(cffi:mem-ref ,var ,utype)))))))
-	       ((λlist :* sub-type &key + &aux (vec (gensym "vec")))
-		(list :argument (let ((ptr `(etypecase ,vec
-					      (,(ffc->lisp type) (vector-sap-interpreter-specific ,vec))
-					      (cffi:foreign-pointer ,vec)
-					      (foreign-vector (slot-value ,vec 'ptr)))))
-				  (if +
-				      `(cffi:inc-pointer ,ptr (* (the fixnum ,+)
-								 ,(ematch sub-type
-								    (:complex-single-float (* 2 (cffi:foreign-type-size (ffc->cffi :single-float))))
-								    (:complex-double-float (* 2 (cffi:foreign-type-size (ffc->cffi :double-float))))
-								    ((or :double-float :single-float :integer :long) (cffi:foreign-type-size (ffc->cffi sub-type)))
-								    ((list (and pointer-type (or :double-float :single-float :integer :long :character)) (guard n (< 0 n)))
-								     (* n (cffi:foreign-type-size (ffc->cffi pointer-type)))))))
-				      ptr))
-		      :let-bind `(,vec ,expr ,@(when (and (consp expr) (eq (first expr) 'cl:the)) `(:type ,(second expr)))))))))
+	       ((λlist :* _ &key + &aux (vec (gensym "vec")))
+		(letv* ((lisp-type ffi-type (mffi->lisp type)))
+		  (list :argument (let ((ptr `(etypecase ,vec
+						(,lisp-type (vector-sap-interpreter-specific ,vec))
+						(cffi:foreign-pointer ,vec)
+						(,(foreign-vector (ematch lisp-type ((list 'simple-array element-type '(*)) element-type))) (slot-value ,vec 'ptr)))))
+				    (if +
+					`(cffi:inc-pointer ,ptr (* (the fixnum ,+)
+								   ,(ematch ffi-type
+								      ((list :pointer (and element-type (type symbol))) (cffi:foreign-type-size element-type))
+								      ((list :pointer (list (and element-type (type symbol)) (guard n (< 0 n))))
+								       (* n (cffi:foreign-type-size element-type))))))
+					ptr))
+			:let-bind `(,vec ,expr ,@(match expr ((list 'the type _) `(:type ,type))))))))))
     (loop :for (type expr) :on args :by #'cddr
-       :collect (list* :cffi (let ((ctype (ffc->cffi type))) (if (consp ctype) (first ctype) ctype)) (argument-decl type expr)))))
-
+       :collect (list* :cffi (match type
+			       ((or :string :char :uchar :short :ushort :int :uint :long :ulong :float :double) type)
+			       (_ :pointer))
+		       (argument-decl type expr)))))
 ;;
 (define-constant +f77-name-mangler+
     (find-if #'(lambda (f) (cffi:foreign-symbol-pointer (funcall f "ddot")))
@@ -119,7 +126,7 @@ Type (credits for aesthetics goes to CCL) is of the general form:
  type -> Pass by value.
  (:& type &key output) -> Pass by reference, if 'output' return value after exiting from foreign function.
  (:* type &key +) -> Pointer/Array/Foreign-vector, if '+' increment pointer by '+' times foreign-type-size.
-There are restrictions as to what types can be used with '(:& :*), see source of ffc->cffi and ffc->lisp.
+There are restrictions as to what types can be used with '(:& :*), see source of lisp->mffi and mffi->lisp.
 
 Example:
 @lisp
@@ -136,26 +143,26 @@ Example:
 @end lisp
 "
   (destructuring-bind (name &optional (return-type :void) (mode :f2c)) (ensure-list name-&-return-type)
-    (if (member return-type '(:complex-single-float :complex-double-float))
-	`(ffuncall (,name :void ,mode) (:& ,return-type :output) ,(coerce #c(0 0) (ffc->lisp `(:& ,return-type))) ,@args)
-	(let ((pargs (%ffc.parse-ffargs args (when (eq mode :f2c) t))))
-	  (labels ((mapf (place) (remove-if #'null (mapcar #'(lambda (x) (getf x place)) pargs))))
-	    `(with-fortran-float-modes
-	       (without-gcing
-		 ,(recursive-append
-		   (when-let (bd (mapf :let-bind))
-		     `(let-typed (,@bd)))
-		   (when-let (al (mapf :alloc))
-		     `(with-foreign-objects-stacked (,@al)))
-		   (when-let (init (mapf :init))
-		     `(progn ,@init))
-		   (let ((callc `(cffi-sys:%foreign-funcall ,(ecase mode
-								    (:f2c (funcall +f77-name-mangler+ name))
-								    (:c name))
-							    (,@(apply #'append (zip (mapf :cffi) (mapf :argument))) ,@(apply #'append (mapf :aux)) ,(if (eq return-type :void) :void (first (ensure-list (ffc->cffi return-type))))))))
-		     (if (eq return-type :void)
-			 `(progn ,callc (values ,@(mapf :output)))
-			 (with-gensyms (ret)
-			   `(let ((,ret ,callc))
-			      (values ,ret ,@(mapf :output))))))))))))))
+    (match return-type
+      ((list :complex type) `(ffuncall (,name :void ,mode) (:& ,return-type :output) ,(coerce #c(0 0) (mffi->lisp `(:& ,return-type))) ,@args))
+      (_ (let ((pargs (parse-ffargs args (when (eq mode :f2c) t))))
+	   (labels ((mapf (place) (remove-if #'null (mapcar #'(lambda (x) (getf x place)) pargs))))
+	     `(with-fortran-float-modes
+		(without-gcing
+		  ,(recursive-append
+		    (when-let (bd (mapf :let-bind))
+		      `(let-typed (,@bd)))
+		    (when-let (al (mapf :alloc))
+		      `(with-foreign-objects-stacked (,@al)))
+		    (when-let (init (mapf :init))
+		      `(progn ,@init))
+		    (let ((callc `(cffi-sys:%foreign-funcall ,(ecase mode
+								     (:f2c (funcall +f77-name-mangler+ name))
+								     (:c name))
+							     (,@(apply #'append (zip (mapf :cffi) (mapf :argument))) ,@(apply #'append (mapf :aux)) ,(if (eq return-type :void) :void (first (ensure-list return-type)))))))
+		      (if (eq return-type :void)
+			  `(progn ,callc (values ,@(mapf :output)))
+			  (with-gensyms (ret)
+			    `(let ((,ret ,callc))
+			       (values ,ret ,@(mapf :output)))))))))))))))
 )

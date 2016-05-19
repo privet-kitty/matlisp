@@ -11,14 +11,14 @@
 		  (type ,(store-type sym) ,wr ,wi))
 	 (with-lapack-query ,sym (,xxx ,lwork)
 	   (ffuncall ,(blas-func "geev" ftype) ,@(apply #'append (permute! (pair `(
-	     (:& :character) (if ,vl #\V #\N) (:& :character) (if ,vr #\V #\N)
-	     (:& :integer) (dimensions ,A 0)
-	     (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,wr) (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,wi)
-	     (:* ,(lisp->ffc ftype) :+ (if ,vl (head ,vl) 0)) (if ,vl (the ,(store-type sym) (store ,vl)) (cffi:null-pointer)) (:& :integer) (if ,vl ,ldvl 1)
-	     (:* ,(lisp->ffc ftype) :+ (if ,vr (head ,vr) 0)) (if ,vr (the ,(store-type sym) (store ,vr)) (cffi:null-pointer)) (:& :integer) (if ,vr ,ldvr 1)
-	     (:* ,(lisp->ffc ftype)) ,xxx (:& :integer) ,lwork
-	     (:& :integer :output) 0))
+	     (:& :char) (if ,vl #\V #\N) (:& :char) (if ,vr #\V #\N)
+	     (:& :int) (dimensions ,A 0)
+	     (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+	     (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,wr) (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,wi)
+	     (:* ,(lisp->mffi ftype) :+ (if ,vl (head ,vl) 0)) (if ,vl (the ,(store-type sym) (store ,vl)) (cffi:null-pointer)) (:& :int) (if ,vl ,ldvl 1)
+	     (:* ,(lisp->mffi ftype) :+ (if ,vr (head ,vr) 0)) (if ,vr (the ,(store-type sym) (store ,vr)) (cffi:null-pointer)) (:& :int) (if ,vr ,ldvr 1)
+	     (:* ,(lisp->mffi ftype)) ,xxx (:& :int) ,lwork
+	     (:& :int :output) 0))
 									   ;;Flip rwork to the end in the case of {z,c}geev.
 									   (make-instance 'permutation-cycle
 											  :store (when (subtypep ftype 'cl:complex)
@@ -37,13 +37,13 @@
        (with-field-elements ,(realified-tensor sym) (,@(when complex? `((,xxr (t/fid+ (t/field-type (t/realified-tensor ,sym))) (* 3 (dimensions ,A 0))))))
 	 (with-lapack-query ,sym (,xxx ,lwork)
 	   (ffuncall ,(blas-func (if complex? "heev" "syev") ftype)
-	     (:& :character) ,jobz (:& :character) ,uplo
-	     (:& :integer) (dimensions ,A 0)
-	     (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-	     (:* ,(lisp->ffc ftype)) ,w
-	     (:* ,(lisp->ffc ftype)) ,xxx (:& :integer) ,lwork
-	     ,@(when complex? `((:* ,(lisp->ffc ftype)) ,xxr))
-	     (:& :integer :output) 0)))))))
+	     (:& :char) ,jobz (:& :char) ,uplo
+	     (:& :int) (dimensions ,A 0)
+	     (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+	     (:* ,(lisp->mffi ftype)) ,w
+	     (:* ,(lisp->mffi ftype)) ,xxx (:& :int) ,lwork
+	     ,@(when complex? `((:* ,(lisp->mffi ftype)) ,xxr))
+	     (:& :int :output) 0)))))))
 
 ;;
 (deft/generic (t/geev-output-fix #'subtypep) sym (wr wi))
