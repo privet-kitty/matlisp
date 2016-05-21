@@ -31,7 +31,7 @@
 (in-package #:matlisp-system)
 
 (asdf:defsystem :matlisp-basic
-  :depends-on (#:cffi #:iterate #:trivia #:trivia.ppcre #:named-readtables #:lambda-reader #:yacc #:trivial-garbage #:closer-mop #:external-program #:bordeaux-threads)
+  :depends-on (#:cffi #:iterate #:trivia #:trivia.ppcre #:named-readtables #:lambda-reader #:yacc #:trivial-garbage #:closer-mop #:external-program #:bordeaux-threads #:fiveam)
   :pathname "src"
   :components
   ((:file "packages")
@@ -135,5 +135,13 @@
    #+weyl
    (:module "matlisp-symbolic" :pathname "symbolic"
 	    :depends-on ("matlisp-user")
-	    :components ((:file "symbolic")))
-   ))
+	    :components ((:file "symbolic")))))
+
+(asdf:defsystem :matlisp-tests
+  :licence "LLGPL"
+  :author "See AUTHORS"
+  :homepage "https://github.com/matlisp/"
+  :depends-on ("matlisp") :pathname "tests"
+  :components
+  ((:file "utilities")
+   (:file "lapack")))

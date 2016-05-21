@@ -43,8 +43,8 @@
 (deft/generic (t/store-allocator #'subtypep) sym (size &rest initargs))
 (deft/generic (t/total-size #'subtypep) sym (ele))
 ;;
-(deft/method (t/compute-store-size #'linear-storep) (sym tensor) (size)
-  (if (clinear-storep sym) `(* 2 ,size) size))
+(deft/method t/compute-store-size (cl simple-vector-store-mixin) (size)
+  (if (real-subtypep (field-type cl)) `(* 2 ,size) size))
 
 (deft/method (t/store-size #'linear-storep) (sym tensor) (ele)
   (if (clinear-storep sym) `(/ (length ,ele) 2) `(length ,ele)))

@@ -6,21 +6,21 @@
 	 (rtype (field-type (realified-tensor sym))))
     (using-gensyms (decl (A lda B ldb rcond) (lwork xxx xxr jpvt))
       `(let* (,@decl
-	      (,jpvt (make-array (dimensions ,A 1) :element-type ',(matlisp-ffi:ffc->lisp :integer) :initial-element 0)))
+	      (,jpvt (make-array (dimensions ,A 1) :element-type ',(matlisp-ffi:mffi->lisp :int) :initial-element 0)))
 	 (declare (type ,sym ,A ,B)
 		  (type index-type ,lda ,ldb)
 		  (type ,(field-type (realified-tensor sym)) ,rcond)
-		  (type (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,jpvt))
+		  (type (simple-array ,(matlisp-ffi:mffi->lisp :int) (*)) ,jpvt))
 	 (with-field-elements ,sym (,@(when complex? `((,xxr (t/fid+ ,ftype) (dimensions ,A 1)))))
 	   (with-lapack-query ,sym (,xxx ,lwork)
 	     (ffuncall ,(blas-func "gelsy" ftype)
-	       (:& :integer) (dimensions ,A 0) (:& :integer) (dimensions ,A 1) (:& :integer) (dimensions ,B 1)
-	       (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-	       (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,ldb
-	       (:* :integer) (the (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,jpvt) (:& ,(lisp->ffc rtype t)) ,rcond (:& :integer :output) 0
-	       (:* ,(lisp->ffc ftype)) ,xxx (:& :integer) ,lwork
-	       ,@(when complex? `((:* ,(lisp->ffc ftype)) ,xxr))
-	       (:& :integer :output) 0)))))))
+	       (:& :int) (dimensions ,A 0) (:& :int) (dimensions ,A 1) (:& :int) (dimensions ,B 1)
+	       (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+	       (:* ,(lisp->mffi ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :int) ,ldb
+	       (:* :int) (the (simple-array ,(matlisp-ffi:mffi->lisp :int) (*)) ,jpvt) (:& ,(lisp->mffi rtype)) ,rcond (:& :int :output) 0
+	       (:* ,(lisp->mffi ftype)) ,xxx (:& :int) ,lwork
+	       ,@(when complex? `((:* ,(lisp->mffi ftype)) ,xxr))
+	       (:& :int :output) 0)))))))
 ;;
 (closer-mop:defgeneric gelsy (A B &optional rcond)
   (:documentation "
@@ -91,29 +91,25 @@
    =====================================================================
 ")
   (:method :before ((A tensor) (B tensor) &optional rcond)
-     (assert (and (tensor-matrixp A) (tensor-matrixp B) (= (dimensions A 0) (dimensions B 0))) nil 'tensor-dimension-mismatch)
+     (assert (and (tensor-matrixp A) (<= (order B) 2) (= (dimensions A 0) (dimensions B 0))) nil 'tensor-dimension-mismatch)
      (assert (or (null rcond) (> rcond 0)) nil 'invalid-value :expected '(> rcond 0) :given rcond :message "Invalid rcond."))
   (:generic-function-class tensor-method-generator))
 
-(define-tensor-method gelsy ((A blas-mixin :x) (B blas-mixin :x t) &optional (rcond *default-rcond*))
-  `(let* ((A (with-colm (copy A ',(cl :x)))))
-     (declare (type ,(cl :x) A))
-     (let* ((mn (lvec-max (dimensions A)))
-	    (X (with-colm (zeros (list mn (dimensions B 1)) ',(cl :x)))))
-       (copy! B (subtensor~ X `((0 ,(dimensions B 0)) (nil nil))))
-       (letv* ((rank info (t/lapack-gelsy! ,(cl :x) A (or (blas-matrix-compatiblep A #\N) 0) X (or (blas-matrix-compatiblep X #\N) 0) rcond)))
-	 (unless (= info 0)
-	   (error "gelsy returned ~a." info))
-	 (values (copy (subtensor~ X `((0 ,(dimensions A 1)) (nil nil)))) rank)))))
+(define-tensor-method gelsy ((A blas-mixin :x) (B blas-mixin :x t) &optional rcond)
+  `(if (tensor-vectorp B)
+       (orphanize (slice~ (gelsy A (matrixify~ B) rcond) 1))
+       (let* ((rcond (or rcond (* *rcond-scale* ,(ecase (or (real-subtypep (field-type (cl :x))) (field-type (cl :x)))
+							(single-float single-float-epsilon)
+							(double-float double-float-epsilon)))))
+	      (A (with-colm (copy A ',(cl :x)))))
+	 (declare (type ,(cl :x) A))
+	 (let* ((mn (lvec-max (dimensions A)))
+		(X (with-colm (zeros (list mn (dimensions B 1)) ',(cl :x)))))
+	   (copy! B (subtensor~ X `((0 ,(dimensions B 0)) (nil nil))))
+	   (letv* ((rank info (t/lapack-gelsy! ,(cl :x) A (or (blas-matrix-compatiblep A #\N) 0) X (or (blas-matrix-compatiblep X #\N) 0) rcond)))
+	     (unless (= info 0)
+	       (error "gelsy returned ~a." info))
+	     (values (copy (subtensor~ X `((0 ,(dimensions A 1)) (nil nil)))) rank))))))
 
-(definline lstsq (A B &optional (rcond nil rcond-p))
-  (let ((B (matrixify~ B)))
-    (if rcond-p
-	(gelsy A B rcond)
-	(gelsy A B))))
-
-#+nil
-(let* ((a (randn '(10 5)))
-       (x (randn '(5 5)))
-       (b (t* a x)))
-  (norm (t- x (lstsq a b))))
+(definline lstsq (A B &optional rcond)
+  (gelsy A B rcond))

@@ -12,13 +12,13 @@
 		  (type ,(field-type sym) ,alpha ,beta)
 		  (type index-type ,st-x ,st-y ,lda ,m ,n))
 	 (ffuncall ,(blas-func "gemv" ftype)
-		   (:& :character) ,transp
-		   (:& :integer) ,m (:& :integer) ,n
-		   (:& ,(lisp->ffc ftype t)) ,alpha
-		   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-		   (:* ,(lisp->ffc ftype) :+ (head ,x)) (the ,(store-type sym) (store ,x)) (:& :integer) ,st-x
-		   (:& ,(lisp->ffc ftype t)) ,beta
-		   (:* ,(lisp->ffc ftype) :+ (head ,y)) (the ,(store-type sym) (store ,y)) (:& :integer) ,st-y)
+		   (:& :char) ,transp
+		   (:& :int) ,m (:& :int) ,n
+		   (:& ,(lisp->mffi ftype)) ,alpha
+		   (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+		   (:* ,(lisp->mffi ftype) :+ (head ,x)) (the ,(store-type sym) (store ,x)) (:& :int) ,st-x
+		   (:& ,(lisp->mffi ftype)) ,beta
+		   (:* ,(lisp->mffi ftype) :+ (head ,y)) (the ,(store-type sym) (store ,y)) (:& :int) ,st-y)
 	 ,y))))
 
 (deft/generic (t/blas-gemm! #'subtypep) sym (alpha A lda B ldb beta C ldc transa opa opb))
@@ -33,13 +33,13 @@
 		  (type index-type ,lda ,ldb ,ldc ,m ,n ,k)
 		  (type character ,transa ,opa ,opb))
 	 (ffuncall ,(blas-func "gemm" ftype)
-		   (:& :character) ,opa (:& :character) ,opb
-		   (:& :integer) ,m (:& :integer) ,n (:& :integer) ,k
-		   (:& ,(lisp->ffc ftype t)) ,alpha
-		   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-		   (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,ldb
-		   (:& ,(lisp->ffc ftype t)) ,beta
-		   (:* ,(lisp->ffc ftype) :+ (head ,C)) (the ,(store-type sym) (store ,C)) (:& :integer) ,ldc)
+		   (:& :char) ,opa (:& :char) ,opb
+		   (:& :int) ,m (:& :int) ,n (:& :int) ,k
+		   (:& ,(lisp->mffi ftype)) ,alpha
+		   (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+		   (:* ,(lisp->mffi ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :int) ,ldb
+		   (:& ,(lisp->mffi ftype)) ,beta
+		   (:* ,(lisp->mffi ftype) :+ (head ,C)) (the ,(store-type sym) (store ,C)) (:& :int) ,ldc)
 	 ,C))))
 ;;
 (deft/generic (t/gemv! #'subtypep) sym (alpha A x beta y transp))

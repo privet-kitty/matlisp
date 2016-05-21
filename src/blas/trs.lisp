@@ -11,11 +11,11 @@
 		  (type index-type ,lda ,ldb)
 		  (type character ,transa ,diaga ,uplo ,side))
 	 (ffuncall ,(blas-func "trsm" ftype)
-		   (:& :character) ,side (:& :character) ,uplo (:& :character) ,transa (:& :character) ,diagA
-		   (:& :integer) (dimensions ,B 0) (:& :integer) (dimensions ,B 1)
-		   (:& ,(lisp->ffc ftype t)) ,alpha
-		   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-		   (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,ldb)
+		   (:& :char) ,side (:& :char) ,uplo (:& :char) ,transa (:& :char) ,diagA
+		   (:& :int) (dimensions ,B 0) (:& :int) (dimensions ,B 1)
+		   (:& ,(lisp->mffi ftype)) ,alpha
+		   (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+		   (:* ,(lisp->mffi ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :int) ,ldb)
 	 ,B))))
 
 (deft/generic (t/blas-trsv! #'subtypep) sym (uplo transA diagA A lda b st-b))
@@ -27,10 +27,10 @@
 		  (type index-type ,lda ,st-b)
 		  (type character ,transa ,diaga ,uplo))
 	 (ffuncall ,(blas-func "trsv" ftype)
-	   (:& :character) ,uplo (:& :character) ,transa (:& :character) ,diagA
-	   (:& :integer) (dimensions ,A 0)
-	   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-	   (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,st-b)
+	   (:& :char) ,uplo (:& :char) ,transa (:& :char) ,diagA
+	   (:& :int) (dimensions ,A 0)
+	   (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+	   (:* ,(lisp->mffi ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :int) ,st-b)
 	 ,b))))
 ;;
 (closer-mop:defgeneric trs! (alpha A b &optional solve uplo)

@@ -36,10 +36,10 @@
 		  (type index-type ,lda)
 		  (type character ,uplo))
 	 (ffuncall ,(blas-func "potrf" ftype)
-		   (:& :character) ,uplo
-		   (:& :integer) (dimensions ,A 0)
-		   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-		   (:& :integer :output) 0)))))
+		   (:& :char) ,uplo
+		   (:& :int) (dimensions ,A 0)
+		   (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+		   (:& :int :output) 0)))))
 
 ;;
 (closer-mop:defgeneric potrf! (a &optional uplo)
@@ -88,11 +88,11 @@
 		  (type index-type ,lda ,ldb)
 		  (type character ,uplo))
 	 (ffuncall ,(blas-func "potrs" ftype)
-	   (:& :character) ,uplo
-	   (:& :integer) (dimensions ,A 0) (:& :integer) (dimensions ,B 1)
-	   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-	   (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,ldb
-	   (:& :integer :output) 0)))))
+	   (:& :char) ,uplo
+	   (:& :int) (dimensions ,A 0) (:& :int) (dimensions ,B 1)
+	   (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+	   (:* ,(lisp->mffi ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :int) ,ldb
+	   (:& :int :output) 0)))))
 
 ;;
 (closer-mop:defgeneric potrs! (A B &optional uplo)
@@ -145,9 +145,9 @@
 		  (type index-type ,lda)
 		  (type character ,uplo))
 	 (ffuncall ,(blas-func "potri" ftype)
-	   (:& :character) ,uplo (:& :integer) (dimensions ,A 0)
-	   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-	   (:& :integer :output) 0)))))
+	   (:& :char) ,uplo (:& :int) (dimensions ,A 0)
+	   (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+	   (:& :int :output) 0)))))
 
 (closer-mop:defgeneric potri! (A &optional uplo)
   (:documentation "
@@ -176,37 +176,32 @@
 (defun chol (a &optional (uplo *default-uplo*))
   (declare (type (and tensor-square-matrix blas-mixin) a))
   (let ((l (copy a)))
-    (restart-case (potrf! l uplo)
-      (increment-diagonal-and-retry (value)
-	(copy! a l) (axpy! value nil (diag~ l))
-	(potrf! l uplo)))
+    (labels ((call () (restart-case (potrf! l uplo)
+			(increment-diagonal-and-retry (value)
+			  (copy! a l) (axpy! value nil (diag~ l))
+			  (call)))))
+      (call))
     (tricopy! 0d0 l (ecase uplo (:u :lo) (:l :uo)))))
 ;;
 
 ;;
-;; (let* ((a #i(a := randn([10, 10]), a + a' + 20 * eye([10, 10])))
-;;        (x (randn '(10 5)))
-;;        (b #i(a * x)))
-;;   (norm (t- x (potrs! (chol a) b))))
-
-
 (deft/generic (t/lapack-ldl! #'subtypep) sym (A lda uplo ipiv &optional het?))
 (deft/method t/lapack-ldl! (sym blas-mixin) (A lda uplo ipiv &optional het?)
   (let* ((ftype (field-type sym)) (complex? (subtypep ftype 'cl:complex)))
     (using-gensyms (decl (A lda uplo ipiv) (xxx lwork))
       `(let* (,@decl)
 	 (declare (type ,sym ,A) (type index-type ,lda) (type character ,uplo)
-		  (type (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,ipiv))
+		  (type (simple-array ,(matlisp-ffi:mffi->lisp :int) (*)) ,ipiv))
 	 (with-lapack-query ,sym (,xxx ,lwork)
 	   (ffuncall ,(blas-func (if (or (not het?) (not complex?)) "sytrf" "hetrf") ftype)
-	     (:& :character) ,uplo
-	     (:& :integer) (dimensions ,A 0) (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-	     (:* :integer) (the (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,ipiv)
-	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxx) (:& :integer) ,lwork
-	     (:& :integer :output) 0))))))
+	     (:& :char) ,uplo
+	     (:& :int) (dimensions ,A 0) (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+	     (:* :int) (the (simple-array ,(matlisp-ffi:mffi->lisp :int) (*)) ,ipiv)
+	     (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,xxx) (:& :int) ,lwork
+	     (:& :int :output) 0))))))
 
 (closer-mop:defgeneric ldl! (a &optional hermitian? uplo)
-  (:method :before ((a tensor) &optional hermitian? uplo)
+  (:method :before ((a tensor) &optional hermitian? (uplo *default-uplo*))
      (declare (ignore hermitian?))
      (assert (typep a 'tensor-square-matrix) nil 'tensor-dimension-mismatch :message "Expected square matrix.")
      (assert (inline-member uplo (:l :u)) nil 'invalid-arguments :given uplo :expected `(member uplo '(:l :u))))
@@ -215,7 +210,7 @@
 (define-tensor-method ldl! ((a blas-mixin :x) &optional (hermitian? t) (uplo *default-uplo*))
   '(declare (ignorable hermitian?))
   (let ((complex? (subtypep (field-type (cl :x)) 'cl:complex)))
-    `(let ((ipiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type ',(matlisp-ffi:ffc->lisp :integer))))
+    `(let ((ipiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type ',(matlisp-ffi:mffi->lisp :int))))
        (with-columnification (() (A))
 	 ,(recursive-append
 	   (if complex?
@@ -236,7 +231,7 @@
 (defun ldl (a &optional (hermitian? t) (uplo *default-uplo*))
   (declare (type (and tensor-square-matrix blas-mixin) a))
   (letv* ((ret ipiv (ldl! (copy a) hermitian? uplo))
-	  (D (zeros (dimensions A))))
+	  (D (zeros (dimensions A) (class-of A))))
     (tricopy! (diag~ ret) D :d)
     (tricopy! 1 (tricopy! 0 ret (ecase uplo (:u :lo) (:l :uo))) :d)
     (iter (for σi in-vector ipiv with-index i)
@@ -245,6 +240,10 @@
 	      (:u (rotatef (ref D i (1+ i)) (ref ret i (1+ i))))
 	      (:l (rotatef (ref D i (1+ i)) (ref ret (1+ i) i))))
 	    (setf (ref D (1+ i) i) (ref D i (1+ i)))
+	    (when hermitian?
+	      (ecase uplo
+		(:u (setf (ref D (1+ i) i) (conjugate (ref D i (1+ i)))))
+		(:l (setf (ref D i (1+ i)) (conjugate (ref D (1+ i) i))))))
 	    (incf i)))
     (values (ldl-permute! ret ipiv uplo) D
 	    (let ((p (with-no-init-checks (make-instance 'permutation-pivot-flip :size (length ipiv) :store (pflip.f->l ipiv uplo)))))

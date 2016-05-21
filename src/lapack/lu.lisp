@@ -34,12 +34,12 @@
     (using-gensyms (decl (A lda ipiv))
       `(let* (,@decl)
 	 (declare (type ,sym ,A)
-		  (type (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,ipiv)
+		  (type (simple-array ,(ffi:mffi->lisp :int) (*)) ,ipiv)
 		  (type index-type ,lda))
 	 (ffuncall ,(blas-func "getrf" ftype)
-		   (:& :integer) (dimensions ,A 0) (:& :integer) (dimensions ,A 1)
-		   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-		   (:* :integer) (the (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,ipiv) (:& :integer :output) 0)))))
+		   (:& :int) (dimensions ,A 0) (:& :int) (dimensions ,A 1)
+		   (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+		   (:* :int) (the (simple-array ,(ffi:mffi->lisp :int) (*)) ,ipiv) (:& :int :output) 0)))))
 
 ;;
 (closer-mop:defgeneric getrf! (A)
@@ -77,8 +77,8 @@
   (:generic-function-class tensor-method-generator))
 
 (define-tensor-method getrf! ((A blas-mixin :x))
-  `(let ((upiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type ',(matlisp-ffi:ffc->lisp :integer))))
-     (declare (type (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) upiv))
+  `(let ((upiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type ',(ffi:mffi->lisp :int))))
+     (declare (type (simple-array ,(ffi:mffi->lisp :int) (*)) upiv))
      (with-columnification (() (A))
        (let ((info (t/lapack-getrf! ,(cl :x) A (or (blas-matrix-compatiblep A #\N) 0) upiv)))
 	 (unless (= info 0)
@@ -95,16 +95,16 @@
     (using-gensyms (decl (A lda B ldb ipiv transp))
       `(let* (,@decl)
 	 (declare (type ,sym ,A ,B)
-		  (type (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,ipiv)
+		  (type (simple-array ,(ffi:mffi->lisp :int) (*)) ,ipiv)
 		  (type index-type ,lda ,ldb)
 		  (type character ,transp))
 	 (ffuncall ,(blas-func "getrs" ftype)
-	   (:& :character) ,transp
-	   (:& :integer) (dimensions ,A 0) (:& :integer) (dimensions ,B 1)
-	   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-	   (:* :integer) (the (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,ipiv)
-	   (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,ldb
-	   (:& :integer :output) 0)))))
+	   (:& :char) ,transp
+	   (:& :int) (dimensions ,A 0) (:& :int) (dimensions ,B 1)
+	   (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+	   (:* :int) (the (simple-array ,(ffi:mffi->lisp :int) (*)) ,ipiv)
+	   (:* ,(lisp->mffi ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :int) ,ldb
+	   (:& :int :output) 0)))))
 
 (closer-mop:defgeneric getrs! (A B &optional job ipiv)
   (:documentation
@@ -145,7 +145,7 @@
   `(if (tensor-vectorp b)
        (getrs! a (suptensor~ b 2) job ipiv)
        (let ((upiv (if ipiv
-		       (pflip.l->f (store (copy ipiv 'permutation-action)))
+		       (pflip.l->f (store (copy ipiv 'permutation-pivot-flip)))
 		       (or (gethash 'getrf (memos A)) (error "Cannot find permutation for the PLU factorisation of A."))))
 	     (cjob (aref (symbol-name job) 0)))
 	 (declare (type (simple-array (signed-byte 32) (*)) upiv))
@@ -164,15 +164,15 @@
     (using-gensyms (decl (A lda ipiv) (lwork xxx))
       `(let* (,@decl)
 	 (declare (type ,sym ,A)
-		  (type (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,ipiv)
+		  (type (simple-array ,(ffi:mffi->lisp :int) (*)) ,ipiv)
 		  (type index-type ,lda))
 	 (with-lapack-query ,sym (,xxx ,lwork)
 	   (ffuncall ,(blas-func "getri" ftype)
-	     (:& :integer) (dimensions ,A 0)
-	     (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
-	     (:* :integer) (the (simple-array ,(matlisp-ffi:ffc->lisp :integer) (*)) ,ipiv)
-	     (:* ,(lisp->ffc ftype)) ,xxx (:& :integer) ,lwork
-	     (:& :integer :output) 0))))))
+	     (:& :int) (dimensions ,A 0)
+	     (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+	     (:* :int) (the (simple-array ,(ffi:mffi->lisp :int) (*)) ,ipiv)
+	     (:* ,(lisp->mffi ftype)) ,xxx (:& :int) ,lwork
+	     (:& :int :output) 0))))))
 
 (closer-mop:defgeneric getri! (A &optional perm)
   (:documentation

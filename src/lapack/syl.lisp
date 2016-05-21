@@ -9,13 +9,13 @@
 		  (type ,sym ,A ,B ,C)
 		  (type index-type ,ld.a ,ld.b ,ld.c))
 	 (ffuncall ,(blas-func "trsyl" ftype)
-	   (:& :character) ,op.a (:& :character) ,op.b (:& :integer) (if (char= ,sgn #\P) 1 -1)
-	   (:& :integer) (dimensions ,C 0) (:& :integer) (dimensions ,C 1)
-	   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,ld.a
-	   (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,ld.b
-	   (:* ,(lisp->ffc ftype) :+ (head ,C)) (the ,(store-type sym) (store ,C)) (:& :integer) ,ld.c
-	   (:& ,(lisp->ffc (field-type (realified-tensor sym))) :output) (t/fid* ,(field-type (realified-tensor sym)))
-	   (:& :integer :output) 0)))))
+	   (:& :char) ,op.a (:& :char) ,op.b (:& :int) (if (char= ,sgn #\P) 1 -1)
+	   (:& :int) (dimensions ,C 0) (:& :int) (dimensions ,C 1)
+	   (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,ld.a
+	   (:* ,(lisp->mffi ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :int) ,ld.b
+	   (:* ,(lisp->mffi ftype) :+ (head ,C)) (the ,(store-type sym) (store ,C)) (:& :int) ,ld.c
+	   (:& ,(lisp->mffi (field-type (realified-tensor sym))) :output) (t/fid* ,(field-type (realified-tensor sym)))
+	   (:& :int :output) 0)))))
 
 (closer-mop:defgeneric trsyl! (A B C &optional job)
   (:documentation "
@@ -57,23 +57,20 @@
 ;;#i(a * b -> b * a, forall a in F, forall b in L(V, V))
 ;;#i(a * b \neq b * a, a, b are matrices)
 ;;#i(a + b -> b + a)
-(defun syl (A B C)
+(defun syl (A B C &optional (job :nnp))
   "
     Syntax
     ------
     (syl A B C)
     Computes the solution to the Sylvester equation:
-	    A X + X B = C
-    using Schur decomposition."
+	    op(A) X \pm X op(B) = C
+    using Schur decomposition.
+
+    The variable JOB can take on any of :{n, t/c}{n, t/c}{p, n}; the
+    first two alphabets maps to op A, op B; whilst the third one controls
+    the sign in the equation (oh dear! which year have we landed in.)."
   (letv* ((l.a t.a u.a (schur A) :type nil tensor tensor)
 	  (l.b t.b u.b (schur B) :type nil tensor tensor)
-	  ;;We can't use infix-dispatch-table just yet :(
 	  (ucu (gem 1 u.a (gem 1 c u.b nil nil :nn) nil nil :cn)))
-    (trsyl! t.a t.b ucu)
+    (trsyl! t.a t.b ucu job)
     (gem 1 u.a (gem 1 ucu u.b nil nil :nc) nil nil)))
-
-;; (letv* ((a (randn '(10 10)))
-;; 	(b (randn '(10 10)))
-;; 	(x (randn '(10 10)))
-;; 	(c (t+ (t* a x) (t* x b))))
-;;   (norm (t- (syl a b c) x)))

@@ -132,11 +132,12 @@
   ;; #+(not (or sbcl cmu allegro)) (:use :common-lisp :cffi :utilities)
   (:export
    ;;Foreign-pointer enclosing structure.
-   #:foreign-vector #:ffi-type #:fvref #:make-wrap #:wrap #:ptr
-   #:ffuncall #:lisp->ffc #:ffc->cffi #:ffc->lisp
+   #:foreign-vector #:element-type #:fvref
+   #:ffuncall #:lisp->mffi #:mffi->lisp
+   #:with-vector-data-addresses
    ;;Interface functions
-   #:def-fortran-routine #:parse-fortran-file
-   #:with-vector-data-addresses)
+   ;;#:def-fortran-routine #:parse-fortran-file
+   )
   (:documentation "Fortran foreign function interface"))
 
 (defpackage "MATLISP-DESTRUCTURING"
@@ -151,17 +152,18 @@
    ;;Tweakable
    #:*sparse-tensor-realloc-on-setf* #:*default-sparse-store-increment* #:*default-sparsity* #:*max-sparse-size*
    #:*default-stride-ordering* #:*default-tensor-type*
-   #:*check-after-initializing?* #:*default-rcond* #:*default-uplo*
+   #:*check-after-initializing?* #:*rcond-scale* #:*default-uplo*
    #:*real-l1-fcall-lb* #:*real-l2-fcall-lb* #:*real-l3-fcall-lb*
    #:*complex-l1-fcall-lb* #:*complex-l2-fcall-lb* #:*complex-l3-fcall-lb*
    ;;base
    #:dimensions #:order #:field-type #:ref #:einstein-sum
-   #:base-tensor #:tensor #:memos #:store-size #:total-size
+   #:base-tensor #:tensor #:memos #:store-size #:total-size #:parent
    #:dorefs #:for-mod #:with-iterator #:loop-order #:uplo
    #:index-type #:index-store-vector
 
-   #:sparse-tensor #:stride-tensor #:dense-tensor #:hash-tensor #:foreign-tensor
-   #:orphanize #:graph-tensor #:coordinate-tensor #:tensor-typep
+   #:tensor-class #:sparse-tensor #:stride-tensor #:dense-tensor #:simple-dense-tensor #:foreign-dense-tensor
+   #:hash-tensor
+   #:orphanize #:graph-tensor #:simple-graph-tensor #:coordinate-tensor #:tensor-typep
    #:tensor-method-generator #:define-tensor-method #:cl
    ;;#:tensor-matrixp #:tensor-vectorp #:tensor-squarep
    #:tensor-vector #:tensor-matrix #:tensor-square-matrix
@@ -272,3 +274,15 @@
    #:rand #:randn #:randi #:rande
    #:range #:linspace)
   (:documentation "MATLISP USER"))
+
+(defpackage "MATLISP-TESTS"
+  (:use #:common-lisp #:iterate #:matlisp-utilities #:matlisp #:trivia #:fiveam)
+  (:import-from :λ-reader #:λ)
+  (:export #:matlisp-tests #:run-tests)
+  (:documentation "MATLISP TESTS"))
+
+;;Create a test suite
+(fiveam:def-suite matlisp-tests:matlisp-tests
+    :description "Regression tests for matlisp-optimization")
+(defun matlisp-tests:run-tests () (5am:run! 'matlisp-tests:matlisp-tests))
+(fiveam:in-suite matlisp-tests:matlisp-tests)

@@ -37,11 +37,11 @@
 	 ,(recursive-append
 	   (when ncp? `(with-field-element ,sym (,sto-x ,x)))
 	   `(ffuncall ,(blas-func "copy" ftype)
-	      (:& :integer) (the index-type (total-size ,y))
-	      (:* ,(lisp->ffc ftype) ,@(unless ncp? `(:+ (head ,x)))) ,(if ncp? sto-x `(t/store ,sym ,x))
-	      (:& :integer) (the index-type ,(if ncp? 0 st-x))
-	      (:* ,(lisp->ffc ftype) :+ (head ,y)) (t/store ,sym ,y)
-	      (:& :integer) (the index-type ,st-y)))
+	      (:& :int) (the index-type (total-size ,y))
+	      (:* ,(lisp->mffi ftype) ,@(unless ncp? `(:+ (head ,x)))) ,(if ncp? sto-x `(t/store ,sym ,x))
+	      (:& :int) (the index-type ,(if ncp? 0 st-x))
+	      (:* ,(lisp->mffi ftype) :+ (head ,y)) (t/store ,sym ,y)
+	      (:& :int) (the index-type ,st-y)))
 	 ,y))))
 
 ;;
@@ -429,9 +429,9 @@
       `(let (,@decl)
 	 (declare (type ,sym ,x ,y))
 	 (ffuncall ,(blas-func "swap" ftype)
-		   (:& :integer) (total-size ,y)
-		   (:* ,(lisp->ffc ftype) :+ (head ,x)) (the ,(store-type sym) (store ,x)) (:& :integer) ,st-x
-		   (:* ,(lisp->ffc ftype) :+ (head ,y)) (the ,(store-type sym) (store ,y)) (:& :integer) ,st-y)
+		   (:& :int) (total-size ,y)
+		   (:* ,(lisp->mffi ftype) :+ (head ,x)) (the ,(store-type sym) (store ,x)) (:& :int) ,st-x
+		   (:* ,(lisp->mffi ftype) :+ (head ,y)) (the ,(store-type sym) (store ,y)) (:& :int) ,st-y)
 	 ,y))))
 
 (deft/generic (t/swap! #'subtypep) sym (x y))
