@@ -135,5 +135,13 @@
    #+weyl
    (:module "matlisp-symbolic" :pathname "symbolic"
 	    :depends-on ("matlisp-user")
-	    :components ((:file "symbolic")))
-   ))
+	    :components ((:file "symbolic")))))
+
+(asdf:defsystem :matlisp-tests
+  :licence "LLGPL"
+  :author "See AUTHORS"
+  :homepage "https://github.com/matlisp/"
+  :depends-on ("matlisp") :pathname "tests"
+  :components
+  ((:file "utilities")
+   (:file "lapack")))

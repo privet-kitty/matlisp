@@ -43,7 +43,7 @@
 "
   (etypecase tensor
     (number (cl:realpart tensor))
-    (dense-tensor (if (eql (realified-tensor tensor) (type-of tensor)) tensor
+    (dense-tensor (if (eql (realified-tensor (type-of tensor)) (type-of tensor)) tensor
 		      (with-no-init-checks
 			  (make-instance (realified-tensor (type-of tensor))
 					 :parent tensor :store (store tensor)
@@ -68,7 +68,7 @@
 "
   (etypecase tensor
     (number (cl:imagpart tensor))
-    (dense-tensor (if (eql (realified-tensor tensor) (type-of tensor)) nil
+    (dense-tensor (if (eql (realified-tensor (type-of tensor)) (type-of tensor)) nil
 		      (with-no-init-checks
 			  (make-instance (realified-tensor (type-of tensor))
 					 :parent tensor :store (store tensor)

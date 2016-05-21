@@ -25,7 +25,7 @@
       `(let* (,@decl)
 	 (declare (type ,sym ,A ,b)
 		  (type index-type ,lda ,st-b)
-		  (type char ,transa ,diaga ,uplo))
+		  (type character ,transa ,diaga ,uplo))
 	 (ffuncall ,(blas-func "trsv" ftype)
 	   (:& :char) ,uplo (:& :char) ,transa (:& :char) ,diagA
 	   (:& :int) (dimensions ,A 0)
