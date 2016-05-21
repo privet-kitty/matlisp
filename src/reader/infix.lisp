@@ -152,6 +152,7 @@
    (expr |:| #'(lambda (a b) (declare (ignore b)) (list :slice a nil nil)))
    (|:| expr |:|  #'(lambda (a b c) (declare (ignore a c)) (list :slice nil nil b)))
    (expr |:| expr #'(lambda (a b c) (declare (ignore b)) (list :slice a c nil)))
+   (expr |:| expr |:|  #'(lambda (a b c d) (declare (ignore b d)) (list :slice a nil c)))
    (expr |:| expr |:| expr #'(lambda (a b c d e) (declare (ignore b d)) (list :slice a c e))))
   (sargs
    (idxs #'list)
