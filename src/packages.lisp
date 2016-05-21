@@ -152,7 +152,7 @@
    ;;Tweakable
    #:*sparse-tensor-realloc-on-setf* #:*default-sparse-store-increment* #:*default-sparsity* #:*max-sparse-size*
    #:*default-stride-ordering* #:*default-tensor-type*
-   #:*check-after-initializing?* #:*default-rcond* #:*default-uplo*
+   #:*check-after-initializing?* #:*rcond-scale* #:*default-uplo*
    #:*real-l1-fcall-lb* #:*real-l2-fcall-lb* #:*real-l3-fcall-lb*
    #:*complex-l1-fcall-lb* #:*complex-l2-fcall-lb* #:*complex-l3-fcall-lb*
    ;;base
@@ -274,3 +274,15 @@
    #:rand #:randn #:randi #:rande
    #:range #:linspace)
   (:documentation "MATLISP USER"))
+
+(defpackage "MATLISP-TESTS"
+  (:use #:common-lisp #:iterate #:matlisp-utilities #:matlisp #:trivia #:fiveam)
+  (:import-from :λ-reader #:λ)
+  (:export #:matlisp-tests #:run-tests)
+  (:documentation "MATLISP TESTS"))
+
+;;Create a test suite
+(fiveam:def-suite matlisp-tests:matlisp-tests
+    :description "Regression tests for matlisp-optimization")
+(defun matlisp-tests:run-tests () (5am:run! 'matlisp-tests:matlisp-tests))
+(fiveam:in-suite matlisp-tests:matlisp-tests)

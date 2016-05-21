@@ -145,7 +145,7 @@
   `(if (tensor-vectorp b)
        (getrs! a (suptensor~ b 2) job ipiv)
        (let ((upiv (if ipiv
-		       (pflip.l->f (store (copy ipiv 'permutation-action)))
+		       (pflip.l->f (store (copy ipiv 'permutation-pivot-flip)))
 		       (or (gethash 'getrf (memos A)) (error "Cannot find permutation for the PLU factorisation of A."))))
 	     (cjob (aref (symbol-name job) 0)))
 	 (declare (type (simple-array (signed-byte 32) (*)) upiv))

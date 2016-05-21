@@ -31,7 +31,7 @@
 	 (declare (type ,sym ,A ,B ,C)
 		  (type ,(field-type sym) ,alpha ,beta)
 		  (type index-type ,lda ,ldb ,ldc ,m ,n ,k)
-		  (type char ,transa ,opa ,opb))
+		  (type character ,transa ,opa ,opb))
 	 (ffuncall ,(blas-func "gemm" ftype)
 		   (:& :char) ,opa (:& :char) ,opb
 		   (:& :int) ,m (:& :int) ,n (:& :int) ,k

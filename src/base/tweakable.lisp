@@ -49,10 +49,10 @@
   `(let ((*check-after-initializing?* nil))
      ,@body))
 
-(defparameter *default-rcond* 1d-15
+(defparameter *rcond-scale* 10
   "
-  The default value of condition number to be used for
-  determining the rank of a matrix (used in gelsy).
+  Factor by which the float-epsilon is to be scaled, so as to obtain a condition number threshold,
+  to be used for determining the rank of a matrix (used in gelsy).
 ")
 
 (defparameter *default-uplo* :l

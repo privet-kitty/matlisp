@@ -57,23 +57,20 @@
 ;;#i(a * b -> b * a, forall a in F, forall b in L(V, V))
 ;;#i(a * b \neq b * a, a, b are matrices)
 ;;#i(a + b -> b + a)
-(defun syl (A B C)
+(defun syl (A B C &optional (job :nnp))
   "
     Syntax
     ------
     (syl A B C)
     Computes the solution to the Sylvester equation:
-	    A X + X B = C
-    using Schur decomposition."
+	    op(A) X \pm X op(B) = C
+    using Schur decomposition.
+
+    The variable JOB can take on any of :{n, t/c}{n, t/c}{p, n}; the
+    first two alphabets maps to op A, op B; whilst the third one controls
+    the sign in the equation (oh dear! which year have we landed in.)."
   (letv* ((l.a t.a u.a (schur A) :type nil tensor tensor)
 	  (l.b t.b u.b (schur B) :type nil tensor tensor)
-	  ;;We can't use infix-dispatch-table just yet :(
 	  (ucu (gem 1 u.a (gem 1 c u.b nil nil :nn) nil nil :cn)))
-    (trsyl! t.a t.b ucu)
+    (trsyl! t.a t.b ucu job)
     (gem 1 u.a (gem 1 ucu u.b nil nil :nc) nil nil)))
-
-;; (letv* ((a (randn '(10 10)))
-;; 	(b (randn '(10 10)))
-;; 	(x (randn '(10 10)))
-;; 	(c (t+ (t* a x) (t* x b))))
-;;   (norm (t- (syl a b c) x)))

@@ -9,7 +9,7 @@
 	 (declare (type ,sym ,A ,B)
 		  (type ,(field-type sym) ,alpha)
 		  (type index-type ,lda ,ldb)
-		  (type char ,transa ,diaga ,uplo ,side))
+		  (type character ,transa ,diaga ,uplo ,side))
 	 (ffuncall ,(blas-func "trsm" ftype)
 		   (:& :char) ,side (:& :char) ,uplo (:& :char) ,transa (:& :char) ,diagA
 		   (:& :int) (dimensions ,B 0) (:& :int) (dimensions ,B 1)

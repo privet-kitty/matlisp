@@ -175,7 +175,7 @@ elements ~a:~a of WR and WI contain eigenvalues which have converged." info n)))
 ;;
 (definline geev-complexify-eigvec (eigval eigvec)
   (let* ((n (dimensions eigval 0))
-	 (evec (copy eigvec (complexified-tensor eigvec)))
+	 (evec (copy eigvec (complexified-tensor (class-of eigvec))))
 	 (tmp (zeros n (complexified-tensor (class-of eigvec))))
 	 (cviewa (slice~ evec 1 0)) (cviewb (slice~ evec 1 0))
 	 (cst (aref (strides evec) 1)))

@@ -205,6 +205,9 @@
   A)
 
 ;;Conversions----------------------------------------------------;;
+(defmethod copy! ((from permutation) (to (eql nil)))
+  (copy! from (class-name (class-of from))))
+
 (defmethod copy! ((from permutation) (to permutation))
   (if (typep to (type-of from))
       (copy! (store from) (store to))

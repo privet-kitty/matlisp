@@ -29,11 +29,10 @@
   (:documentation "
     Syntax
     ------
-    (schur A &optional JOB)
-    The function computes the schur decomposition of the square matrix A:
-    A = V * T * (V**H) .
-    The matrix V is {orthogonal/unitary}, the matrix T is {quasi-upper triangular/pper triangular}
-    for {real/complex} matrices respectively.")
+    (schur A &optional JOB) => λs, T &optional S
+
+    Computes the eigenvalues @arg{λs}, the upper (quasi-upper) triangular Schur form @arg{U}, and optionally an orthogonal (unitary) basis of Schur
+    vectors @arg{S} for the real (complex) square matrix A.")
   (:method :before ((A tensor) &optional (job :v))
      (assert (and (typep A 'tensor-square-matrix) (member job '(:v :n))) nil 'invalid-arguments :message "argument is not a square matrix."))
   (:generic-function-class tensor-method-generator))
@@ -51,15 +50,10 @@
 	  (if (< info 0)
 	      (error "GEES: Illegal value in the ~:r argument." (- info))
 	      (error "GEES: (~a) the QR algorithm failed to compute all the eigenvalues." info))))
-      (values-list (list*
-		    (make-instance ',(complexified-tensor (cl :x))
-				   :dimensions (coerce (list (dimensions A 0)) 'index-store-vector)
-				   :strides (coerce (list 1) 'index-store-vector)
-				   :head 0
-				   :store (t/geev-output-fix ,(cl :x) wr wi))
-		    tret
-		    (when vs (list vs))))))
-
-;; (letv* ((a (randn '(10 10)))
-;; 	(s u q (schur a :v)))
-;;   (norm (t- a (t* q  u (transpose q)))))
+      (values-n (if vs 3 2)
+		(make-instance ',(complexified-tensor (cl :x))
+			       :dimensions (coerce (list (dimensions A 0)) 'index-store-vector)
+			       :strides (coerce (list 1) 'index-store-vector)
+			       :head 0
+			       :store (t/geev-output-fix ,(cl :x) wr wi))
+		tret vs)))

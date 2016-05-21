@@ -13,12 +13,12 @@
 	 ((number tensor) (axpy 1 ,a ,b))
 	 ((tensor null) (copy ,a))))))
 
-(definline + (&rest objects &aux (ret 0))
-  (iter (for fst in objects) (setf ret (b+ ret fst)))
+(definline + (&rest objects &aux (ret (if objects (b+ (car objects)) 0)))
+  (iter (for fst in (cdr objects)) (setf ret (b+ ret fst)))
   ret)
 
 (define-compiler-macro + (&rest objects)
-  (rec reducer ((ret 0) (objs objects))
+  (rec reducer ((ret (if objects `(b+ ,(car objects)) 0)) (objs (cdr objects)))
        (if (not objs) ret
 	   (reducer `(b+ ,ret ,(car objs)) (cdr objs)))))
 
@@ -72,12 +72,12 @@
 	 ((number tensor) (scal ,a ,b))
 	 ((tensor null) (copy ,a))))))
 
-(definline .* (&rest objects &aux (ret 1))
+(definline .* (&rest objects &aux (ret (if objects (b.* (car objects)) 1)))
   (iter (for fst in objects) (setf ret (b.* ret fst)))
   ret)
 
 (define-compiler-macro .* (&rest objects)
-  (rec reducer ((ret 1) (objs objects))
+  (rec reducer ((ret (if objects `(b.* ,(car objects)) 1)) (objs objects))
        (if (not objs) ret
 	   (reducer `(b.* ,ret ,(car objs)) (cdr objs)))))
 ;;
@@ -105,12 +105,12 @@
 	      ((permutation permutation) (permutation* ,a ,b))
 	      ((permutation null) (copy ,a)))))))))
 
-(definline * (&rest objects &aux (ret 1))
-  (iter (for fst in objects) (setf ret (b* ret fst)))
+(definline * (&rest objects &aux (ret (if objects (b* (car objects)) 1)))
+  (iter (for fst in (cdr objects)) (setf ret (b* ret fst)))
   ret)
 
 (define-compiler-macro * (&rest objects)
-  (rec reducer ((ret 1) (objs objects))      
+  (rec reducer ((ret (if objects `(b* ,(car objects)) 1)) (objs (cdr objects)))
        (if (not objs) ret	  
 	   (trivia:match (car objs)
 	     ((list '/ a)
@@ -171,14 +171,14 @@
 	      ((permutation permutation) (permutation* ,a ,b))
 	      ((permutation null) (copy ,a)))))))))
 
-(definline @ (&rest objects &aux (ret 1))
-  (iter (for fst in objects) (setf ret (b@ ret fst)))
+(definline @ (&rest objects &aux (ret (if objects (b@ (car objects)) 1)))
+    (iter (for fst in (cdr objects)) (setf ret (b@ ret fst)))
   ret)
 
 (define-compiler-macro @ (&rest objects)
-  (rec reducer ((ret 1) (objs objects))
-    (if (not objs) ret
-	(reducer `(b@ ,ret ,(car objs)) (cdr objs)))))
+  (rec reducer ((ret (if objects `(b@ ,(car objects)) 1)) (objs (cdr objects)))
+       (if (not objs) ret
+	   (reducer `(b@ ,ret ,(car objs)) (cdr objs)))))
 
 (definline · (&rest objects) (apply #'@ objects))
 #+nil

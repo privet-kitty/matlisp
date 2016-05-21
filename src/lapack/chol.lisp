@@ -176,20 +176,15 @@
 (defun chol (a &optional (uplo *default-uplo*))
   (declare (type (and tensor-square-matrix blas-mixin) a))
   (let ((l (copy a)))
-    (restart-case (potrf! l uplo)
-      (increment-diagonal-and-retry (value)
-	(copy! a l) (axpy! value nil (diag~ l))
-	(potrf! l uplo)))
+    (labels ((call () (restart-case (potrf! l uplo)
+			(increment-diagonal-and-retry (value)
+			  (copy! a l) (axpy! value nil (diag~ l))
+			  (call)))))
+      (call))
     (tricopy! 0d0 l (ecase uplo (:u :lo) (:l :uo)))))
 ;;
 
 ;;
-;; (let* ((a #i(a := randn([10, 10]), a + a' + 20 * eye([10, 10])))
-;;        (x (randn '(10 5)))
-;;        (b #i(a * x)))
-;;   (norm (t- x (potrs! (chol a) b))))
-
-
 (deft/generic (t/lapack-ldl! #'subtypep) sym (A lda uplo ipiv &optional het?))
 (deft/method t/lapack-ldl! (sym blas-mixin) (A lda uplo ipiv &optional het?)
   (let* ((ftype (field-type sym)) (complex? (subtypep ftype 'cl:complex)))
@@ -206,7 +201,7 @@
 	     (:& :int :output) 0))))))
 
 (closer-mop:defgeneric ldl! (a &optional hermitian? uplo)
-  (:method :before ((a tensor) &optional hermitian? uplo)
+  (:method :before ((a tensor) &optional hermitian? (uplo *default-uplo*))
      (declare (ignore hermitian?))
      (assert (typep a 'tensor-square-matrix) nil 'tensor-dimension-mismatch :message "Expected square matrix.")
      (assert (inline-member uplo (:l :u)) nil 'invalid-arguments :given uplo :expected `(member uplo '(:l :u))))
@@ -236,7 +231,7 @@
 (defun ldl (a &optional (hermitian? t) (uplo *default-uplo*))
   (declare (type (and tensor-square-matrix blas-mixin) a))
   (letv* ((ret ipiv (ldl! (copy a) hermitian? uplo))
-	  (D (zeros (dimensions A))))
+	  (D (zeros (dimensions A) (class-of A))))
     (tricopy! (diag~ ret) D :d)
     (tricopy! 1 (tricopy! 0 ret (ecase uplo (:u :lo) (:l :uo))) :d)
     (iter (for σi in-vector ipiv with-index i)
@@ -245,6 +240,10 @@
 	      (:u (rotatef (ref D i (1+ i)) (ref ret i (1+ i))))
 	      (:l (rotatef (ref D i (1+ i)) (ref ret (1+ i) i))))
 	    (setf (ref D (1+ i) i) (ref D i (1+ i)))
+	    (when hermitian?
+	      (ecase uplo
+		(:u (setf (ref D (1+ i) i) (conjugate (ref D i (1+ i)))))
+		(:l (setf (ref D i (1+ i)) (conjugate (ref D (1+ i) i))))))
 	    (incf i)))
     (values (ldl-permute! ret ipiv uplo) D
 	    (let ((p (with-no-init-checks (make-instance 'permutation-pivot-flip :size (length ipiv) :store (pflip.f->l ipiv uplo)))))
