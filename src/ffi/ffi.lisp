@@ -10,13 +10,13 @@
     ('string :string)
     ;;int types
     ((list 'signed-byte 8) :char)
-    ((list 'unsigned-byte 8) :uchar)
+    ((list 'unsigned-byte 8) :unsigned-char)
     ((list 'signed-byte 16) :short)
-    ((list 'usigned-byte 16) :ushort)
+    ((list 'usigned-byte 16) :unsigned-short)
     ((list 'signed-byte 32) :int)
-    ((list 'unsigned-byte 32) :uint)
+    ((list 'unsigned-byte 32) :unsigned-int)
     ((list 'signed-byte 64) :long)
-    ((list 'unsigned-byte 64) :ulong)
+    ((list 'unsigned-byte 64) :unsigned-long)
     ('single-float :float)
     ('double-float :double)
     ;;
@@ -38,13 +38,13 @@
     (:char 'character)
     (:string 'string)
     (:char (list 'signed-byte 8))
-    (:uchar (list 'unsigned-byte 8))
+    (:unsigned-char (list 'unsigned-byte 8))
     (:short (list 'signed-byte 16))
-    (:ushort (list 'usigned-byte 16))
+    (:unsigned-short (list 'usigned-byte 16))
     (:int (list 'signed-byte 32))
-    (:uint (list 'unsigned-byte 32))
+    (:unsigned-int (list 'unsigned-byte 32))
     (:long (list 'signed-byte 64))
-    (:ulong (list 'unsigned-byte 64))
+    (:unsigned-long (list 'unsigned-byte 64))
     (:float 'single-float)
     (:double 'double-float)
     ;;Incompatibilities
@@ -53,12 +53,12 @@
     ((λlist :& ref-type &rest _)
      (ematch ref-type
        ((list :complex element-type) (values `(complex ,(mffi->lisp element-type)) `(:pointer (,element-type 2))))
-       ((or :char :uchar :short :ushort :int :uint :long :ulong :float :double) (values (mffi->lisp ref-type) `(:pointer ,ref-type)))))
+       ((or :char :unsigned-char :short :unsigned-short :int :unsigned-int :long :unsigned-long :float :double) (values (mffi->lisp ref-type) `(:pointer ,ref-type)))))
     ((λlist :* ptr-type &rest _)
      (ematch ptr-type
        ((list :complex element-type) (values `(simple-array ,(mffi->lisp element-type) (*)) `(:pointer (,element-type 2))))
-       ((or (and pointer-type (or :char :uchar :short :ushort :int :uint :long :ulong :float :double))
-	    (list (and pointer-type (or :char :uchar :short :ushort :int :uint :long :ulong :float :double)) (guard n (< 0 n))))
+       ((or (and pointer-type (or :char :unsigned-char :short :unsigned-short :int :unsigned-int :long :unsigned-long :float :double))
+	    (list (and pointer-type (or :char :unsigned-char :short :unsigned-short :int :unsigned-int :long :unsigned-long :float :double)) (guard n (< 0 n))))
 	(values `(simple-array ,(mffi->lisp pointer-type) (*)) `(:pointer ,@(if n `((,pointer-type ,n)) `(,pointer-type)))))))))
 ;;
 (defun parse-ffargs (args &optional append-string-length?)
@@ -68,7 +68,7 @@
 	       (:string (if append-string-length?
 			    (with-gensyms (s)
 			      (list  :argument s :let-bind `(,s ,expr :type ,(mffi->lisp type))
-				     :aux `(:uint (the (unsigned-byte 32) (length ,s)))))
+				     :aux `(:unsigned-int (the (unsigned-byte 32) (length ,s)))))
 			    (list :argument `(the ,(mffi->lisp type) ,expr))))
 	       ((type symbol) (list :argument `(the ,(mffi->lisp type) ,expr)))
 	       ((λlist :& sub-type &optional ((and output (or nil :output))) &aux (utype (second (nth-value 1 (mffi->lisp type)))) (var (gensym "var")) (c (gensym "expr")))
@@ -82,7 +82,7 @@
 					    (setf (cffi:mem-aref ,var ,utype 0) (cl:realpart ,c)
 						  (cffi:mem-aref ,var ,utype 1) (cl:imagpart ,c)))
 				   :output (when output `(complex (cffi:mem-aref ,var ,utype 0) (cffi:mem-aref ,var ,utype 1)))))))
-			 ((or :char :uchar :short :ushort :int :uint :long :ulong :float :double)
+			 ((or :char :unsigned-char :short :unsigned-short :int :unsigned-int :long :unsigned-long :float :double)
 			  (list :alloc `(,var ,utype :initial-element ,(recursive-append
 									(when (eq sub-type :char) `(char-code))
 									`(the ,(mffi->lisp type) ,expr)))
@@ -103,7 +103,7 @@
 			:let-bind `(,vec ,expr ,@(match expr ((list 'the type _) `(:type ,type))))))))))
     (loop :for (type expr) :on args :by #'cddr
        :collect (list* :cffi (match type
-			       ((or :string :char :uchar :short :ushort :int :uint :long :ulong :float :double) type)
+			       ((or :string :char :unsigned-char :short :unsigned-short :int :unsigned-int :long :unsigned-long :float :double) type)
 			       (_ :pointer))
 		       (argument-decl type expr)))))
 ;;

@@ -16,7 +16,7 @@
      (or (if-let (class (find element-type (closer-mop:class-direct-subclasses (find-class 'foreign-vector)) :key #'element-type))
 	   (class-name class))
 	 (let* ((cl-name (intern (format nil "<FOREIGN-VECTOR: ~a>"  element-type) (find-package "MATLISP-FFI"))))
-	   (assert (member (lisp->mffi element-type) '(:char :uchar :short :ushort :int :uint :long :ulong :float :double)) nil 'invalid-arguments)
+	   (assert (member (lisp->mffi element-type) '(:char :unsigned-char :short :unsigned-short :int :unsigned-int :long :unsigned-long :float :double)) nil 'invalid-arguments)
 	   (compile-and-eval
 	    `(progn
 	       (closer-mop:defclass ,cl-name (foreign-vector) ()
