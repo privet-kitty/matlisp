@@ -37,11 +37,11 @@
 	 ,(recursive-append
 	   (when ncp? `(with-field-element ,sym (,sto-x ,x)))
 	   `(ffuncall ,(blas-func "copy" ftype)
-	      (:& :int) (the index-type (total-size ,y))
-	      (:* ,(lisp->mffi ftype) ,@(unless ncp? `(:+ (head ,x)))) ,(if ncp? sto-x `(t/store ,sym ,x))
-	      (:& :int) (the index-type ,(if ncp? 0 st-x))
-	      (:* ,(lisp->mffi ftype) :+ (head ,y)) (t/store ,sym ,y)
-	      (:& :int) (the index-type ,st-y)))
+		      (:& :int) (the index-type (total-size ,y))
+		      (:* ,(lisp->mffi ftype) ,@(unless ncp? `(:+ (head ,x)))) ,(if ncp? sto-x `(t/store ,sym ,x))
+		      (:& :int) (the index-type ,(if ncp? 0 st-x))
+		      (:* ,(lisp->mffi ftype) :+ (head ,y)) (t/store ,sym ,y)
+		      (:& :int) (the index-type ,st-y)))
 	 ,y))))
 
 ;;

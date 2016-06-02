@@ -87,8 +87,8 @@
 (deft/method t/total-size (sym foreign-dense-tensor) (ele)
   `(lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (* x y))) (the index-store-vector (dimensions ,ele))))
 ;;
-(definline foreign-dense-tensor-wrap (sap dimensions &optional (type 'double-float)
-					  &aux (dimensions (copy-seq (coerce dimensions 'index-store-vector))))
+(definline make-foreign-dense-tensor (dimensions sap &optional (type 'double-float)
+						 &aux (dimensions (copy-seq (coerce (ensure-list dimensions) 'index-store-vector))))
   (letv* ((str nz (make-stride dimensions)))
     (make-instance (tensor type 'foreign-dense-tensor)
 		   :dimensions dimensions :strides str :head 0

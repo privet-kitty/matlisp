@@ -4,6 +4,8 @@
 (deft/generic (t/store-type #'subtypep) sym (&optional size))
 (eval-every
   (defun store-type (cl &optional (size '*)) (macroexpand-1 `(t/store-type ,cl ,size)))
+  (defun store-element-type (x &aux (ftype (field-type x)))
+    (or (m::real-subtypep ftype) ftype))
   (defun linear-storep (cl)
     (match (store-type cl)
       ((or (list 'simple-array _ (list '*))

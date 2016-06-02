@@ -60,6 +60,23 @@
 (defmethod make-load-form ((obj group-specializer) &optional env)
   #+nil(make-load-form-saving-slots obj :environment env)
   (values `(group-specializer ',(class-name (slot-value obj 'object-class)) ',(slot-value obj 'group-name)) nil))
+;;Subtype
+(closer-mop:defclass subtype-specializer (closer-mop:specializer)
+  ((specializer-type :initform nil :initarg :specializer-type)
+   (direct-methods :initform nil :reader closer-mop:specializer-direct-methods))
+  (:documentation "Applicable only if for each group-specializer with distinct @argument{group-name}, the classes of the respective argument are the same."))
+(defmethod print-object ((obj subtype-specializer) stream)
+  (print-unreadable-object (obj stream :type t)
+    (format stream ", ~a" (slot-value obj 'specializer-type))))
+
+(defmethod closer-mop:add-direct-method ((specializer subtype-specializer) method)
+  (pushnew method (slot-value specializer 'direct-methods)))
+(defmethod closer-mop:remove-direct-method ((specializer subtype-specializer) method)
+  (setf (slot-value specializer 'direct-methods)
+	(remove method (slot-value specializer 'direct-methods))))
+(defmethod make-load-form ((obj subtype-specializer) &optional env)
+  #+nil(make-load-form-saving-slots obj :environment env)
+  (values `(subtype-specializer ',(slot-value obj 'specializer-type)) nil))
 ;;
 (defparameter *specializer-table* (make-hash-table :test 'equal))
 (with-memoization (*specializer-table*)
@@ -68,7 +85,10 @@
      (make-instance 'classp-specializer :object-class (find-class class-name))))
   (memoizing
    (defun group-specializer (class-name group-name)
-     (make-instance 'group-specializer :object-class (find-class class-name) :group-name (the keyword group-name)))))
+     (make-instance 'group-specializer :object-class (find-class class-name) :group-name (the keyword group-name))))
+  (memoizing
+   (defun subtype-specializer (specializer-type)
+     (make-instance 'subtype-specializer :specializer-type specializer-type))))
 
 ;;
 (defmethod closer-mop:compute-applicable-methods-using-classes ((gf tensor-method-generator) required-classes)
@@ -82,6 +102,8 @@
 		 (class (subtypep c s))
 		 (closer-mop:eql-specializer (and (eql c (class-of (closer-mop:eql-specializer-object s)))
 						  (not (setf class-info-enoughp nil))))
+		 (subtype-specializer (and (or (eql c (find-class 'symbol)) (eql c (find-class 'list)))
+					   (not (setf class-info-enoughp nil))))
 		 (group-specializer
 		  (let ((key-name (slot-value s 'group-name)))
 		    (if-let (key (assoc key-name group-keys))
@@ -103,6 +125,7 @@
 	       (etypecase s
 		 (class (typep a s))
 		 (closer-mop:eql-specializer (and (eql a (closer-mop:eql-specializer-object s))))
+		 (subtype-specializer (subtypep a (slot-value s 'specializer-type)))
 		 (group-specializer
 		  (let ((key-name (slot-value s 'group-name)))
 		    (if-let (key (assoc key-name group-keys))
@@ -121,7 +144,8 @@
 			   (cart-typecase (spec1 spec2)
 			     ((classp-specializer classp-specializer) (eq (slot-value spec1 'object-class) (slot-value spec1 'object-class)))
 			     ((group-specializer group-specializer) (and (eq (slot-value spec1 'object-class) (slot-value spec1 'object-class))
-									 (eq (slot-value spec1 'group-name) (slot-value spec1 'group-name))))))
+									 (eq (slot-value spec1 'group-name) (slot-value spec1 'group-name))))
+			     ((subtype-specializer subtype-specializer) (and (eq (slot-value spec1 'specializer-type) (slot-value spec2 'specializer-type))))))
 		 (return-from method-more-specific-p (sub-specializer-p spec1 spec2 arg-class))))
        (closer-mop:method-specializers method1)
        (closer-mop:method-specializers method2)
@@ -143,6 +167,8 @@
 	 (sub-specializer-p (slot-value spec1 'object-class) (slot-value spec2 'object-class) arg-class)))
     ((group-specializer classp-specializer)
      (sub-specializer-p (slot-value spec1 'object-class) (slot-value spec2 'object-class) arg-class))
+    ((subtype-specializer (or group-specializer classp-specializer class)) t)
+    ((subtype-specializer subtype-specializer) (subtypep (slot-value spec1 'specializer-type) (slot-value spec2 'specializer-type)))
     ((closer-mop:eql-specializer t) t)))
 
 (defparameter *template-generated-methods* (make-hash-table :test 'equal))
