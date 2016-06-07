@@ -39,7 +39,7 @@
   ((store :reader store :initarg :store)
    (permutation-size :reader permutation-size :initarg :size :type index-type)))
 
-(defmethod print-object ((per permutation) stream)
+(closer-mop:defmethod print-object ((per permutation) stream)
   (print-unreadable-object (per stream :type t)
     (format stream "S_~a~%" (permutation-size per))
     (if (<= (permutation-size per) 1)
@@ -51,7 +51,7 @@
 (defclass permutation-action (permutation-index-stored)
   ((store :type index-store-vector)))
 
-(defmethod initialize-instance :after ((perm permutation-action) &rest initargs)
+(closer-mop:defmethod initialize-instance :after ((perm permutation-action) &rest initargs)
   (declare (ignore initargs))
   (when *check-after-initializing?*
     (let-typed ((repr (store perm) :type index-store-vector))
@@ -65,7 +65,7 @@
 (defclass permutation-cycle (permutation)
   ((store :type list)))
 
-(defmethod initialize-instance :after ((per permutation-cycle) &rest initargs)
+(closer-mop:defmethod initialize-instance :after ((per permutation-cycle) &rest initargs)
   (declare (ignore initargs))
   (when *check-after-initializing?*
     (if (null (store per))
@@ -85,7 +85,7 @@
 (defclass permutation-pivot-flip (permutation-index-stored)
   ((store :type index-store-vector)))
 
-(defmethod initialize-instance :after ((per permutation-pivot-flip) &rest initargs)
+(closer-mop:defmethod initialize-instance :after ((per permutation-pivot-flip) &rest initargs)
   (declare (ignore initargs))
   (when *check-after-initializing?*
     (let*-typed ((repr (store per) :type index-store-vector)
@@ -125,7 +125,7 @@
        :do (setf (aref seq i) (aref cseq (aref perm i)))
        :finally (return seq))))
 
-(defmethod permute! ((seq cons) (perm permutation-action) &optional arg)
+(closer-mop:defmethod permute! ((seq cons) (perm permutation-action) &optional arg)
   (declare (ignore arg))
   (let* ((size (permutation-size perm))
 	 (cseq (vectorify seq size))
@@ -135,11 +135,11 @@
        :do (setf (car lst) (aref cseq (aref act i)))
        :finally (return seq))))
 
-(defmethod permute! ((seq vector) (perm permutation-action) &optional arg)
+(closer-mop:defmethod permute! ((seq vector) (perm permutation-action) &optional arg)
   (declare (ignore arg))
   (apply-action! seq (the index-store-vector (store perm))))
 
-(defmethod permute! ((ten tensor) (perm permutation-action) &optional (arg 0))
+(closer-mop:defmethod permute! ((ten tensor) (perm permutation-action) &optional (arg 0))
   (permute! ten (copy perm 'permutation-pivot-flip) arg))
 
 ;;Cycle
@@ -153,7 +153,7 @@
 		(setf (aref seq (aref pcyc 0)) xl)
 		(return seq))))
 
-(defmethod permute! ((seq cons) (perm permutation-cycle) &optional arg)
+(closer-mop:defmethod permute! ((seq cons) (perm permutation-cycle) &optional arg)
   (declare (ignore arg))
   (unless (= (permutation-size perm) 1)
     (let* ((size (permutation-size perm))
@@ -163,14 +163,14 @@
       (copy-n cseq seq size)))
   seq)
 
-(defmethod permute! ((seq vector) (perm permutation-cycle) &optional arg)
+(closer-mop:defmethod permute! ((seq vector) (perm permutation-cycle) &optional arg)
   (declare (ignore arg))
   (unless (= (permutation-size perm) 1)
     (loop :for cyc :of-type index-store-vector :in (store perm)
        :do (apply-cycle! seq cyc)))
   seq)
 
-(defmethod permute! ((A tensor) (perm permutation-cycle) &optional (arg 0))
+(closer-mop:defmethod permute! ((A tensor) (perm permutation-cycle) &optional (arg 0))
   (permute! A (copy perm 'permutation-pivot-flip) arg))
 
 ;Pivot idx
@@ -182,11 +182,11 @@
      :do (rotatef (aref seq i) (aref seq (aref pflip i)))
      :finally (return seq)))
 
-(defmethod permute! ((seq vector) (perm permutation-pivot-flip) &optional arg)
+(closer-mop:defmethod permute! ((seq vector) (perm permutation-pivot-flip) &optional arg)
   (declare (ignore arg))
   (apply-flips! seq (store perm)))
 
-(defmethod permute! ((seq cons) (perm permutation-pivot-flip) &optional arg)
+(closer-mop:defmethod permute! ((seq cons) (perm permutation-pivot-flip) &optional arg)
   (declare (ignore arg))
   (let* ((size (permutation-size perm))
 	 (cseq (vectorify seq size)))
@@ -194,7 +194,7 @@
     (copy-n cseq seq size))
   seq)
 
-(defmethod permute! ((A tensor) (perm permutation-pivot-flip) &optional (arg 0))
+(closer-mop:defmethod permute! ((A tensor) (perm permutation-pivot-flip) &optional (arg 0))
   (let-typed ((t1 (slice~ A arg)) (t2 (slice~ A arg))
 	      (idiv (store perm) :type index-store-vector))
     (iter (for σi in-vector idiv with-index i)
@@ -205,15 +205,15 @@
   A)
 
 ;;Conversions----------------------------------------------------;;
-(defmethod copy! ((from permutation) (to (eql nil)))
+(closer-mop:defmethod copy! ((from permutation) (to (eql nil)))
   (copy! from (class-name (class-of from))))
 
-(defmethod copy! ((from permutation) (to permutation))
+(closer-mop:defmethod copy! ((from permutation) (to permutation))
   (if (typep to (type-of from))
       (copy! (store from) (store to))
       (copy! (store (copy from (type-of to))) (store to))))
 
-(defmethod copy! ((act permutation-action) (type (eql 'permutation-cycle)))
+(closer-mop:defmethod copy! ((act permutation-action) (type (eql 'permutation-cycle)))
   (let-typed ((arr (store act) :type index-store-vector)
 	      (midx 0 :type index-type))
     (labels ((find-cycle (x0)
@@ -244,7 +244,7 @@
 			(nconc ignore (if (= clen 0) (list x0) clst))))))))
       (with-no-init-checks (make-instance 'permutation-cycle :store (cycle-walk nil nil) :size (1+ midx))))))
 
-(defmethod copy! ((act permutation-action) (type (eql 'permutation-pivot-flip)))
+(closer-mop:defmethod copy! ((act permutation-action) (type (eql 'permutation-pivot-flip)))
   (let*-typed ((size (permutation-size act) :type index-type)
 	       (actr (store act) :type index-store-vector)
 	       (ret (idxn size) :type index-store-vector)
@@ -258,11 +258,11 @@
 		      (aref for flip) (aref for i)))))
      (with-no-init-checks (make-instance 'permutation-pivot-flip :store ret :size size))))
 
-(defmethod copy! ((act permutation-action) (type (eql 'permutation-action)))
+(closer-mop:defmethod copy! ((act permutation-action) (type (eql 'permutation-action)))
   (with-no-init-checks
       (make-instance 'permutation-action :store (copy-seq (store act)) :size (permutation-size act))))
 ;;
-(defmethod copy! ((cyc permutation-cycle) (type (eql 'permutation-action)))
+(closer-mop:defmethod copy! ((cyc permutation-cycle) (type (eql 'permutation-action)))
   (let-typed ((act-repr (idxn (permutation-size cyc)) :type index-store-vector)
 	      (cycs (store cyc)))
     (very-quickly
@@ -270,22 +270,22 @@
 	 :do (apply-cycle! act-repr cyc)))
     (with-no-init-checks (make-instance 'permutation-action :store act-repr :size (length act-repr)))))
 
-(defmethod copy! ((cyc permutation-cycle) (type (eql 'permutation-pivot-flip)))
+(closer-mop:defmethod copy! ((cyc permutation-cycle) (type (eql 'permutation-pivot-flip)))
   (copy (copy cyc 'permutation-action) 'permutation-pivot-flip))
 
-(defmethod copy! ((cyc permutation-cycle) (type (eql 'permutation-cycle)))
+(closer-mop:defmethod copy! ((cyc permutation-cycle) (type (eql 'permutation-cycle)))
   (with-no-init-checks (make-instance 'permutation-cycle :store (mapcar #'copy-seq (store cyc)) :size (permutation-size cyc))))
 ;;
-(defmethod copy! ((pflip permutation-pivot-flip) (type (eql 'permutation-action)))
+(closer-mop:defmethod copy! ((pflip permutation-pivot-flip) (type (eql 'permutation-action)))
   (let*-typed ((idiv (store pflip) :type index-store-vector)
 	       (len (permutation-size pflip) :type index-type)
 	       (ret (idxn len) :type index-store-vector))
     (with-no-init-checks (make-instance 'permutation-action :store (very-quickly (apply-flips! ret idiv)) :size len))))
 
-(defmethod copy! ((pflip permutation-pivot-flip) (type (eql 'permutation-cycle)))
+(closer-mop:defmethod copy! ((pflip permutation-pivot-flip) (type (eql 'permutation-cycle)))
   (copy (copy pflip 'permutation-action) 'permutation-cycle))
 
-(defmethod copy! ((pflip permutation-pivot-flip) (type (eql 'permutation-pivot-flip)))
+(closer-mop:defmethod copy! ((pflip permutation-pivot-flip) (type (eql 'permutation-pivot-flip)))
   (with-no-init-checks (make-instance 'permutation-pivot-flip :store (copy-seq (store pflip)) :size (permutation-size pflip))))
 ;;
 (defun permutation/ (a)

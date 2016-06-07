@@ -49,7 +49,7 @@
 	    (finish)))))))
 
 ;;
-(defmethod for-mod-iterator ((clause-name (eql :stride)) init dims strides)
+(closer-mop:defmethod for-mod-iterator ((clause-name (eql :stride)) init dims strides)
   (binding-gensyms (gm gf)
     (list `(,@(mapcan #'(lambda (x)
 			  `((with ,(gf (first x)) = ,(second x))
@@ -68,7 +68,7 @@
 		   ,@(mapcar #'(lambda (x) `(decf ,(first x) (the index-type (* (aref ,(gf (first x)) ,(gm count)) (- (aref ,(gm idx) ,(gm count)) (aref ,(gm init) ,(gm count))))))) strides)))))
 
 ;;
-(defmethod for-mod-iterator ((clause-name (eql :general)) init dims body)
+(closer-mop:defmethod for-mod-iterator ((clause-name (eql :general)) init dims body)
   body)
 ;;
 (defmacro offset-ref (decl &rest body)

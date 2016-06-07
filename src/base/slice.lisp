@@ -92,7 +92,7 @@
 		(collect (* inc s) into stds))))
 	(finally (return (values hd dims stds)))))
 ;;
-(defmethod subtensor~ ((tensor dense-tensor) (subscripts list))
+(closer-mop:defmethod subtensor~ ((tensor dense-tensor) (subscripts list))
   (letv* ((hd dims stds (parse-slice-for-strides subscripts (dimensions tensor) (strides tensor))))
     (cond
       ((not hd) nil)
@@ -113,7 +113,7 @@
 			    :store (slot-value tensor 'store)
 			    :parent tensor))))))
 
-(defmethod (setf subtensor~) (value (tensor dense-tensor) (subscripts list))
+(closer-mop:defmethod (setf subtensor~) (value (tensor dense-tensor) (subscripts list))
   (letv* ((hd dims stds (parse-slice-for-strides subscripts (dimensions tensor) (strides tensor))))
     (cond
       ((not hd) nil #+nil(error "no place found inside ~a." subscripts))
@@ -134,7 +134,7 @@
      (declare (type index-type start))
      (assert (<= 0 start (- ord (order tensor))) nil 'invalid-arguments)))
 
-(defmethod suptensor~ ((ten dense-tensor) ord &optional (start 0))
+(closer-mop:defmethod suptensor~ ((ten dense-tensor) ord &optional (start 0))
   (declare (type index-type ord start))
   (if (= (order ten) ord) ten
       (with-no-init-checks
@@ -166,7 +166,7 @@
 (definline matrixify~ (vec &optional (col-vector? t))
   (if (tensor-matrixp vec) vec (suptensor~ vec 2 (if col-vector? 0 1))))
 
-(defmethod reshape! ((ten dense-tensor) (dims cons))
+(closer-mop:defmethod reshape! ((ten dense-tensor) (dims cons))
   (let ((idim (coerce dims 'index-store-vector)))
     (setf (slot-value ten 'dimensions) idim
 	  (slot-value ten 'strides) (let ((strd (make-stride idim)))
@@ -223,7 +223,7 @@
 	     :do (unless (= (aref dims-y i) (length (aref stable i))) (return nil))
 	     :finally (return t)) nil 'tensor-dimension-mismatch))
 
-(defmethod for-mod-iterator ((clause-name (eql :minor)) init dims minors)
+(closer-mop:defmethod for-mod-iterator ((clause-name (eql :minor)) init dims minors)
   (binding-gensyms (gm gf)
     (list `(,@(mapcan #'(lambda (x) `((with ,(first x) = (or ,(third x) 0))
 				      (with ,(gf (first x)) = ,(second x))))

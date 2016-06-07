@@ -138,7 +138,7 @@
 	      nil 'tensor-dimension-mismatch)))
   (:generic-function-class tensor-method-generator))
 
-(defmethod gem! (alpha A (B dense-tensor) beta (C dense-tensor) &optional (job :n))
+(closer-mop:defmethod gem! (alpha A (B dense-tensor) beta (C dense-tensor) &optional (job :n))
   (axpy! (* alpha A) B (scal! beta C)))
 
 (define-tensor-method gem! (alpha (A dense-tensor :x) (B dense-tensor :x) beta (C dense-tensor :x t) &optional (job :n))
@@ -191,10 +191,10 @@
      C                 Hermitian conjugate
 "))
 
-(defmethod gem (alpha (A dense-tensor) (B dense-tensor) beta (C dense-tensor) &optional (job :n))
+(closer-mop:defmethod gem (alpha (A dense-tensor) (B dense-tensor) beta (C dense-tensor) &optional (job :n))
   (gem! alpha A B beta (copy C) job))
 
-(defmethod gem (alpha (A dense-tensor) (B dense-tensor) (beta (eql nil)) (C (eql nil)) &optional (job :n))
+(closer-mop:defmethod gem (alpha (A dense-tensor) (B dense-tensor) (beta (eql nil)) (C (eql nil)) &optional (job :n))
   (gem! alpha A B 0
 	(letv* (((joba &optional (jobb #\N)) (split-job job)))	  
 	  (zeros (list* (dimensions A (ecase joba (#\N 0) ((#\C #\T) 1)))

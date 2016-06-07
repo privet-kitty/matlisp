@@ -17,7 +17,7 @@
     (index-type (the index-type (aref (the index-store-vector (slot-value x 'dimensions)) (modproj (or idx 0) (order x) nil 0))))
     (t (lvec->list (the index-store-vector (slot-value x 'dimensions))))))
 ;;Can this be moved out into MOP ?
-(defmethod initialize-instance :after ((x base-accessor) &rest initargs)
+(closer-mop:defmethod initialize-instance :after ((x base-accessor) &rest initargs)
   (declare (ignore initargs))
   (when *check-after-initializing?*
     (very-quickly
@@ -52,7 +52,7 @@
 (closer-mop:defclass tensor-class (standard-class)
   ((field-type :reader field-type)))
 (closer-mop:defmethod closer-mop:validate-superclass ((class tensor-class) (superclass standard-class))  t)
-(defmethod field-type ((class symbol)) (field-type (find-class class)))
+(closer-mop:defmethod field-type ((class symbol)) (field-type (find-class class)))
 
 (closer-mop:defclass tensor (base-tensor base-accessor)
   ((store :initarg :store :reader store :documentation "Storage for the tensor.")
@@ -60,7 +60,7 @@
   (:metaclass tensor-class)
   (:documentation "Object which directly holds the values of its components (or part thereof)."))
 ;;This is probably unnecessary now that the reader does not compile at read time.
-(defmethod make-load-form ((tensor base-tensor) &optional env)
+(closer-mop:defmethod make-load-form ((tensor base-tensor) &optional env)
   (make-load-form-saving-slots tensor :environment env))
 (declaim (ftype (function (tensor) hash-table) memos))
 (definline memos (x)
@@ -162,7 +162,7 @@
 	   (class-name class))
 	 (tensor-generator field tensor)))))
 
-(defmethod tensor-generator (field (tensor (eql 'simple-dense-tensor)))
+(closer-mop:defmethod tensor-generator (field (tensor (eql 'simple-dense-tensor)))
   (let* ((super-classes (remove nil (list (if (member field '(single-float double-float (complex single-float) (complex double-float)) :test #'equal) 'blas-mixin) tensor #+nil (case order (1 'vector-mixin) (2 'matrix-mixin)))))
 	 (cl-name (intern (format nil "<~{~a~^ ~}: ~a>" super-classes field) (find-package "MATLISP"))))
     (compile-and-eval
@@ -171,7 +171,7 @@
 	(setf (slot-value (find-class ',cl-name) 'field-type) ',field)))
     cl-name))
 
-(defmethod tensor-generator (field (tensor symbol))
+(closer-mop:defmethod tensor-generator (field (tensor symbol))
   (assert (member tensor '(simple-graph-tensor hash-tensor simple-coordinate-tensor)) nil 'invalid-arguments)
   (let* ((super-classes (list tensor #+nil (case order (1 'vector-mixin) (2 'matrix-mixin))))
 	 (cl-name (intern (format nil "<~{~a~^ ~}: ~a>" super-classes field) (find-package "MATLISP"))))
@@ -188,7 +188,7 @@
 
 (with-memoization ()
   (memoizing
-   (defmethod complexified-tensor ((class tensor-class))
+   (closer-mop:defmethod complexified-tensor ((class tensor-class))
      (cond
        ((subtypep (field-type class) 'cl:complex) class)
        ((subtypep (field-type class) 'cl:real)
@@ -203,7 +203,7 @@
 			(:metaclass tensor-class))
 		    (setf (slot-value (find-class ',cl-name) 'field-type) ',field)))))))
        (t (error "Unknown complex tensor for ~a" class))))))
-(defmethod complexified-tensor :around ((class tensor-class))
+(closer-mop:defmethod complexified-tensor :around ((class tensor-class))
   (class-name (call-next-method)))
 ;;Now we're just making up names
 (defgeneric realified-tensor (class)
@@ -213,7 +213,7 @@
     (class-name (call-next-method))))
 (with-memoization ()
   (memoizing
-   (defmethod realified-tensor ((class tensor-class))
+   (closer-mop:defmethod realified-tensor ((class tensor-class))
      (cond
        ((subtypep (field-type class) 'cl:real) class)
        ((match (field-type class)

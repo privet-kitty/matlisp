@@ -34,12 +34,12 @@
     (using-gensyms (decl (A lda ipiv))
       `(let* (,@decl)
 	 (declare (type ,sym ,A)
-		  (type (simple-array ,(ffi:mffi->lisp :int) (*)) ,ipiv)
+		  (type (simple-array ,(matlisp-ffi:mffi->lisp :int) (*)) ,ipiv)
 		  (type index-type ,lda))
 	 (ffuncall ,(blas-func "getrf" ftype)
 		   (:& :int) (dimensions ,A 0) (:& :int) (dimensions ,A 1)
 		   (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
-		   (:* :int) (the (simple-array ,(ffi:mffi->lisp :int) (*)) ,ipiv) (:& :int :output) 0)))))
+		   (:* :int) (the (simple-array ,(matlisp-ffi:mffi->lisp :int) (*)) ,ipiv) (:& :int :output) 0)))))
 
 ;;
 (closer-mop:defgeneric getrf! (A)
@@ -77,8 +77,8 @@
   (:generic-function-class tensor-method-generator))
 
 (define-tensor-method getrf! ((A blas-mixin :x))
-  `(let ((upiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type ',(ffi:mffi->lisp :int))))
-     (declare (type (simple-array ,(ffi:mffi->lisp :int) (*)) upiv))
+  `(let ((upiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type ',(matlisp-ffi:mffi->lisp :int))))
+     (declare (type (simple-array ,(matlisp-ffi:mffi->lisp :int) (*)) upiv))
      (with-columnification (() (A))
        (let ((info (t/lapack-getrf! ,(cl :x) A (or (blas-matrix-compatiblep A #\N) 0) upiv)))
 	 (unless (= info 0)
@@ -95,14 +95,14 @@
     (using-gensyms (decl (A lda B ldb ipiv transp))
       `(let* (,@decl)
 	 (declare (type ,sym ,A ,B)
-		  (type (simple-array ,(ffi:mffi->lisp :int) (*)) ,ipiv)
+		  (type (simple-array ,(matlisp-ffi:mffi->lisp :int) (*)) ,ipiv)
 		  (type index-type ,lda ,ldb)
 		  (type character ,transp))
 	 (ffuncall ,(blas-func "getrs" ftype)
 	   (:& :char) ,transp
 	   (:& :int) (dimensions ,A 0) (:& :int) (dimensions ,B 1)
 	   (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
-	   (:* :int) (the (simple-array ,(ffi:mffi->lisp :int) (*)) ,ipiv)
+	   (:* :int) (the (simple-array ,(matlisp-ffi:mffi->lisp :int) (*)) ,ipiv)
 	   (:* ,(lisp->mffi ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :int) ,ldb
 	   (:& :int :output) 0)))))
 
@@ -164,13 +164,13 @@
     (using-gensyms (decl (A lda ipiv) (lwork xxx))
       `(let* (,@decl)
 	 (declare (type ,sym ,A)
-		  (type (simple-array ,(ffi:mffi->lisp :int) (*)) ,ipiv)
+		  (type (simple-array ,(matlisp-ffi:mffi->lisp :int) (*)) ,ipiv)
 		  (type index-type ,lda))
 	 (with-lapack-query ,sym (,xxx ,lwork)
 	   (ffuncall ,(blas-func "getri" ftype)
 	     (:& :int) (dimensions ,A 0)
 	     (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
-	     (:* :int) (the (simple-array ,(ffi:mffi->lisp :int) (*)) ,ipiv)
+	     (:* :int) (the (simple-array ,(matlisp-ffi:mffi->lisp :int) (*)) ,ipiv)
 	     (:* ,(lisp->mffi ftype)) ,xxx (:& :int) ,lwork
 	     (:& :int :output) 0))))))
 

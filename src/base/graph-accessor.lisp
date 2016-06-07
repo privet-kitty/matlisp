@@ -109,5 +109,5 @@
       (aref (δ-i x) (the index-type idx)) r
       (t/store-ref ,(cl :x) (t/store ,(cl :x) x) (the index-type idx)) (t/coerce ,(field-type (cl :x)) value))))
 
-(defmethod store-size ((obj graph-accessor)) (length (slot-value obj 'neighbours)))
+(closer-mop:defmethod store-size ((obj graph-accessor)) (length (slot-value obj 'neighbours)))
 ;;

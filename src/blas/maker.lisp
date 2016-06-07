@@ -86,7 +86,7 @@
   (:method ((dims list) (dtype t) &optional initarg)
     ;;(assert (tensor-leafp dtype) nil 'tensor-abstract-class :tensor-class dtype)
     (compile-and-eval
-     `(defmethod zeros-generic ((dims list) (dtype (eql ',dtype)) &optional initarg)
+     `(closer-mop:defmethod zeros-generic ((dims list) (dtype (eql ',dtype)) &optional initarg)
 	(t/zeros ,dtype dims initarg)))
     (zeros-generic dims dtype initarg)))
 

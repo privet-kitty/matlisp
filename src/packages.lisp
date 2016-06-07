@@ -122,7 +122,7 @@
   (:export #:test-infix #:string->prefix))
 
 (defpackage "MATLISP-FFI"
-  (:nicknames :ffi)
+  #+nil(:nicknames :ffi)
   (:use #:common-lisp #:cffi #:iterate #:trivia #:matlisp-utilities #:matlisp-conditions)
   ;; TODO: Check if this is implementation-agnostic.
   ;; #+:cmu (:use :common-lisp :c-call :cffi :utilities)

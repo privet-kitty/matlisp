@@ -3,7 +3,7 @@
 (closer-mop:defclass foreign-vector-class (standard-class)
   ((element-type :reader element-type)))
 (closer-mop:defmethod closer-mop:validate-superclass ((class foreign-vector-class) (superclass standard-class))  t)
-(defmethod element-type ((cl symbol)) (element-type (find-class cl)))
+(closer-mop:defmethod element-type ((cl symbol)) (element-type (find-class cl)))
 ;;
 (closer-mop:defclass foreign-vector ()
   ((ptr :initarg :ptr :initform (cffi:null-pointer))

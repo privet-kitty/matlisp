@@ -303,7 +303,7 @@
   )
 
 ;;
-(defmethod copy! :before ((x tensor) (y tensor))
+(closer-mop:defmethod copy! :before ((x tensor) (y tensor))
   (assert (and (very-quickly (lvec-eq (dimensions x) (dimensions y) '=))) nil 'tensor-dimension-mismatch)
   (assert (<= (total-size x) (store-size y)) nil 'tensor-insufficient-store))
 
@@ -322,7 +322,7 @@
      y))
 
 #+nil
-(defmethod copy! :before ((a base-tensor) (b compressed-sparse-matrix))
+(closer-mop:defmethod copy! :before ((a base-tensor) (b compressed-sparse-matrix))
   (assert (<= (store-size a) (store-size b)) nil 'tensor-insufficient-store))
 
 (define-tensor-method copy! ((x tensor :x) (y tensor :y t))
@@ -348,7 +348,7 @@
      y))
 
 ;;Generic function defined in src;base;generic-copy.lisp
-(defmethod copy! ((tensor dense-tensor) (type symbol))
+(closer-mop:defmethod copy! ((tensor dense-tensor) (type symbol))
   (cond
     ((eql type 'array) (copy! tensor (make-array (lvec->list (dimensions tensor)))))
     ((member type '(list cons))
@@ -362,10 +362,10 @@
      (copy! tensor (zeros (dimensions tensor) (or type (type-of tensor)))))
     (t (error "don't know how to copy ~a into ~a." (class-name (class-of tensor)) type))))
 
-(defmethod copy! ((from foreign-dense-tensor) (to (eql nil)))
+(closer-mop:defmethod copy! ((from foreign-dense-tensor) (to (eql nil)))
   (copy! from (tensor (field-type (class-of from)) 'simple-dense-tensor)))
 
-(defmethod copy! ((tensor tensor) (type symbol))
+(closer-mop:defmethod copy! ((tensor tensor) (type symbol))
   (cond
     ((or (null type) (subtypep type 'tensor))
      (let ((type (or type (type-of tensor))))
@@ -373,7 +373,7 @@
     (t (error "don't know how to copy ~a into ~a." (class-name (class-of tensor)) type))))
 
 #+nil
-(defmethod copy-generic ((tensor sparse-tensor) type)
+(closer-mop:defmethod copy-generic ((tensor sparse-tensor) type)
   (cond
     ((or (not type) (subtypep type 'sparse-tensor))
      (let ((ret (zeros (dimensions tensor) (or type (class-of tensor)) (store-size tensor))))
@@ -446,7 +446,7 @@
 	   (rotatef ,ref-x ,ref-y))
 	 ,y))))
 ;;---------------------------------------------------------------;;
-(defmethod swap! :before ((x dense-tensor) (y dense-tensor))
+(closer-mop:defmethod swap! :before ((x dense-tensor) (y dense-tensor))
   (assert (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)) nil
 	  'tensor-dimension-mismatch))
 

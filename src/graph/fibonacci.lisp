@@ -17,7 +17,7 @@
        (rotatef (second (first a)) (second (first b)))
        a)))
 
-(defmethod print-object ((nd hnode) stream)
+(closer-mop:defmethod print-object ((nd hnode) stream)
   (print-unreadable-object (nd stream :type t)
     (format stream "key: ~A, degree: ~A, mark?: ~A" (hnode-key nd) (hnode-degree nd) (hnode-mark? nd))))
 ;;
@@ -28,9 +28,9 @@
    (heap-order :initarg :heap-order :initform #'<)
    (node-table :initarg :node-table :initform (make-hash-table) :accessor node-table)))
 
-(defmethod matlisp::total-size ((obj fib-heap)) (slot-value obj 'number-of-elements))
+(closer-mop:defmethod matlisp::total-size ((obj fib-heap)) (slot-value obj 'number-of-elements))
 
-(defmethod print-object ((fib fib-heap) stream)
+(closer-mop:defmethod print-object ((fib fib-heap) stream)
   (print-unreadable-object (fib stream :type t)
     (format stream "size: ~A, trees: ~A" (number-of-elements fib) (number-of-trees fib))))
 

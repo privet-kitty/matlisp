@@ -117,7 +117,7 @@ of a matrix (default 0)
 	  (t
 	   (rec-print tensor (1- (order tensor)) nil))))))
 
-(defmethod print-element ((x tensor) element stream)
+(closer-mop:defmethod print-element ((x tensor) element stream)
   (cond
     ((floatp element) (format stream "~,4,-2,,,,'Eg" element))
     ((complexp element)
@@ -128,7 +128,7 @@ of a matrix (default 0)
 	   (format stream "~,4,-2,,,,'Eg" realpart))))
     (t (format stream "~a" element))))
 
-(defmethod print-object ((tensor tensor) stream)
+(closer-mop:defmethod print-object ((tensor tensor) stream)
   (if (typep tensor 'dense-tensor)
       (print-unreadable-object (tensor stream :type t)
 	(format stream (string+ "~A" (if (slot-value tensor 'parent) "~,4T:DISPLACED" "")) (dimensions tensor))
@@ -138,7 +138,7 @@ of a matrix (default 0)
       (print-unreadable-object (tensor stream :type t)
 	(format stream "~A, size: ~A/~A" (dimensions tensor) (total-size tensor) (store-size tensor)))))
 
-(defmethod print-object ((g graph-accessor) stream)
+(closer-mop:defmethod print-object ((g graph-accessor) stream)
   (print-unreadable-object (g stream :type t)
     (format stream "~A, size: ~A/~A" (dimensions g) (aref (fence g) (1- (length (fence g)))) (length (δ-i g)))))
 

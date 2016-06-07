@@ -90,7 +90,7 @@
   (:method ((x t))
     (let ((clname (class-name (class-of x))))
       (compile-and-eval
-       `(defmethod fconj ((x ,clname))
+       `(closer-mop:defmethod fc ((x ,clname))
 	  (t/fc ,clname x)))
       (fc x))))
 (defun field-realp (fil)

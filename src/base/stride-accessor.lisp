@@ -91,7 +91,7 @@
   (definline make-stride (dims)
     (ecase *default-stride-ordering* (:row-major (make-stride-rmj dims)) (:col-major (make-stride-cmj dims)))))
 ;;
-(defmethod initialize-instance :after ((tensor stride-accessor) &rest initargs)
+(closer-mop:defmethod initialize-instance :after ((tensor stride-accessor) &rest initargs)
   (declare (ignore initargs))
   (when *check-after-initializing?*
     (let-typed ((dims (dimensions tensor) :type index-store-vector)

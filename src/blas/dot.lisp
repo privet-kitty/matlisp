@@ -90,7 +90,7 @@
     (assert (and (tensor-vectorp x) (tensor-vectorp y) (= (dimensions x 0) (dimensions y 0))) nil 'tensor-dimension-mismatch))
   (:generic-function-class tensor-method-generator))
 
-(defmethod dot ((x number) (y number) &optional (conjugate-p t))
+(closer-mop:defmethod dot ((x number) (y number) &optional (conjugate-p t))
   (if conjugate-p
       (* (cl:conjugate (the number x)) y)
       (* x y)))

@@ -30,16 +30,16 @@
   ((object-class :initform nil :initarg :object-class)
    (direct-methods :initform nil :reader closer-mop:specializer-direct-methods))
   (:documentation "Exact class specializer."))
-(defmethod print-object ((obj classp-specializer) stream)
+(closer-mop:defmethod print-object ((obj classp-specializer) stream)
   (print-unreadable-object (obj stream :type t)
     (format stream ", ~a" (class-name (slot-value obj 'object-class)))))
 
-(defmethod closer-mop:add-direct-method ((specializer classp-specializer) method)
+(closer-mop:defmethod closer-mop:add-direct-method ((specializer classp-specializer) method)
   (pushnew method (slot-value specializer 'direct-methods)))
-(defmethod closer-mop:remove-direct-method ((specializer classp-specializer) method)
+(closer-mop:defmethod closer-mop:remove-direct-method ((specializer classp-specializer) method)
   (setf (slot-value specializer 'direct-methods)
 	(remove method (slot-value specializer 'direct-methods))))
-(defmethod make-load-form ((obj classp-specializer) &optional env)
+(closer-mop:defmethod make-load-form ((obj classp-specializer) &optional env)
   #+nil(make-load-form-saving-slots obj :environment env)
   (values `(classp-specializer ',(class-name (slot-value obj 'object-class))) nil))
 ;;
@@ -48,16 +48,16 @@
    (group-name :initform nil :initarg :group-name)
    (direct-methods :initform nil :reader closer-mop:specializer-direct-methods))
   (:documentation "Applicable only if for each group-specializer with distinct @argument{group-name}, the classes of the respective argument are the same."))
-(defmethod print-object ((obj group-specializer) stream)
+(closer-mop:defmethod print-object ((obj group-specializer) stream)
   (print-unreadable-object (obj stream :type t)
     (format stream ", ~a, ~a" (class-name (slot-value obj 'object-class)) (slot-value obj 'group-name))))
 
-(defmethod closer-mop:add-direct-method ((specializer group-specializer) method)
+(closer-mop:defmethod closer-mop:add-direct-method ((specializer group-specializer) method)
   (pushnew method (slot-value specializer 'direct-methods)))
-(defmethod closer-mop:remove-direct-method ((specializer group-specializer) method)
+(closer-mop:defmethod closer-mop:remove-direct-method ((specializer group-specializer) method)
   (setf (slot-value specializer 'direct-methods)
 	(remove method (slot-value specializer 'direct-methods))))
-(defmethod make-load-form ((obj group-specializer) &optional env)
+(closer-mop:defmethod make-load-form ((obj group-specializer) &optional env)
   #+nil(make-load-form-saving-slots obj :environment env)
   (values `(group-specializer ',(class-name (slot-value obj 'object-class)) ',(slot-value obj 'group-name)) nil))
 ;;Subtype
@@ -65,16 +65,16 @@
   ((specializer-type :initform nil :initarg :specializer-type)
    (direct-methods :initform nil :reader closer-mop:specializer-direct-methods))
   (:documentation "Applicable only if for each group-specializer with distinct @argument{group-name}, the classes of the respective argument are the same."))
-(defmethod print-object ((obj subtype-specializer) stream)
+(closer-mop:defmethod print-object ((obj subtype-specializer) stream)
   (print-unreadable-object (obj stream :type t)
     (format stream ", ~a" (slot-value obj 'specializer-type))))
 
-(defmethod closer-mop:add-direct-method ((specializer subtype-specializer) method)
+(closer-mop:defmethod closer-mop:add-direct-method ((specializer subtype-specializer) method)
   (pushnew method (slot-value specializer 'direct-methods)))
-(defmethod closer-mop:remove-direct-method ((specializer subtype-specializer) method)
+(closer-mop:defmethod closer-mop:remove-direct-method ((specializer subtype-specializer) method)
   (setf (slot-value specializer 'direct-methods)
 	(remove method (slot-value specializer 'direct-methods))))
-(defmethod make-load-form ((obj subtype-specializer) &optional env)
+(closer-mop:defmethod make-load-form ((obj subtype-specializer) &optional env)
   #+nil(make-load-form-saving-slots obj :environment env)
   (values `(subtype-specializer ',(slot-value obj 'specializer-type)) nil))
 ;;
@@ -91,7 +91,7 @@
      (make-instance 'subtype-specializer :specializer-type specializer-type))))
 
 ;;
-(defmethod closer-mop:compute-applicable-methods-using-classes ((gf tensor-method-generator) required-classes)
+(closer-mop:defmethod closer-mop:compute-applicable-methods-using-classes ((gf tensor-method-generator) required-classes)
   (iter mc
 	(for m in (closer-mop:generic-function-methods gf))
 	(with class-info-enoughp = t)
@@ -116,7 +116,7 @@
 		   (values (sort (copy-list applicable-methods) #'(lambda (m1 m2) (method-more-specific-p m1 m2 required-classes)))
 			   class-info-enoughp)))))
 
-(defmethod compute-applicable-methods ((gf tensor-method-generator) arguments &aux (argument-classes (mapcar #'class-of arguments)))
+(closer-mop:defmethod compute-applicable-methods ((gf tensor-method-generator) arguments &aux (argument-classes (mapcar #'class-of arguments)))
   (iter mc
 	(for m in (closer-mop:generic-function-methods gf))
 	(iter (for s in (closer-mop:method-specializers m))
@@ -195,7 +195,7 @@
 	 ,@(let* ((coerce-groups (remove-if-not #'(lambda (x) (< 1 (length (remove-if-not #'(lambda (y) (eql x (third y))) generate-args)))) generate-groups))
 		  (sym (zipsym coerce-groups)))
 	     (when coerce-groups
-	       `((defmethod ,name (,@(mapcar #'(lambda (x) (if (consp x) (subseq x 0 2) x)) (subseq args 0 keypos)) ,@(subseq args keypos))
+	       `((closer-mop:defmethod ,name (,@(mapcar #'(lambda (x) (if (consp x) (subseq x 0 2) x)) (subseq args 0 keypos)) ,@(subseq args keypos))
 		   (let (,@(iter (for (ts g) in sym)
 				 (collect `(,ts ,(rec c+ ((lst (remove-if-not #'(lambda (x) (eql g (third x))) generate-args)) &aux (tmp (gensym)))
 						      (when lst `(cclass-max (type-of ,(first (car lst))) ,(c+ (cdr lst)))))))))
@@ -216,7 +216,7 @@
 			      `((,@(if (symbolp name) `(,name) `(funcall #',name)) ,@dargs ,@(mapcar #'(lambda (x) (first (ensure-list x))) (set-difference (subseq args keypos) cl:lambda-list-keywords)))))))))))
 	 ;;method generator.
 	 ,@(let ((sym (zipsym generate-groups)))
-	     `((defmethod ,name (,@(mapcar (lambda (x) (match x
+	     `((closer-mop:defmethod ,name (,@(mapcar (lambda (x) (match x
 							 ((λlist name dispatch group &optional destructive)
 							  `(,name ,(group-specializer dispatch group)))
 							 (_ x)))
@@ -229,7 +229,7 @@
 		   (push
 		    (macrolet ((cl (,xx) (ecase ,xx ,@(mapcar #'(lambda (x) `(,(second x) (quote ,(first x))))  sym))))
 		      (compile-and-eval
-		       `(defmethod ,',name (,@(list ,@(mapcar (lambda (x) (match x
+		       `(closer-mop:defmethod ,',name (,@(list ,@(mapcar (lambda (x) (match x
 									    ((λlist name dispatch group &optional destructive)
 									     `(list ',name (classp-specializer (cl ,group))))
 									    (_ `(quote ,x))))

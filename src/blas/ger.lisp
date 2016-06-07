@@ -103,8 +103,8 @@
   If conjugate-p is nil, then op(y) = y^T, else op(y) = y^H.
 "))
 
-(defmethod ger (alpha (x dense-tensor) (y dense-tensor) (A dense-tensor) &optional conjugate-p)
+(closer-mop:defmethod ger (alpha (x dense-tensor) (y dense-tensor) (A dense-tensor) &optional conjugate-p)
   (ger! alpha x y (copy A) conjugate-p))
 
-(defmethod ger (alpha (x dense-tensor) (y dense-tensor) (A (eql nil)) &optional conjugate-p)
+(closer-mop:defmethod ger (alpha (x dense-tensor) (y dense-tensor) (A (eql nil)) &optional conjugate-p)
   (ger! alpha x y (zeros (append (dimensions x t) (dimensions y t))) conjugate-p))
