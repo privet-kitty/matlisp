@@ -4,7 +4,7 @@
   (with-memoization ()
     (memoizing
      (labels ((cl (vec)
-		(if-let (alist (assoc vec decl))
+		(if-let ((alist (assoc vec decl)))
 		  (letv* (((ref place &key type &allow-other-keys) alist))
 		    (if (subtypep type 'dense-tensor) type))))
 	      (head-decl (vec)

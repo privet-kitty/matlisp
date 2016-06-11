@@ -132,7 +132,7 @@
 
 (defun ccut (y fib)
   "cascading cut"
-  (when-let (z (hnode-parent y))
+  (when-let ((z (hnode-parent y)))
     (if (hnode-mark? y)
 	(progn (cut y z fib) (ccut z fib))
 	(setf (hnode-mark? y) t))))

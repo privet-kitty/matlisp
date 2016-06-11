@@ -69,7 +69,7 @@
 ))
 
 (defpackage "MATLISP-UTILITIES"
-  (:use #:common-lisp #:iterate #:trivia #:trivia.ppcre #:matlisp-conditions)
+  (:use #:common-lisp #:iterate #:trivia #:trivia.ppcre #:matlisp-conditions #:alexandria)
   (:nicknames #:mu)
   (:export #:pophash
 	   #:vectorify #:copy-n #:ensure-list
@@ -91,7 +91,7 @@
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:binding-gensyms #:values-n
 	   #:letv* #:let-typed #:let*-typed #:make-array-allocator #:ziprm #:inline-member
 	   #:define-constant #:eval-every #:recurse-maadi #:gethash!
-	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase #:curry #:pushcar #:mapcase #:rec
+	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase #:curry #:compose #:pushcar #:mapcase #:rec
 	   ;;
 	   #:definline #:with-optimization #:very-quickly
 	   ;;

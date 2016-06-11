@@ -106,7 +106,7 @@
 					   (not (setf class-info-enoughp nil))))
 		 (group-specializer
 		  (let ((key-name (slot-value s 'group-name)))
-		    (if-let (key (assoc key-name group-keys))
+		    (if-let ((key (assoc key-name group-keys)))
 		      (eql (cdr key) c)
 		      (when (subtypep c (slot-value s 'object-class))
 			(push (cons key-name c) group-keys) t))))
@@ -128,7 +128,7 @@
 		 (subtype-specializer (subtypep a (slot-value s 'specializer-type)))
 		 (group-specializer
 		  (let ((key-name (slot-value s 'group-name)))
-		    (if-let (key (assoc key-name group-keys))
+		    (if-let ((key (assoc key-name group-keys)))
 		      (eql (cdr key) (class-of a))
 		      (when (typep a (slot-value s 'object-class))
 			(push (cons key-name (class-of a)) group-keys) t))))
@@ -185,7 +185,7 @@
 	 ;;clear methods
 	 (letv* ((,value ,existsp (gethash ',name *template-generated-methods*)))
 	   (if ,existsp
-	       (if-let (,type-methods (assoc ',dispatch-key (cdr ,value) :test #'equal))
+	       (if-let ((,type-methods (assoc ',dispatch-key (cdr ,value) :test #'equal)))
 		 (iter (for ,func in (cdr ,type-methods))
 		       (remove-method (function ,name) ,func)
 		       (finally (setf (cdr ,type-methods) nil)))
@@ -210,7 +210,7 @@
 						  ((list name dispatch) name)
 						  (_ x)))
 					    (subseq args 0 keypos))))
-			    (if-let (rest-pos (position '&rest args))
+			    (if-let ((rest-pos (position '&rest args)))
 			      `((apply #',name (list* ,@dargs ,@(mapcar #'(lambda (x) (first (ensure-list x))) (set-difference (subseq args keypos rest-pos) cl:lambda-list-keywords))
 						      ,(elt args (1+ rest-pos)))))
 			      `((,@(if (symbolp name) `(,name) `(funcall #',name)) ,@dargs ,@(mapcar #'(lambda (x) (first (ensure-list x))) (set-difference (subseq args keypos) cl:lambda-list-keywords)))))))))))
@@ -238,7 +238,7 @@
 			  ,@(list ,@body))))
 		    (cdr ,xx)))
 		 ,@(let ((dargs (mapcar #'(lambda (x) (first (ensure-list x))) (subseq args 0 keypos))))
-			(if-let (rest-pos (position '&rest args))
+			(if-let ((rest-pos (position '&rest args)))
 			  `((apply #',name (list* ,@dargs ,@(mapcar #'(lambda (x) (first (ensure-list x))) (set-difference (subseq args keypos rest-pos) cl:lambda-list-keywords))
 						  ,(elt args (1+ rest-pos)))))
 			  `((,@(if (symbolp name) `(,name) `(funcall #',name)) ,@dargs ,@(mapcar #'(lambda (x) (first (ensure-list x))) (remove-if #'(lambda (x) (member x cl:lambda-list-keywords)) (subseq args keypos))))))))))))))

@@ -108,6 +108,6 @@
 "
   (etypecase tensor
     (number (cl:imagpart tensor))
-    (dense-tensor (if-let (ip (tensor-imagpart~ tensor))
+    (dense-tensor (if-let ((ip (tensor-imagpart~ tensor)))
 		    (copy ip)
 		    (zeros (dimensions tensor) (tensor (field-type (type-of tensor))))))))

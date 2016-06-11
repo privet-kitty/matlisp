@@ -25,7 +25,7 @@
 (deft/method t/store-set (class foreign-vector-store-mixin) (value store &rest idx)
   (assert (null (cdr idx)) nil "given more than one index for linear-store")
   (let ((idx (car idx)))
-    (if-let (real-type (real-subtypep (field-type class)))
+    (if-let ((real-type (real-subtypep (field-type class))))
 	(using-gensyms (decl (store idx value) (2idx))
 	  `(let (,@decl)
 	     (declare (type ,(store-type class) ,store)

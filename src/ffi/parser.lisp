@@ -21,7 +21,7 @@
 	    (("^ {6}.+function +([a-z][0-9a-z]+)" "^ {6}subroutine +([a-z][0-9a-z]+)") (setf name (aref r 0)))
 	    ("^ {6}end *$"
 	     ;;(unless name (print cfunc) (error "missing name for routine."))
-	     (when (and name (not (cffi:foreign-symbol-pointer (funcall matlisp-ffi::+f77-name-mangler+ name) :library *blas-lib*)))
+	     (when (and name (not (cffi:foreign-symbol-pointer (funcall matlisp-ffi::*f77-name-mangler* name) :library *blas-lib*)))
 	       (push (cons name (apply #'string-join #\Newline (nreverse cfunc))) routines))
 	     (setf cfunc nil name nil))))
     routines))

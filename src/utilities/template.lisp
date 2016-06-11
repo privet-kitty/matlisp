@@ -1,6 +1,4 @@
 (in-package #:matlisp-template)
-;;Macro-management is the word.
-;;Suck on that C++ :)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
 
@@ -127,8 +125,8 @@
 			     `(locally ,@body))))
 	      (,sort-sym (getf ,data-sym :sorter)))
 	 (declare (ignorable ,data-sym ,meth-sym ,afun-sym ,sort-sym))
-	 (if-let (lst (assoc ',disp-spls ,meth-sym :test #'equal))
-	   (if-let (flst (find ,filter (cdr lst) :key #'cdr))
+	 (if-let ((lst (assoc ',disp-spls ,meth-sym :test #'equal)))
+	   (if-let ((flst (find ,filter (cdr lst) :key #'cdr)))
 	     (rplaca flst ,afun-sym)
 	     (rplacd lst (sort (list* (cons ,afun-sym ,filter) (cdr lst)) #'(lambda (a b) (or (cdr a) (not (cdr b)))))))
 	   (setf ,meth-sym (,(getf data :sort-function) (list* (list ',disp-spls (cons ,afun-sym ,filter)) ,meth-sym)
@@ -142,7 +140,7 @@
 	  (meth (getf data :methods)))
     (if (eql filter '*)
 	(setf (getf data :methods) (remove spls meth :test #'(lambda (a b) (equal a (first b)))))
-	(when-let (lst (find spls meth :test #'(lambda (a b) (equal a (first b)))))
+	(when-let ((lst (find spls meth :test #'(lambda (a b) (equal a (first b))))))
 	  (rplacd lst (remove filter (cdr lst) :test #'(lambda (a b) (eql a (cdr b)))))))
     nil))
 

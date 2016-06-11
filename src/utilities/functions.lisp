@@ -93,20 +93,6 @@
 	(funcall (if (eql control t) #'mapcar control) #'(lambda (x) (maptree-eki transformer x)) t-tree)
 	t-tree)))
 
-(defun flatten (x)
-  "
-  Returns a new list by collecting all the symbols found in @arg{x}.
-
-  Example:
-  @lisp
-  > (flatten '(let ((x 1)) (+ x 2)))
-  => (LET X 1 + X 2)
-  @end lisp
-  "
-  (let ((acc nil))
-    (when x (maptree-if #'atom #'(lambda (x) (push x acc)) x))
-    (reverse acc)))
-
 (defun cart (list &rest more-lists)
   (if more-lists
       (mapcan #'(lambda (y) (mapcar #'(lambda (x) (cons x y)) list)) (apply #'cart more-lists))
@@ -131,19 +117,6 @@
   @end lisp
   "
   (mapcar #'(lambda (s) (slot-value obj s)) slots))
-
-(declaim (inline ensure-list))
-(defun ensure-list (lst)
-  "
-  Ensconses @arg{lst} inside a list if it is an atom.
-
-  Example:
-  @lisp
-  > (ensure-list 'a)
-  => (a)
-  @end lisp
-  "
-  (if (listp lst) lst (list lst)))
 
 (declaim (inline pair))
 (defun pair (list)
@@ -305,29 +278,6 @@
   Compiles and evaluates the given @arg{source}.  This should be
   an ANSI compatible way of ensuring method compilation."
   (funcall (compile nil `(lambda () ,source))))
-
-;;Modified from Femlisp.
-(defun find-programmatic-class (superclasses &optional name)
-  "Finds and, if necessary, generates a class from the given superclasses."
-  (let ((superclasses (mapcar #'(lambda (class) (if (symbolp class) (find-class class) class)) superclasses)))
-    (cond
-      ((null superclasses) T)
-      ((null (cdr superclasses)) (car superclasses))
-      (t (or (find-if #'(lambda (cl) (tree-equal superclasses (closer-mop:class-direct-superclasses cl))) (closer-mop:class-direct-subclasses (car superclasses)))
-	     (let ((superclass-names (mapcar #'class-name superclasses)))
-	       (compile-and-eval
-		`(defclass ,(or name (intern (format nil "~A" superclass-names)))
-		     ,superclass-names ()))))))))
-
-;;Modified from Femlisp.
-(defun make-programmatic-instance (superclasses &rest initargs)
-  "Makes an instance of a class denoted by a list of the names of its
-superclasses.  This class is generated automatically, if necessary."
-  (apply #'make-instance
-	 (cond ((symbolp superclasses) (find-class superclasses))
-	       ((typep superclasses 'cl:standard-class) superclasses)
-	       (t (find-programmatic-class superclasses)))
-	 initargs))
 
 ;;Helper functions
 (declaim (inline modproj))

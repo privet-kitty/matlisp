@@ -107,10 +107,10 @@
 			       (_ :pointer))
 		       (argument-decl type expr)))))
 ;;
-(define-constant +f77-name-mangler+
-    (find-if #'(lambda (f) (cffi:foreign-symbol-pointer (funcall f "ddot")))
-	     (mapcart #'(lambda (a b) (compile-and-eval `(lambda (x) ,(subst b 'x a))))
-		      '((string-upcase x) (string-downcase x)) '((identity x) (string+ x "_") (string+ x "__")))))
+(defparameter *f77-name-mangler*
+  (find-if #'(lambda (f) (cffi:foreign-symbol-pointer (funcall f "ddot")))
+	   (mapcart #'(lambda (a b) (compile-and-eval `(lambda (x) ,(subst b 'x a))))
+		    '((string-upcase x) (string-downcase x)) '((identity x) (string+ x "_") (string+ x "__")))))
 
 (defmacro ffuncall (name-&-return-type &rest args)
   "This macro provides a thin wrapper around cffi:foreign-funcall for making calls to Fortran functions
@@ -150,14 +150,14 @@ Example:
 	     `(with-fortran-float-modes
 		(without-gcing
 		  ,(recursive-append
-		    (when-let (bd (mapf :let-bind))
+		    (when-let ((bd (mapf :let-bind)))
 		      `(let-typed (,@bd)))
-		    (when-let (al (mapf :alloc))
+		    (when-let ((al (mapf :alloc)))
 		      `(with-foreign-objects-stacked (,@al)))
-		    (when-let (init (mapf :init))
+		    (when-let ((init (mapf :init)))
 		      `(progn ,@init))
 		    (let ((callc `(cffi-sys:%foreign-funcall ,(ecase mode
-								     (:f2c (funcall +f77-name-mangler+ name))
+								     (:f2c (funcall *f77-name-mangler* name))
 								     (:c name))
 							     (,@(apply #'append (zip (mapf :cffi) (mapf :argument))) ,@(apply #'append (mapf :aux)) ,(if (eq return-type :void) :void (first (ensure-list return-type)))))))
 		      (if (eq return-type :void)

@@ -158,7 +158,7 @@
 (with-memoization ()
   (memoizing
    (defun tensor (field &optional tensor &aux (tensor (or tensor 'simple-dense-tensor)))
-     (or (if-let (class (find field (closer-mop:class-direct-subclasses (find-class tensor))  :key #'(lambda (x) (if (slot-boundp x 'field-type) (field-type (class-name x))))))
+     (or (if-let ((class (find field (closer-mop:class-direct-subclasses (find-class tensor))  :key #'(lambda (x) (if (slot-boundp x 'field-type) (field-type (class-name x)))))))
 	   (class-name class))
 	 (tensor-generator field tensor)))))
 

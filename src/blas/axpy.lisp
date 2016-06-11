@@ -87,7 +87,7 @@
      (declare (type ,(field-type (cl :y)) alpha))
      ,(recursive-append
        (when (subtypep (cl :y) 'blas-mixin)
-	 `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl :y) 1)) (blas-copyablep x y)))
+	 `(if-let ((strd (and (call-fortran? y (t/blas-lb ,(cl :y) 1)) (blas-copyablep x y))))
 	    (t/blas-axpy! ,(cl :y) alpha x (first strd) y (second strd))))
        `(t/axpy! ,(cl :y) alpha x y))
      y))
@@ -99,7 +99,7 @@
      (unless (t/f= ,(field-type (cl :y)) alpha (t/fid+ ,(field-type (cl :y))))
        ,(recursive-append
 	 (when (subtypep (cl :y) 'blas-mixin)
-	   `(if-let (strd (and (call-fortran? y (t/blas-lb ,(cl :y) 1)) (consecutive-storep y)))
+	   `(if-let ((strd (and (call-fortran? y (t/blas-lb ,(cl :y) 1)) (consecutive-storep y))))
 	      (t/blas-axpy! ,(cl :y) alpha nil nil y strd)))
 	 `(t/axpy! ,(cl :y) alpha nil y)))
      y))

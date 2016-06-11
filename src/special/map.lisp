@@ -151,24 +151,24 @@
       `(let (,@ts
 	     (,e.step ,step))
 	 (unless (and
-		  ,@(mapcar #'(lambda (x) `(when-let (,s (gethash 'slice-increment (attributes ,x)))
+		  ,@(mapcar #'(lambda (x) `(when-let ((,s (gethash 'slice-increment (attributes ,x))))
 					     (incf (slot-value ,x 'head) (* ,e.step ,s))))
 			    (mapcar #'car ts)))
 	   (error 'tensor-error :message "Can't find slice-increment in tensor's attributes"))
 	 (prog1 (progn ,@body)
 	   (unless (and
-		    ,@(mapcar #'(lambda (x) `(when-let (,s (gethash 'slice-increment (attributes ,x)))
+		    ,@(mapcar #'(lambda (x) `(when-let ((,s (gethash 'slice-increment (attributes ,x))))
 					       (decf (slot-value ,x 'head) (* ,e.step ,s))))
 			      (mapcar #'car ts)))
 	     (error 'tensor-error :message "Can't find slice-increment in tensor's attributes")))))))
 
 (definline peek-tensor! (x &optional (step 1))
-  (if-let (s (gethash 'slice-increment (memos x)))
+  (if-let ((s (gethash 'slice-increment (memos x))))
     (progn (incf (slot-value x 'head) (* step s)) x)
     (error 'tensor-error :message "Can't find slice-increment in tensor's attributes" :tensor x)))
 
 (definline peek-tensor~ (x &optional (step 1))
-  (if-let (s (gethash 'slice-increment (memos x)))
+  (if-let ((s (gethash 'slice-increment (memos x))))
     (let ((ret (subtensor~ x nil)))
       (incf (slot-value ret 'head) (* step s)) ret)
     (error 'tensor-error :message "Can't find slice-increment in tensor's attributes" :tensor x)))

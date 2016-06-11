@@ -3,34 +3,7 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
 ;;Note to self: do not indent!
 
-(defmacro define-constant (name value &optional doc)
-  "
-  Keeps the lisp implementation from defining constants twice.
-  "
-  `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
-     ,@(when doc (list doc))))
-
-(defmacro with-gensyms (symlist &body body)
-  "
-  Binds every variable in @arg{symlist} to a (gensym).
-
-  Example:
-  @lisp
-  > (macroexpand-1
-       `(with-gensyms (a b c)
-	   `(let ((,a 1) (,b 2) (,c 3))
-		 (+ ,a ,b ,c))))
-  => (LET ((A (GENSYM \"A\")) (B (GENSYM \"B\")) (C (GENSYM \"C\")))
-      `(LET ((,A 1) (,B 2) (,C 3))
-	  (+ ,A ,B ,C)))
-  @end lisp
-  "
-  `(let ,(mapcar #'(lambda (sym)
-		     `(,sym (gensym ,(symbol-name sym))))
-		 symlist)
-     ,@body))
-
-(defmacro using-gensyms ((decl (&rest syms) &optional gensyms) &rest body)
+(defmacro using-gensyms ((decl (&rest syms) &optional gensyms) &body body)
   `(let ((,decl (zip ',(mapcar #'(lambda (x) (gensym (symbol-name x))) syms) (list ,@syms))))
      (destructuring-bind (,@syms) (mapcar #'car ,decl)
        ,(append
@@ -38,14 +11,14 @@
 	   `(with-gensyms (,@gensyms)) `(progn))
 	 body))))
 
-(defmacro binding-gensyms ((mname &optional (fname (gensym))) &rest body)
+(defmacro binding-gensyms ((mname &optional (fname (gensym))) &body body)
   `(with-memoization ()
      (memoizing
       (flet ((,fname (x) (gensym (symbol-name x))))
 	(macrolet ((,mname (x) `(,', fname ',x)))
 	  ,@body)))))
 
-(defmacro ziprm ((r m) &rest args)
+(defmacro ziprm ((r m) &body args)
   "
   Does reduce-map on @arg{args}.
 
@@ -107,7 +80,7 @@
 	 (when (> ,n 0)
 	   ,@(make-cd 1 (zipsym values) nil))))))
 
-(defmacro letv* (bindings &rest body)
+(defmacro letv* (bindings &body body)
   "
   This macro extends the syntax of let* to handle multiple values and destructuring bind,
   it also handles type declarations. The declarations list @arg{vars} is similar to that in let:
@@ -164,7 +137,7 @@
 		      bindings)
 	      `((locally ,@body)))))))
 
-(defmacro let-typed (bindings &rest body)
+(defmacro let-typed (bindings &body body)
   "
   This macro works basically like let, but also allows type-declarations
   with the key :type.
@@ -194,7 +167,7 @@
 	      (when types `((declare ,@types ,@(cdr decl)))))
        ,@body)))
 
-(defmacro let*-typed (bindings &rest body)
+(defmacro let*-typed (bindings &body body)
   "
   This macro works basically like let*, but also allows type-declarations
   with the key :type.
@@ -224,7 +197,7 @@
 	      (when types `((declare ,@types ,@(cdr decl)))))
        ,@body)))
 
-(defmacro if-ret (form &rest else-body)
+(defmacro if-ret (form &body else-body)
   "
   If @arg{form} evaluates to non-nil, it is returned, else
   the s-expression @arg{else-body} is evaluated.
@@ -244,48 +217,7 @@
 	   (progn
 	     ,@else-body)))))
 
-(defmacro when-let ((var . form) &rest body)
-  "
-  Binds the result of @arg{form} to the symbol @arg{var}; if this value
-  is non-nil, the s-expression @arg{body} is executed.
-
-  Example:
-  @lisp
-  > (macroexpand-1
-      `(when-let (parity (evenp x))
-	     (+ x 1)))
-  => (LET ((PARITY (EVENP X)))
-	(WHEN PARITY (+ X 1)))
-  @end lisp
-  "
-  (check-type var symbol)
-  `(let ((,var ,@form))
-     (when ,var
-       ,@body)))
-
-(defmacro if-let ((var . form) &rest body)
-  "
-  Binds the result of @arg{form} to the symbol @arg{var}; this value
-  is used immediately in an if-statement with the usual semantics.
-
-  Example:
-  @lisp
-  > (macroexpand-1
-      `(if-let (parity (evenp x))
-	     (+ x 1)
-	     x))
-  => (LET ((PARITY (EVENP X)))
-	(IF PARITY
-	   (+ X 1)
-	   X))
-  @end lisp
-  "
-  (check-type var symbol)
-  `(let ((,var ,@form))
-     (if ,var
-	 ,@body)))
-
-(defmacro definline (name &rest rest)
+(defmacro definline (name &body rest)
   "
   Creates a function and declaims them inline: short form for defining an inlined function.
 
@@ -354,14 +286,14 @@
      ,@forms))
 
 
-(defmacro with-memoization ((&optional (hash-table `(make-hash-table :test 'equal))) &rest body &aux cache need-hashtablep)
+(defmacro with-memoization ((&optional (hash-table `(make-hash-table :test 'equal))) &body body &aux cache need-hashtablep)
   (with-gensyms (table value exists-p args)
     (labels ((transformer (x)
 	       (ematch x
 		 ((or (list* 'with-memoization _) (list* 'quote _)) x)
 		 ((list* 'memoizing body)
 		  (match body
-		    ((list (λlist 'cl:let bindings &rest (or (list* (and (list* 'cl:declare _) decl-p) body) body)
+		    ((list (λlist 'cl:let bindings &body (or (list* (and (list* 'cl:declare _) decl-p) body) body)
 				  &aux (declares (if decl-p (list decl-p))) (id (gensym "memo-"))))
 		     (setf need-hashtablep t)
 		     `(let (,@bindings)
@@ -371,7 +303,7 @@
 			  (values-list
 			   (if ,exists-p ,value
 			       (setf (gethash ,args ,table) (multiple-value-list (progn ,@body))))))))
-		    ((list (λlist (and def (or 'cl:defun 'cl:defmethod)) name func-args &rest (or (list* (and (list* 'cl:declare _) decl-p) body) body)
+		    ((list (λlist (and def (or 'cl:defun 'cl:defmethod)) name func-args &body (or (list* (and (list* 'cl:declare _) decl-p) body) body)
 				  &aux (declares (if decl-p (list decl-p))) (id (gensym "memo-"))))
 		     (setf need-hashtablep t)
 		     (assert (not (intersection '(&rest &allow-other-keys) func-args)) nil "can't memoize functions with &rest, &allow-other-keys in their defining lambda-lists")
@@ -382,12 +314,12 @@
 			  (values-list
 			   (if ,exists-p ,value
 			       (setf (gethash ,args ,table) (multiple-value-list (progn ,@body))))))))
-		    ((list (λlist (and def (or 'cl:labels 'cl:flet)) definitions &rest body))
+		    ((list (λlist (and def (or 'cl:labels 'cl:flet)) definitions &body body))
 		     (setf need-hashtablep t)
 		     `(,def (,@(mapcar #'(lambda (x) (cdr (transformer `(memoizing (cl:defun ,@x))))) definitions))
 			  ,@body))
 		    ((λlist code &key (type nil type?) (bind (gensym)))
-		     (if-let (cv (rassoc code cache :key #'first :test #'equal))
+		     (if-let ((cv (rassoc code cache :key #'first :test #'equal)))
 		       (first cv)
 		       (values (list* bind code (if type? `(:type ,type)))
 			       #'(lambda (f decl)
@@ -398,15 +330,6 @@
 	`(let*-typed (,@(if need-hashtablep `((,table ,hash-table)))
 			,@(reverse cache))
 	   ,@transformed-body)))))
-
-(defmacro curry (func &rest more-funcs)
-  (with-gensyms (x)
-    `(lambda (,x) ,(reduce #'(lambda (f a)
-			       (let ((f (trivia:match f
-					  ((list 'function x) x)
-					  (_ f))))
-				 `(,f ,a)))
-			   (append `(,func) more-funcs `(,x)) :from-end t))))
 
 (defmacro pushcar (x place)
   (with-gensyms (xx)
@@ -419,7 +342,7 @@
 			   (if (null x) `(t (error "case failure"))
 			       `((,function ,key ',(car x)) ,@(cdr x)))) cases)))))
 
-(defmacro recurse-maadi (x match &rest dispatchers)
+(defmacro recurse-maadi (x match &body dispatchers)
   ;;recurse-ಮಾಡಿ ಸಕ್ಕತ್ತಾಗಿ!
   (assert (eql (first match) :match) nil "invalid dispatch name")
   (let ((macros (mapcar #'(lambda (x) (list* (the (and keyword (not (member :and :or :* :not :.))) (car x))
@@ -439,7 +362,7 @@
 		 (t `(,(second (assoc :match macros)) ,p)))))
       `(macrolet (,@(mapcar #'cdr macros)) ,(recurse x)))))
 
-(defmacro rec (name args &rest body)
+(defmacro rec (name args &body body)
   (let ((keypos (or (position-if #'(lambda (x) (member x cl:lambda-list-keywords)) args) (length args))))
     `(labels ((,name (,@(mapcar #'first (subseq args 0 keypos)) ,@(subseq args keypos)) ,@body))
        (,name ,@(mapcar #'second (subseq args 0 keypos))))))

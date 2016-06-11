@@ -50,7 +50,7 @@ line continuations."
     (("none") :void)))
 ;;
 (defun %f77.type (line)
-  (when-let (type (find line *%f77.typemap* :test #'(lambda (x y) (every #'string= x (car y)))))
+  (when-let ((type (find line *%f77.typemap* :test #'(lambda (x y) (every #'string= x (car y))))))
     (list (cadr type) (nthcdr (length (car type)) line))))
 
 (defun parse-fortran-file (fname)
@@ -72,9 +72,9 @@ line continuations."
 				     ((and (string= (caar lines) "end") (null (cdar lines))) (pop lines) nil)
 				     (t (pop lines)))))
 		     ((null cline))
-		   (when-let (pos (position "=" cline :test #'string=))
+		   (when-let ((pos (position "=" cline :test #'string=)))
 		     (let ((var (nth (1- pos) cline)))		       
-		       (when-let (lst (assoc var arguments :test #'string=))
+		       (when-let ((lst (assoc var arguments :test #'string=)))
 			 (setf (fourth lst) t))))
 		   (when (member cline *%f77.typemap* :test #'(lambda (x y) (every #'string= x (car y))))
 		     (let ((type (%f77.type cline)))

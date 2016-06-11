@@ -45,8 +45,7 @@
 			 (:file "dlist" :depends-on ("macros" "functions"))
 			 (:file "union-find" :depends-on ("macros" "functions"))
 			 (:file "lvec" :depends-on ("macros" "functions"))
-			 (:file "template" :depends-on ("macros" "functions"))
-			 (:file "destructuring" :depends-on ("macros" "functions"))))
+			 (:file "template" :depends-on ("macros" "functions"))))
    (:file "lazy-loader" :depends-on ("utilities"))))
 
 (asdf:defsystem :matlisp

@@ -53,7 +53,7 @@
 		     (sym (gensym)))
 		 (push sym expr)
 		 (push (list sym word) lspe)))
-	      ((when-let (tok (find-if #'(lambda (x) (find-token (first x) stream)) (sort (remove-if-not #'(lambda (x) (char= c (aref (first x) 0))) *operator-tokens*) #'> :key #'(lambda (x) (length (first x))))))
+	      ((when-let ((tok (find-if #'(lambda (x) (find-token (first x) stream)) (sort (remove-if-not #'(lambda (x) (char= c (aref (first x) 0))) *operator-tokens*) #'> :key #'(lambda (x) (length (first x)))))))
 		 (read-stack)
 		 (push (second tok) expr)))
 	      ((and (char= c #\i) (numberp (read-stack nil)))

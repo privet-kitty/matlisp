@@ -198,7 +198,7 @@
 	  (ret (zeros (list m m) (tensor t 'hash-tensor))))
     (iter (for i from 0 below (length hh))
 	  (iter (for j from (1+ i) below (length hh))
-		(when-let (int (intersection (aref hh i) (aref hh j)))
+		(when-let ((int (intersection (aref hh i) (aref hh j))))
 		  (setf (ref ret i j) int
 			(ref ret j i) int))))
     (copy ret '(t graph-accessor))))
@@ -211,7 +211,7 @@
        (iter (for cc on cliques)
 	     (iter (for cp in (cdr cc))
 		   (counting t into j)
-		   (if-let (int (intersection (car cc) cp))
+		   (if-let ((int (intersection (car cc) cp)))
 		     (setf (ref ret i (+ i j)) (- (length int))
 			   (ref ret (+ i j) i) (ref ret i (+ i j)))))
 	     (counting t into i))

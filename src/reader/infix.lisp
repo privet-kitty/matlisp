@@ -63,7 +63,7 @@
 	     (push (complex 0 (read-stack nil)) expr)
 	     (setf stack nil))
 	    ;;
-	    ((when-let (tok (find-if #'(lambda (x) (find-token (first x) stream)) (sort (remove-if-not #'(lambda (x) (char= c (aref (first x) 0))) *operator-tokens*) #'> :key #'(lambda (x) (length (first x))))))
+	    ((when-let ((tok (find-if #'(lambda (x) (find-token (first x) stream)) (sort (remove-if-not #'(lambda (x) (char= c (aref (first x) 0))) *operator-tokens*) #'> :key #'(lambda (x) (length (first x)))))))
 	       (if (and (eql (second tok) '|.|) (integerp (read-stack nil)))
 		   (push #\. stack)
 		   (progn
@@ -320,15 +320,6 @@
 	     `(let ((,sto (mapcar #'(lambda (x) (apply #'matlisp::idxv x)) (list ,@expr))))
 		(make-instance 'matlisp::permutation-cycle :store ,sto )))))))
 
-(defun curry-reader (stream char)
-  (let ((default-paren-reader (get-macro-character #\( (named-readtables:find-readtable :common-lisp))))
-    (if (char= (peek-char nil stream t nil t) #\∘)
-	(trivia:match (macroexpand `(curry ,@(cdr (let ((*readtable* (named-readtables:find-readtable :common-lisp)))
-						    (read (progn (unread-char #\( stream) stream) t nil t)))))
-	  ((list 'function ff) ff)
-	  (ff ff))
-	(funcall default-paren-reader stream char))))
-
 (defun memoization-reader (stream subchar char)
   (declare (ignore subchar char))
   `(memoizing ,@(read stream t nil t)))
@@ -337,7 +328,6 @@
 (macrolet ((tensor-symbol-enumerate ()
 	     `(named-readtables:defreadtable :infix-dispatch-table
 		(:merge :λ-standard)
-		(:macro-char #\( #'curry-reader nil)
 		(:dispatch-macro-char #\# #\I #'infix-reader)
 		(:dispatch-macro-char #\# #\S #'permutation-cycle-reader)
 		,@(mapcar #'(lambda (x) `(:dispatch-macro-char #\# ,(car x) #'tensor-reader)) *tensor-symbol*)
