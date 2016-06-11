@@ -1,7 +1,7 @@
 (in-package #:matlisp-utilities)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-;;Note to self: do not indent!
+;;Note to self: do not indent!v
 
 (defmacro using-gensyms ((decl (&rest syms) &optional gensyms) &body body)
   `(let ((,decl (zip ',(mapcar #'(lambda (x) (gensym (symbol-name x))) syms) (list ,@syms))))
@@ -233,7 +233,7 @@
 ;;---------------------------------------------------------------;;
 ;; Optimization
 ;;---------------------------------------------------------------;;
-(defmacro with-optimization ((&rest args) &body forms)
+(defmacro with-optimization ((&rest args) &body body)
   "
   Macro creates a local environment with optimization declarations, and
   executes form.
@@ -246,19 +246,16 @@
   => (LOCALLY (DECLARE (OPTIMIZE (SPEED 2) (SAFETY 3))) (+ 1.0d0 2.0d0))
   @end lisp
   "
-  `(locally
-       ,(recursive-append
-	 `(declare (optimize ,@(multiple-value-call #'mapcar #'(lambda (key val) (list (intern (symbol-name key)) val))
-						    (loop :for ele :in args
-						       :counting t :into cnt
-						       :if (oddp cnt)
-							 :collect ele into key
-						       :else
-							 :collect (progn (assert (member ele '(0 1 2 3))) ele) into val
-						       :finally (return (values key val))))))
-	 (when (and (consp (car forms)) (eq (caar forms) 'declare))
-	   (cdar forms)))
-     ,@(if (and (consp (car forms)) (eq (caar forms) 'declare)) (cdr forms) forms)))
+  (destructuring-bind (decl+ body) (trivia:match body
+				     ((list* (list* 'declare decl) body) (list decl body))
+				     (_ (list nil body)))
+    `(locally
+       (declare (optimize ,@(trivia:ematch args
+			     ((λlist &key speed safety space debug)
+			      (remove nil (mapcar #'(lambda (name val) (if val `(,name ,val)))
+						  `(speed safety space debug) (list speed safety space debug))))))
+		,@decl+)
+       ,@body)))
 
 (defmacro very-quickly (&body forms)
   "
@@ -266,20 +263,14 @@
   (declare (optimize (speed 3) (safety 0) (space 0)))
   "
   #+matlisp-debug
-  `(with-optimization
-       #+lispworks
-       (:safety 3)
-       #-lispworks
-       (:safety 3)
+  `(with-optimization (:safety 3)
      ,@forms)
   #-matlisp-debug
-  `(with-optimization
-       #+lispworks
-       (:safety 0 :space 0 :speed 3 :float 0 :fixnum-safety 0)
-       #-lispworks
-       (:safety 0 :space 0 :speed 3)
-       (let ((matlisp-ffi::*fvref-range-check* nil))
-	 ,@forms)))
+  `(with-optimization (:safety 0 :space 0 :speed 3)
+     #+lispworks
+     (declare (optimize (harlequin-common-lisp:fixnum-safety 0) (float 0)))
+     (let ((matlisp-ffi::*fvref-range-check* nil))
+       (locally ,@forms))))
 
 (defmacro eval-every (&body forms)
   `(eval-when (:compile-toplevel :load-toplevel :execute)
