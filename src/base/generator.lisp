@@ -176,7 +176,6 @@
 (defmacro define-tensor-method (name (&rest args) &body body)
   (let* ((keypos (or (position-if (lambda (x) (member x cl:lambda-list-keywords)) args) (length args)))
 	 (dispatch-args (subseq args 0 keypos))
-	 (dispatch-sym (mapcar (lambda (x) (if (consp x) (first x) x)) dispatch-args))
 	 (dispatch-key (mapcar (lambda (x) (if (consp x) (second x) t)) dispatch-args))
 	 (generate-args (remove-if-not #'(lambda (x) (and (consp x) (cddr x))) dispatch-args))
 	 (generate-groups (iter (for ele in generate-args) (unioning (list (third ele))))))
@@ -197,7 +196,7 @@
 	     (when coerce-groups
 	       `((closer-mop:defmethod ,name (,@(mapcar #'(lambda (x) (if (consp x) (subseq x 0 2) x)) (subseq args 0 keypos)) ,@(subseq args keypos))
 		   (let (,@(iter (for (ts g) in sym)
-				 (collect `(,ts ,(rec c+ ((lst (remove-if-not #'(lambda (x) (eql g (third x))) generate-args)) &aux (tmp (gensym)))
+				 (collect `(,ts ,(rec c+ ((lst (remove-if-not #'(lambda (x) (eql g (third x))) generate-args)))
 						      (when lst `(cclass-max (type-of ,(first (car lst))) ,(c+ (cdr lst)))))))))
 		     ,@(iter (for (ts g) in sym)
 			     (appending (mapcar #'(lambda (x)
@@ -205,9 +204,9 @@
 						(remove-if-not #'(lambda (x) (and (eql g (third x)) (fourth x))) generate-args))))
 		     ,@(let ((dargs (mapcar #'(lambda (x)
 						(match x
-						  ((λlist name dispatch (guard group (member group coerce-groups)) &optional destructive)
-						   (if destructive name `(lazy-coerce ,name ,(first (rassoc (list group) sym :test #'equal)))))
-						  ((list name dispatch) name)
+						  ((λlist name _ group &optional destructive)
+						   (if (or destructive (not (member group coerce-groups))) name `(lazy-coerce ,name ,(first (rassoc (list group) sym :test #'equal)))))
+						  ((list name _) name)
 						  (_ x)))
 					    (subseq args 0 keypos))))
 			    (if-let ((rest-pos (position '&rest args)))
@@ -217,7 +216,7 @@
 	 ;;method generator.
 	 ,@(let ((sym (zipsym generate-groups)))
 	     `((closer-mop:defmethod ,name (,@(mapcar (lambda (x) (match x
-							 ((λlist name dispatch group &optional destructive)
+							 ((λlist name dispatch group &optional _)
 							  `(,name ,(group-specializer dispatch group)))
 							 (_ x)))
 					   (subseq args 0 keypos))
@@ -230,7 +229,7 @@
 		    (macrolet ((cl (,xx) (ecase ,xx ,@(mapcar #'(lambda (x) `(,(second x) (quote ,(first x))))  sym))))
 		      (compile-and-eval
 		       `(closer-mop:defmethod ,',name (,@(list ,@(mapcar (lambda (x) (match x
-									    ((λlist name dispatch group &optional destructive)
+									    ((λlist name _ group &optional _)
 									     `(list ',name (classp-specializer (cl ,group))))
 									    (_ `(quote ,x))))
 							      (subseq args 0 keypos)))
