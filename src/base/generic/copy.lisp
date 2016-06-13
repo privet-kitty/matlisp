@@ -37,12 +37,15 @@
   to)
 
 (closer-mop:defmethod copy! ((lst cons) (type symbol))
-  (cond
-    ((member type '(list cons nil)) (copy-tree lst))
-    ((eql type 'vector) (make-array (length lst) :initial-contents lst))
-    ((eql type 'array) (make-array (list-dimensions lst) :initial-contents lst))
-    ((subtypep type 'tensor) (copy! lst (zeros (list-dimensions lst) type)))
-    (t (error "don't know how to copy a list to type ~a" type))))
+  (labels ((list-dimensions (lst)
+	     (if (atom lst) nil
+		 (cons (length lst) (list-dimensions (car lst))))))
+    (cond
+      ((member type '(list cons nil)) (copy-tree lst))
+      ((eql type 'vector) (make-array (length lst) :initial-contents lst))
+      ((eql type 'array) (make-array (list-dimensions lst) :initial-contents lst))
+      ((subtypep type 'tensor) (copy! lst (zeros (list-dimensions lst) type)))
+      (t (error "don't know how to copy a list to type ~a" type)))))
 
 (closer-mop:defmethod copy! ((from t) (to cons))
   (labels ((mapcar! (f lst)

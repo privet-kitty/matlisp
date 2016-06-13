@@ -71,16 +71,17 @@
 (defpackage "MATLISP-UTILITIES"
   (:use #:common-lisp #:iterate #:trivia #:trivia.ppcre #:matlisp-conditions #:alexandria)
   (:nicknames #:mu)
-  (:export #:pophash
-	   #:vectorify #:copy-n #:ensure-list
-	   #:zip #:zipsym #:unzip
-	   #:slot-values #:remmeth #:values-append
-	   #:list-dimensions
-	   #:maprange #:maptree-if #:maptree #:maptree-eki #:flatten #:pair #:ziptree #:cart #:mapcart
-	   #:recursive-append #:unquote-args
+  (:export ;;Alexandria
+           #:ensure-list #:curry #:compose #:flatten #:when-let #:if-let #:with-gensyms #:define-constant
+	   ;;
+	   #:zip #:zipsym #:unzip #:ziptree
+	   #:remmeth #:recursive-append 
+	   #:maptree-if #:maptree #:maptree-eki #:pair
 	   #:compile-and-eval #:modproj
-	   ;;mop
-	   #:find-programmatic-class #:make-programmatic-class
+	   ;;
+	   #:cart #:mapcart
+	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase
+	   ;;
 	   ;;string
 	   #:string+ #:string-join #:file->string #:split-seq #:splitlines
 	   ;;lvec
@@ -88,13 +89,11 @@
 	   #:lvec-map-foldl! #:lvec-map-foldr! #:lvec-copy
 	   #:lvec->list #:lvec->list! #:binary-search #:sort-index
 	   ;;Macros
-	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:binding-gensyms #:values-n
-	   #:letv* #:let-typed #:let*-typed #:make-array-allocator #:ziprm #:inline-member
-	   #:define-constant #:eval-every #:recurse-maadi #:gethash!
-	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase #:curry #:compose #:pushcar #:mapcase #:rec
-	   ;;
+	   #:using-gensyms #:binding-gensyms
+	   #:values-n #:rec #:ziprm
+	   #:letv* #:let-typed #:let*-typed 
+	   #:eval-every #:recurse-maadi #:gethash!	   
 	   #:definline #:with-optimization #:very-quickly
-	   ;;
 	   #:memoizing #:with-memoization))
 
 (defpackage "MATLISP-DLIST"
@@ -139,10 +138,6 @@
    ;;#:def-fortran-routine #:parse-fortran-file
    )
   (:documentation "Fortran foreign function interface"))
-
-(defpackage "MATLISP-DESTRUCTURING"
-  (:use #:cl #:matlisp-utilities #:iterate)
-  (:export #:destruct-parser #:λlist-keyword #:variable-symbol))
 
 (defpackage "MATLISP"
   (:use #:common-lisp #:iterate #:trivia #:trivia.ppcre #:named-readtables #:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template)

@@ -64,7 +64,7 @@
 ")
   (:method :before ((a tensor) &optional (uplo *default-uplo*))
      (assert (typep a 'tensor-square-matrix) nil 'tensor-dimension-mismatch :message "Expected square matrix.")
-     (assert (inline-member uplo (:l :u)) nil 'invalid-arguments :given uplo :expected `(member uplo '(:l :u))))
+     (assert (member uplo '(:l :u)) nil 'invalid-arguments :given uplo :expected `(member uplo '(:l :u))))
   (:generic-function-class tensor-method-generator))
 
 (define-tensor-method potrf! ((a blas-mixin :x) &optional (uplo *default-uplo*))
@@ -122,7 +122,7 @@
 ")
   (:method :before ((A tensor) (B tensor) &optional (uplo *default-uplo*))
      (assert (and (typep A 'tensor-square-matrix) (<= (order B) 2) (= (dimensions A 0) (dimensions B 0))) nil 'tensor-dimension-mismatch)
-     (assert (inline-member uplo (:l :u)) nil 'invalid-value :given uplo :expected `(member uplo '(:u :l))))
+     (assert (member uplo '(:l :u)) nil 'invalid-value :given uplo :expected `(member uplo '(:u :l))))
   (:generic-function-class tensor-method-generator))
 
 (define-tensor-method potrs! ((A blas-mixin :x) (B blas-mixin :x t) &optional (uplo *default-uplo*))
@@ -161,7 +161,7 @@
 ")
   (:method :before ((A blas-mixin) &optional (uplo *default-uplo*))
      (assert (and (typep A 'tensor-square-matrix)) nil 'tensor-dimension-mismatch)
-     (assert (inline-member uplo (:l :u)) nil 'invalid-value :given uplo :expected `(member uplo '(:u :l))))
+     (assert (member uplo '(:l :u)) nil 'invalid-value :given uplo :expected `(member uplo '(:u :l))))
   (:generic-function-class tensor-method-generator))
 
 (define-tensor-method potri! ((A blas-mixin :x) &optional (uplo *default-uplo*))
@@ -204,7 +204,7 @@
   (:method :before ((a tensor) &optional hermitian? (uplo *default-uplo*))
      (declare (ignore hermitian?))
      (assert (typep a 'tensor-square-matrix) nil 'tensor-dimension-mismatch :message "Expected square matrix.")
-     (assert (inline-member uplo (:l :u)) nil 'invalid-arguments :given uplo :expected `(member uplo '(:l :u))))
+     (assert (member uplo '(:l :u)) nil 'invalid-arguments :given uplo :expected `(member uplo '(:l :u))))
   (:generic-function-class tensor-method-generator))
 
 (define-tensor-method ldl! ((a blas-mixin :x) &optional (hermitian? t) (uplo *default-uplo*))

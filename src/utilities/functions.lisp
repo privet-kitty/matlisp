@@ -3,52 +3,11 @@
 ;;These functions are used all over the place inside Matlisp's macros.
 (eval-when (:compile-toplevel :load-toplevel :execute)
 
-(defun pophash (key hash-table &optional default)
-  (multiple-value-bind (value existsp) (gethash key hash-table default)
-    (when existsp (remhash key hash-table))
-    (values value existsp)))
-
-(declaim (inline vectorify))
-(defun vectorify (seq n &optional (element-type t))
-  (declare (type (or vector list) seq))
-  (etypecase seq
-    (cons
-     (let ((ret (make-array n :element-type element-type)))
-       (loop :for i :of-type fixnum :from 0 :below n
-	  :for lst := seq :then (cdr lst)
-	  :do (setf (aref ret i) (car lst))
-	  :finally (return ret))))
-    (vector
-     (let ((ret (make-array n :element-type element-type)))
-       (loop :for i :of-type fixnum :from 0 :below n
-	  :for ele :across seq
-	  :do (setf (aref ret i) ele)
-	  :finally (return ret))))))
-
-(declaim (inline copy-n))
-(defun copy-n (vec lst n)
-  (declare (type vector vec)
-	   (type list lst)
-	   (type fixnum n))
-  (loop :for i :of-type fixnum :from 0 :below n
-     :for vlst := lst :then (cdr vlst)
-     :do (setf (car vlst) (aref vec i)))
-  lst)
-
 (defun remmeth (func spls &optional quals)
   (let ((meth (find-method func quals (mapcar #'(lambda (x) (if (consp x) x (find-class x))) spls) nil)))
     (when meth
       (remove-method func meth)
       meth)))
-
-(defun maprange (function start end &optional (h 1))
-  (declare (type real start end h))
-  (let ((quo (ceiling (if (> start end) (- start end) (- end start)) h)))
-    (if (= quo 0) nil
-	(let ((h (if (> start end) (- h) h)))
-	  (loop :for i :from 0 :below quo
-	     :for ori := start :then (+ ori h)
-	     :collect (funcall function ori))))))
 
 (defun maptree-if (predicate transformer tree)
   "
@@ -101,23 +60,6 @@
 (defun mapcart (function list &rest more-lists)
   (mapcar (lambda (args) (apply function args)) (apply #'cart list more-lists)))
 
-(declaim (inline slot-values))
-(defun slot-values (obj slots)
-  "
-  Returns a list containing slot-values of @arg{obj} corresponding to symbols in the list @arg{slots}.
-
-  Example:
-  @lisp
-  > (defstruct obj a b)
-  => OBJ
-
-  > (let ((thing (make-obj :a 1 :b 2)))
-      (slot-values thing '(a b)))
-  => (1 2)
-  @end lisp
-  "
-  (mapcar #'(lambda (s) (slot-value obj s)) slots))
-
 (declaim (inline pair))
 (defun pair (list)
   (loop :for (a . b) :on list :by #'cddr :collect (if b (list a (first b)) (list a))))
@@ -165,7 +107,7 @@
   @end lisp
   "
   (map 'list #'(lambda (x) (list (gensym) x)) lst))
-
+;;
 (defun deconsify (x sym)
   (if (atom x) x
       (iter (for ll on x)
@@ -182,7 +124,7 @@
 		  (setf right (cadr ll)) (finish))
 		(collect (reconsify (car ll) sym) into left))
 	    (finally (if right (setf (cdr (last left)) right)) (return left)))))
-
+;;
 (defun recursive-append (&rest lsts)
   "
   Appends lists in a nested manner, mostly used to bring in the charm of
@@ -237,42 +179,6 @@
 		  (append x (and y (if (typep (car y) 'symbol) `(,y) y)))))
 	  lsts :from-end t))
 
-(defun unquote-args (lst args)
-  "
-  Makes a list suitable for use inside macros (sort-of), by building a
-  new list quoting every symbol in @arg{lst} other than those in @arg{args}.
-  CAUTION: DO NOT use backquotes!
-
-  @lisp
-  Example:
-  > (unquote-args '(+ x y z) '(x y))
-  => (LIST '+ X Y 'Z)
-
-  > (unquote-args '(let ((x 1)) (+ x 1)) '(x))
-  => (LIST 'LET (LIST (LIST X '1)) (LIST '+ X '1))
-  @end lisp
-  "
-  (maptree-if #'(lambda (x) (or (symbolp x) (consp x)))
-	      #'(lambda (x) (etypecase x
-			      (symbol (if (member x args) x `(quote ,x)))
-			      (cons (values `(list ,@x) #'(lambda (f x) (cons (first x) (mapcar f (cdr x))))))))
-	      lst))
-
-(defun list-dimensions (lst)
-  "
-  Returns the dimensions of the nested list @arg{lst}, by finding the length
-  of the immediate list, recursively. This does not ensure the uniformity of
-  lengths of the lists.
-
-  Example:
-  @lisp
-  > (list-dimensions '((1 2 3) (4 5 6)))
-  => (2 3)
-  @end lisp
-  "
-  (if (atom lst) nil
-      (cons (length lst) (list-dimensions (car lst)))))
-
 (defun compile-and-eval (source)
   "
   Compiles and evaluates the given @arg{source}.  This should be
@@ -287,7 +193,6 @@
     (t (assert (if open? (<= (- (1+ d)) i d) (< (- (1+ d)) i d)) nil 'tensor-index-out-of-bounds)
        (if (< i 0) (if (and open? (= i (- (1+ d)))) -1 (mod i d)) i))))
 
-;;
 ;; (defstruct (sap-wrap (:constructor make-sap-wrap (ptr)))
 ;;   (ptr (cffi:null-pointer) :type cffi:foreign-pointer :read-only t))
 

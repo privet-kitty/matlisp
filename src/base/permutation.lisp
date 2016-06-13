@@ -120,7 +120,7 @@
   (declare (type vector seq)
 	   (type index-store-vector perm))
   (let* ((size (length perm))
-	 (cseq (vectorify seq size)))
+	 (cseq (subseq seq 0 size)))
     (loop :for i :from 0 :below size
        :do (setf (aref seq i) (aref cseq (aref perm i)))
        :finally (return seq))))
@@ -128,7 +128,7 @@
 (closer-mop:defmethod permute! ((seq cons) (perm permutation-action) &optional arg)
   (declare (ignore arg))
   (let* ((size (permutation-size perm))
-	 (cseq (vectorify seq size))
+	 (cseq (coerce (subseq seq 0 size) 'vector))
 	 (act (store perm)))
     (loop :for i :from 0 :below size
        :for lst := seq :then (cdr lst)
@@ -141,7 +141,6 @@
 
 (closer-mop:defmethod permute! ((ten tensor) (perm permutation-action) &optional (arg 0))
   (permute! ten (copy perm 'permutation-pivot-flip) arg))
-
 ;;Cycle
 (definline apply-cycle! (seq pcyc)
   (declare (type index-store-vector pcyc)
@@ -157,10 +156,12 @@
   (declare (ignore arg))
   (unless (= (permutation-size perm) 1)
     (let* ((size (permutation-size perm))
-	   (cseq (vectorify seq size)))
+	   (cseq (coerce (subseq seq 0 size) 'vector)))
       (loop :for cyc :of-type index-store-vector :in (store perm)
 	 :do (apply-cycle! cseq cyc))
-      (copy-n cseq seq size)))
+      (iter (for ci in-vector cseq below size)
+	  (for seq* on seq)
+	  (setf (car seq*) ci))))
   seq)
 
 (closer-mop:defmethod permute! ((seq vector) (perm permutation-cycle) &optional arg)
@@ -189,9 +190,11 @@
 (closer-mop:defmethod permute! ((seq cons) (perm permutation-pivot-flip) &optional arg)
   (declare (ignore arg))
   (let* ((size (permutation-size perm))
-	 (cseq (vectorify seq size)))
+	 (cseq (coerce (subseq seq 0 size) 'vector)))
     (apply-flips! cseq (store perm))
-    (copy-n cseq seq size))
+    (iter (for ci in-vector cseq below size)
+	  (for seq* on seq)
+	  (setf (car seq*) ci)))
   seq)
 
 (closer-mop:defmethod permute! ((A tensor) (perm permutation-pivot-flip) &optional (arg 0))

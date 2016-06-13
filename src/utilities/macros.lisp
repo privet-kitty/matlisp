@@ -30,38 +30,33 @@
   @end lisp
   "
   `(,r ,@(apply #'mapcar #'(lambda (&rest atoms) (cons m atoms)) (mapcar #'ensure-list args))))
-
-(defmacro inline-member (x lst &optional (test 'eql))
-  (with-gensyms (xx) `(let ((,xx ,x)) (or ,@(mapcar #'(lambda (l) `(,test ,xx ,l)) lst)))))
 ;;
-(defmacro cart-case ((&rest vars) &body cases)
-  (let ((decl (zipsym vars)))
-    `(let (,@decl)
-       (cond ,@(mapcar #'(lambda (clause) `((and ,@(mapcar #'(lambda (x)
-							       (if (consp (second x))
-								   `(or ,@(mapcar #'(lambda (u) `(eql ,(first x) (quote ,u))) (second x)))
-								   `(eql ,(first x) (quote ,(second x)))))
-							   (remove t (zip (mapcar #'car decl) (first clause)) :key #'second))) ,@(cdr clause))) cases)))))
+(flet ((cart-case-macrofunction (vars cases append)
+	 (let ((decl (zipsym vars)))
+	   `(let (,@decl)
+	      (cond ,@(mapcar #'(lambda (clause) `((and ,@(mapcar #'(lambda (x)
+								      (if (consp (second x))
+									  `(or ,@(mapcar #'(lambda (u) `(eql ,(first x) (quote ,u))) (second x)))
+									  `(eql ,(first x) (quote ,(second x)))))
+								  (remove t (zip (mapcar #'car decl) (first clause)) :key #'second))) ,@(cdr clause))) cases)
+		    ,@append)))))
+  (defmacro cart-case ((&rest vars) &body cases)
+    (cart-case-macrofunction vars cases nil))
+  (defmacro cart-ecase ((&rest vars) &body cases)
+    (cart-case-macrofunction vars cases `((t (error "cart-ecase: Case failure."))))))
 
-(defmacro cart-ecase ((&rest vars) &body cases)
-  (let ((decl (zipsym vars)))
-    `(let (,@decl)
-       (cond ,@(mapcar #'(lambda (clause) `((ziprm (and eql) ,(mapcar #'car decl) ,(first clause)) ,@(cdr clause))) cases)
-	 (t (error "cart-ecase: Case failure."))))))
-
-(defmacro cart-typecase (vars &body cases)
-  (let* ((decl (zipsym vars)))
-    `(let (,@decl)
-       (cond ,@(mapcar #'(lambda (clause) `((ziprm (and typep) ,(mapcar #'car decl) ,(mapcar #'(lambda (x) `(quote ,x)) (first clause))) ,@(cdr clause))) cases)))))
-
-(defmacro cart-etypecase (vars &body cases)
-  (let* ((decl (zipsym vars)))
-    `(let (,@decl)
-       (cond ,@(mapcar #'(lambda (clause)
-			   `((ziprm (and typep) ,(mapcar #'car decl) ,(mapcar #'(lambda (x) `(quote ,x)) (first clause)))
-			     (locally (declare ,@(mapcar #'(lambda (x y) `(type ,x ,y)) (first clause) (mapcar #'car decl))) ,@(cdr clause))))
-		       cases)
-	     (t (error "cart-etypecase: Case failure."))))))
+(flet ((cart-typecase-fn (vars cases append)
+	 (let* ((decl (zipsym vars)))
+	   `(let (,@decl)
+	      (cond ,@(mapcar #'(lambda (clause)
+				  `((ziprm (and typep) ,(mapcar #'car decl) ,(mapcar #'(lambda (x) `(quote ,x)) (first clause)))
+				    (locally (declare ,@(mapcar #'(lambda (x y) `(type ,x ,y)) (first clause) (mapcar #'car decl))) ,@(cdr clause))))
+			      cases)
+		    ,@append)))))
+  (defmacro cart-typecase (vars &body cases)
+    (cart-typecase-fn vars cases nil))
+  (defmacro cart-etypecase (vars &body cases)
+    (cart-typecase-fn vars cases `((t (error "cart-etypecase: Case failure."))))))
 ;;
 (defmacro values-n (n &rest values)
   (using-gensyms (decl (n))
@@ -137,8 +132,23 @@
 		      bindings)
 	      `((locally ,@body)))))))
 
-(defmacro let-typed (bindings &body body)
-  "
+(flet ((let-typed-expansion (letsym bindings body)
+	 (destructuring-bind (decl body) (trivia:match body
+					   ((list* (list* 'declare decl) body) (list decl body))
+					    (_ (list nil body)))
+
+	    `(,letsym (,@(mapcar #'(lambda (x) (subseq x 0 2)) bindings))
+	       ,@(let ((types (remove nil (mapcar #'(lambda (x) (destructuring-bind (s e &key (type t)) x
+								  (declare (ignore e))
+								  (unless (eql type t)
+								    (if (null type)
+									`(ignore ,s)
+									`(type ,type ,s)))))
+						  bindings))))
+		      (when (or decl types) `((declare ,@types ,@decl))))
+	       ,@body))))
+  (defmacro let-typed (bindings &body body)
+    "
   This macro works basically like let, but also allows type-declarations
   with the key :type.
 
@@ -152,23 +162,10 @@
 	(+ 1 X))
   @end lisp
   "
-  (destructuring-bind (decl body) (trivia:match (first body)
-				    ((cons 'declare _) (list (first body) (rest body)))
-				    (_ (list nil body)))
-
-    `(let (,@(mapcar #'(lambda (x) (subseq x 0 2)) bindings))
-       ,@(let ((types (remove-if #'null (mapcar #'(lambda (x) (destructuring-bind (s e &key (type t)) x
-								(declare (ignore e))
-								(unless (eql type t)
-								  (if (null type)
-								      `(ignore ,s)
-								      `(type ,type ,s)))))
-						bindings))))
-	      (when types `((declare ,@types ,@(cdr decl)))))
-       ,@body)))
-
-(defmacro let*-typed (bindings &body body)
-  "
+    (let-typed-expansion 'let bindings body))
+  
+  (defmacro let*-typed (bindings &body body)
+    "
   This macro works basically like let*, but also allows type-declarations
   with the key :type.
 
@@ -182,40 +179,7 @@
 	(+ 1 X))
   @end lisp
   "
-  (destructuring-bind (decl body) (trivia:match (first body)
-				    ((cons 'declare _) (list (first body) (rest body)))
-				    (_ (list nil body)))
-    `(let* (,@(mapcar #'(lambda (x) (subseq x 0 2)) bindings))
-       ,@(let ((types (remove-if #'null
-				 (mapcar #'(lambda (x) (destructuring-bind (s e &key (type t)) x
-							 (declare (ignore e))
-							 (unless (eql type t)
-							   (if (null type)
-							       `(ignore ,s)
-							       `(type ,type ,s)))))
-					 bindings))))
-	      (when types `((declare ,@types ,@(cdr decl)))))
-       ,@body)))
-
-(defmacro if-ret (form &body else-body)
-  "
-  If @arg{form} evaluates to non-nil, it is returned, else
-  the s-expression @arg{else-body} is evaluated.
-
-  Example:
-  @lisp
-  > (macroexpand-1
-      `(if-ret (when (evenp x) x)
-	     (+ x 1)))
-  => (LET ((#:G927 (WHEN (EVENP X) X)))
-	 (OR #:G927 (PROGN (+ X 1))))
-  @end lisp
-  "
-  (let ((ret (gensym)))
-    `(let ((,ret ,form))
-       (or ,ret
-	   (progn
-	     ,@else-body)))))
+    (let-typed-expansion 'let* bindings body)))
 
 (defmacro definline (name &body rest)
   "
@@ -285,7 +249,6 @@
   `(eval-when (:compile-toplevel :load-toplevel :execute)
      ,@forms))
 
-
 (defmacro with-memoization ((&optional (hash-table `(make-hash-table :test 'equal))) &body body &aux cache need-hashtablep)
   (with-gensyms (table value exists-p args)
     (labels ((transformer (x)
@@ -331,17 +294,6 @@
 			,@(reverse cache))
 	   ,@transformed-body)))))
 
-(defmacro pushcar (x place)
-  (with-gensyms (xx)
-    `(let ((,xx ,x)) (push ,xx ,place) ,xx)))
-
-(defmacro mapcase ((keyform function) &body cases)
-  (with-gensyms (key)
-    `(let ((,key ,keyform))
-       (cond ,@(mapcar #'(lambda (x)
-			   (if (null x) `(t (error "case failure"))
-			       `((,function ,key ',(car x)) ,@(cdr x)))) cases)))))
-
 (defmacro recurse-maadi (x match &body dispatchers)
   ;;recurse-ಮಾಡಿ ಸಕ್ಕತ್ತಾಗಿ!
   (assert (eql (first match) :match) nil "invalid dispatch name")
@@ -372,8 +324,5 @@
     `(let (,@decl)
        (letv* ((,value ,exists-p (gethash ,key ,table)))
 	 (if ,exists-p (values ,value t) (setf (gethash ,key ,table) ,default))))))
-
-(defmacro values-append (&rest values)
-  `(values-list (append ,@(mapcar #'(lambda (x) `(multiple-value-list ,x)) values))))
 
 )

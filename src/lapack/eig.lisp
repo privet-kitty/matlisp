@@ -10,19 +10,18 @@
 		  (type index-type ,lda)
 		  (type ,(store-type sym) ,wr ,wi))
 	 (with-lapack-query ,sym (,xxx ,lwork)
-	   (ffuncall ,(blas-func "geev" ftype) ,@(apply #'append (permute! (pair `(
-	     (:& :char) (if ,vl #\V #\N) (:& :char) (if ,vr #\V #\N)
-	     (:& :int) (dimensions ,A 0)
-	     (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
-	     (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,wr) (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,wi)
-	     (:* ,(lisp->mffi ftype) :+ (if ,vl (head ,vl) 0)) (if ,vl (the ,(store-type sym) (store ,vl)) (cffi:null-pointer)) (:& :int) (if ,vl ,ldvl 1)
-	     (:* ,(lisp->mffi ftype) :+ (if ,vr (head ,vr) 0)) (if ,vr (the ,(store-type sym) (store ,vr)) (cffi:null-pointer)) (:& :int) (if ,vr ,ldvr 1)
-	     (:* ,(lisp->mffi ftype)) ,xxx (:& :int) ,lwork
-	     (:& :int :output) 0))
-									   ;;Flip rwork to the end in the case of {z,c}geev.
-									   (make-instance 'permutation-cycle
-											  :store (when (subtypep ftype 'cl:complex)
-												   (list (idxv 12 11 10 9 8 7 6))))))))))))
+	   (ffuncall ,(blas-func "geev" ftype)
+	     ,@(let ((args `((:& :char) (if ,vl #\V #\N) (:& :char) (if ,vr #\V #\N)
+			     (:& :int) (dimensions ,A 0)
+			     (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+			     (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,wr) (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,wi)
+			     (:* ,(lisp->mffi ftype) :+ (if ,vl (head ,vl) 0)) (if ,vl (the ,(store-type sym) (store ,vl)) (cffi:null-pointer)) (:& :int) (if ,vl ,ldvl 1)
+			     (:* ,(lisp->mffi ftype) :+ (if ,vr (head ,vr) 0)) (if ,vr (the ,(store-type sym) (store ,vr)) (cffi:null-pointer)) (:& :int) (if ,vr ,ldvr 1)
+			     (:* ,(lisp->mffi ftype)) ,xxx (:& :int) ,lwork
+			     (:& :int :output) 0)))
+		    (if (subtypep ftype 'cl:complex)
+			(apply #'append (permute (pair args) (make-instance 'permutation-cycle :store (list (idxv 12 11 10 9 8 7 6)))))
+			args))))))))
 ;;
 (deft/generic (t/lapack-heev! #'subtypep) sym (jobz uplo A lda w))
 (deft/method t/lapack-heev! (sym blas-mixin) (jobz uplo A lda w)

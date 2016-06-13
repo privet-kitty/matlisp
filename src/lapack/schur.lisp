@@ -11,19 +11,18 @@
 		  (type index-type ,lda)
 		  (type ,(store-type sym) ,wr ,wi))
 	 (with-lapack-query ,sym (,xxx ,lwork)
-	   (ffuncall ,(blas-func "gees" ftype) ,@(apply #'append (permute! (pair `(
-             (:& :char) (if ,vs #\V #\N) (:& :char) #\N :* (cffi:null-pointer)
-	     (:& :int) (dimensions ,A 0)
-	     (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
-	     (:& :int) 0
-	     (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,wr) (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,wi)
-	     (:* ,(lisp->mffi ftype) :+ (if ,vs (head ,vs) 0)) (if ,vs (the ,(store-type sym) (store ,vs)) (cffi:null-pointer)) (:& :int) (if ,vs ,ldvs 1)
-	     (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,xxx) (:& :int) ,lwork
-	     :* (cffi:null-pointer) (:& :int :output) 0))
-									   ;;Flip rwork to the end in the case of {z,c}geev.
-									   (make-instance 'permutation-cycle
-											  :store (when (subtypep ftype 'cl:complex)
-												   (list (idxv 12 11 10 9 8))))))))))))
+	   (ffuncall ,(blas-func "gees" ftype)
+	     ,@(let ((args `((:& :char) (if ,vs #\V #\N) (:& :char) #\N :* (cffi:null-pointer)
+			     (:& :int) (dimensions ,A 0)
+			     (:* ,(lisp->mffi ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :int) ,lda
+			     (:& :int) 0
+			     (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,wr) (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,wi)
+			     (:* ,(lisp->mffi ftype) :+ (if ,vs (head ,vs) 0)) (if ,vs (the ,(store-type sym) (store ,vs)) (cffi:null-pointer)) (:& :int) (if ,vs ,ldvs 1)
+			     (:* ,(lisp->mffi ftype)) (the ,(store-type sym) ,xxx) (:& :int) ,lwork
+			     :* (cffi:null-pointer) (:& :int :output) 0)))
+		    (if (subtypep ftype 'cl:complex)
+			(apply #'append (permute (pair args) (make-instance 'permutation-cycle :store (list (idxv 12 11 10 9 8)))))
+			args))))))))
 ;;
 (closer-mop:defgeneric schur (A &optional job)
   (:documentation "
