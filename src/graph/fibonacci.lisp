@@ -21,7 +21,7 @@
   (print-unreadable-object (nd stream :type t)
     (format stream "key: ~A, degree: ~A, mark?: ~A" (hnode-key nd) (hnode-degree nd) (hnode-mark? nd))))
 ;;
-(defclass fib-heap ()
+(closer-mop:defclass fib-heap ()
   ((root :initform nil :accessor root)
    (number-of-trees :initform 0 :accessor number-of-trees)
    (number-of-elements :initform 0 :accessor number-of-elements)

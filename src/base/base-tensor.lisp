@@ -6,7 +6,7 @@
 (deftype index-store-vector (&optional (size '*)) `(simple-array index-type (,size)))
 (deftype index-store-matrix (&optional (m '*) (n '*)) `(simple-array index-type (,m ,n)))
 ;;
-(defclass base-accessor ()
+(closer-mop:defclass base-accessor ()
   ((dimensions :initarg :dimensions :type index-store-vector :documentation "Dimensions of the vector spaces in which the tensor's arguments reside.")))
 
 (declaim (ftype (function (base-accessor &optional (or boolean index-type)) (or index-store-vector index-type list)) dimensions))
@@ -28,26 +28,26 @@
   (declare (type base-accessor x))
   (length (the index-store-vector (slot-value x 'dimensions))))
 ;;
-(defclass stride-accessor (base-accessor)
+(closer-mop:defclass stride-accessor (base-accessor)
   ((strides :initarg :strides :type index-store-vector :documentation "Strides for accesing elements of the tensor.")
    (head :initarg :head :initform 0 :type index-type :documentation "Head for the store's accessor."))
   (:documentation "Vanilla stride accessor."))
-(defclass coordinate-accessor (base-accessor)
+(closer-mop:defclass coordinate-accessor (base-accessor)
   ((indices :initarg :indices :type index-store-matrix :documentation "Non-zero indices in the tensor.")
    (strides :initarg :strides :type index-store-vector :documentation "Strides for accesing elements of the tensor.")
    (stride-hash :initarg :stride-hash :type index-store-vector :documentation "Strides in Column major order")
    (tail :initform 0 :initarg :boundary :type index-type :documentation "Row bound for indices"))
   (:documentation "Bi-partite graph/Hypergraph/Factor/Co-ordinate store"))
-(defclass graph-accessor (base-accessor)
+(closer-mop:defclass graph-accessor (base-accessor)
   ((fence :initarg :fence :type index-store-vector :documentation "Start index for neighbourhood.")
    (neighbours :initarg :neighbours :type index-store-vector :documentation "Neighbour ids.")
    (transposep :initarg :transposep :initform nil :type boolean :documentation "Choose between row-column compressed forms."))
   (:documentation "Graph store via Adjacency lists; only works for matrices."))
 ;;Store types
-(defclass simple-vector-store-mixin () ())
-(defclass hash-table-store-mixin () ())
+(closer-mop:defclass simple-vector-store-mixin () ())
+(closer-mop:defclass hash-table-store-mixin () ())
 ;;
-(defclass base-tensor () ())
+(closer-mop:defclass base-tensor () ())
 
 (closer-mop:defclass tensor-class (standard-class)
   ((field-type :reader field-type)))
@@ -69,37 +69,37 @@
 ;;
 (deftype sparse-tensor () `(or coordinate-tensor hash-tensor graph-tensor))
 ;;
-(defclass stride-tensor (tensor stride-accessor) () (:metaclass tensor-class))
+(closer-mop:defclass stride-tensor (tensor stride-accessor) () (:metaclass tensor-class))
 ;;
-(defclass dense-tensor (stride-tensor)
+(closer-mop:defclass dense-tensor (stride-tensor)
   ((parent :initform nil :initarg :parent :type (or null tensor) :documentation "This slot is bound if the tensor is the view of another."))
   (:metaclass tensor-class)
   (:documentation "Object which holds all values of its components."))
-(defclass hash-tensor (stride-tensor hash-table-store-mixin)
+(closer-mop:defclass hash-tensor (stride-tensor hash-table-store-mixin)
   ((stride-pivot :initarg :stride-pivot :type index-store-vector :documentation "This slot is used to invert the hash."))
   (:metaclass tensor-class))
 (definline orphanize (x)
   (declare (type dense-tensor))
   (setf (slot-value x 'parent) nil) x)
 ;;
-(defclass simple-dense-tensor (dense-tensor simple-vector-store-mixin) ()
+(closer-mop:defclass simple-dense-tensor (dense-tensor simple-vector-store-mixin) ()
   (:metaclass tensor-class)
   (:documentation "Dense tensor with simple-vector store."))
-(defclass blas-mixin () ()
+(closer-mop:defclass blas-mixin () ()
   (:documentation "Mixin which indicates that there exist foreign-routines for an object of this type."))
 ;;
-(defclass graph-tensor (tensor graph-accessor) ()
+(closer-mop:defclass graph-tensor (tensor graph-accessor) ()
   (:metaclass tensor-class))
-(defclass simple-graph-tensor (graph-tensor simple-vector-store-mixin) ()
-  (:metaclass tensor-class))
-;;
-(defclass coordinate-tensor (tensor coordinate-accessor) ()
-  (:metaclass tensor-class))
-(defclass simple-coordinate-tensor (coordinate-tensor simple-vector-store-mixin) ()
+(closer-mop:defclass simple-graph-tensor (graph-tensor simple-vector-store-mixin) ()
   (:metaclass tensor-class))
 ;;
-(defclass vector-mixin () ())
-(defclass matrix-mixin () ())
+(closer-mop:defclass coordinate-tensor (tensor coordinate-accessor) ()
+  (:metaclass tensor-class))
+(closer-mop:defclass simple-coordinate-tensor (coordinate-tensor simple-vector-store-mixin) ()
+  (:metaclass tensor-class))
+;;
+(closer-mop:defclass vector-mixin () ())
+(closer-mop:defclass matrix-mixin () ())
 ;;
 (defun tensor-typep (tensor subs)
   "
@@ -167,7 +167,7 @@
 	 (cl-name (intern (format nil "<~{~a~^ ~}: ~a>" super-classes field) (find-package "MATLISP"))))
     (compile-and-eval
      `(progn
-	(defclass ,cl-name (,@super-classes) () (:metaclass tensor-class))
+	(closer-mop:defclass ,cl-name (,@super-classes) () (:metaclass tensor-class))
 	(setf (slot-value (find-class ',cl-name) 'field-type) ',field)))
     cl-name))
 
@@ -177,7 +177,7 @@
 	 (cl-name (intern (format nil "<~{~a~^ ~}: ~a>" super-classes field) (find-package "MATLISP"))))
     (compile-and-eval
      `(progn
-	(defclass ,cl-name (,@super-classes) ()
+	(closer-mop:defclass ,cl-name (,@super-classes) ()
 	  (:metaclass tensor-class))
 	(setf (slot-value (find-class ',cl-name) 'field-type) ',field)))
     cl-name))
@@ -199,7 +199,7 @@
 	      (let ((cl-name (intern (format nil "<~{~a~^ ~}: ~a>" (mapcar #'class-name super-classes) field) (find-package "MATLISP"))))
 		(compile-and-eval
 		 `(prog1
-		      (defclass ,cl-name (,@(mapcar #'class-name super-classes)) ()
+		      (closer-mop:defclass ,cl-name (,@(mapcar #'class-name super-classes)) ()
 			(:metaclass tensor-class))
 		    (setf (slot-value (find-class ',cl-name) 'field-type) ',field)))))))
        (t (error "Unknown complex tensor for ~a" class))))))
@@ -224,7 +224,7 @@
 		 (let ((cl-name (intern (format nil "<~{~a~^ ~}: ~a>" (mapcar #'class-name super-classes) field) (find-package "MATLISP"))))
 		   (compile-and-eval
 		    `(prog1
-			 (defclass ,cl-name (,@(mapcar #'class-name super-classes)) ()
+			 (closer-mop:defclass ,cl-name (,@(mapcar #'class-name super-classes)) ()
 			   (:metaclass tensor-class))
 		       (setf (slot-value (find-class ',cl-name) 'field-type) ',field)))))))))
        (t (error "Unknown real tensor for ~a" class))))))

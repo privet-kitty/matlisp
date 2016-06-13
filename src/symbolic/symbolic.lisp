@@ -2,7 +2,7 @@
 
 ;;Field definitions
 (eval-every
-  (defclass ge-expression ()
+  (closer-mop:defclass ge-expression ()
     ((expression :initform (error "expression missing") :initarg :expression)
      (inputs :initform nil :initarg :inputs)))
 

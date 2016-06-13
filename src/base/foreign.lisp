@@ -1,6 +1,6 @@
 (in-package #:matlisp)
 
-(defclass foreign-vector-store-mixin () ())
+(closer-mop:defclass foreign-vector-store-mixin () ())
 
 ;;
 (deft/method t/store-type (type foreign-vector-store-mixin) (&optional (size '*))
@@ -70,7 +70,7 @@
 	       (locally
 		   ,@body))))))))
 ;;
-(defclass foreign-dense-tensor (dense-tensor foreign-vector-store-mixin)
+(closer-mop:defclass foreign-dense-tensor (dense-tensor foreign-vector-store-mixin)
   ((parent :initform nil :initarg :parent :type (or null tensor) :documentation "This slot is bound if the tensor is the view of another."))
   (:metaclass tensor-class)
   (:documentation "Object which holds all values of its components, with a simple-vector store."))
@@ -80,7 +80,7 @@
 	 (cl-name (intern (format nil "<~{~a~^ ~}: ~a>" super-classes field) (find-package "MATLISP"))))
     (compile-and-eval
      `(progn
-	(defclass ,cl-name (,@super-classes) () (:metaclass tensor-class))
+	(closer-mop:defclass ,cl-name (,@super-classes) () (:metaclass tensor-class))
 	(setf (slot-value (find-class ',cl-name) 'field-type) ',field)))
     cl-name))
 

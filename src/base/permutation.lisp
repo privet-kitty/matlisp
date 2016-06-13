@@ -35,7 +35,7 @@
 	 (perm (nth-value 1 (pick-random len len))))
     (permute! seq (with-no-init-checks (make-instance 'permutation-action :store perm :size len)))))
 ;;Class definitions----------------------------------------------;;
-(defclass permutation ()
+(closer-mop:defclass permutation ()
   ((store :reader store :initarg :store)
    (permutation-size :reader permutation-size :initarg :size :type index-type)))
 
@@ -46,9 +46,9 @@
 	(format stream "ID~%")
 	(format stream "~a~%" (store per)))))
 
-(defclass permutation-index-stored (permutation) ())
+(closer-mop:defclass permutation-index-stored (permutation) ())
 ;;
-(defclass permutation-action (permutation-index-stored)
+(closer-mop:defclass permutation-action (permutation-index-stored)
   ((store :type index-store-vector)))
 
 (closer-mop:defmethod initialize-instance :after ((perm permutation-action) &rest initargs)
@@ -62,7 +62,7 @@
 	       (setf (slot-value perm 'permutation-size) (length repr)))))
 
 ;;
-(defclass permutation-cycle (permutation)
+(closer-mop:defclass permutation-cycle (permutation)
   ((store :type list)))
 
 (closer-mop:defmethod initialize-instance :after ((per permutation-cycle) &rest initargs)
@@ -82,7 +82,7 @@
 	   :finally (setf (slot-value per 'permutation-size) (1+ ss))))))
 
 ;;
-(defclass permutation-pivot-flip (permutation-index-stored)
+(closer-mop:defclass permutation-pivot-flip (permutation-index-stored)
   ((store :type index-store-vector)))
 
 (closer-mop:defmethod initialize-instance :after ((per permutation-pivot-flip) &rest initargs)

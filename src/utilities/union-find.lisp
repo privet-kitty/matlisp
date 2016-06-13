@@ -1,7 +1,7 @@
 (in-package #:matlisp-union-find)
 
 ;;
-(defclass union-find ()
+(closer-mop:defclass union-find ()
   ((id :initform (make-array 0 :adjustable t :fill-pointer t))
    (values :initarg :values :initform (make-array 0 :adjustable t :fill-pointer t))))
 
