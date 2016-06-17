@@ -33,12 +33,28 @@
   (declare (type (and tensor-vector dense-tensor) tensor))
   (tricopy! tensor (zeros (make-list order :initial-element (dimensions tensor 0)) (type-of tensor)) :d))
 
-(defun diag~ (a)
+(defun diag~ (a &optional bias)
   (declare (type dense-tensor a))
-  (with-no-init-checks
-    (make-instance (class-of a)				
-      :dimensions (coerce (list (lvec-min (dimensions a))) 'index-store-vector)
-      :strides (coerce (list (lvec-foldr #'+ (strides a))) 'index-store-vector)
-      :head (head a) :store (store a) :parent a)))
+  (letv* ((off dim
+	       (if bias
+		   (let ((bias (etypecase bias
+				 (index-type (idxv 0 bias))
+				 (list (coerce bias 'index-store-vector))
+				 (vector (make-array (length bias) :element-type 'index-type :initial-contents bias)))))
+		     (assert (= (length bias) (order a)) nil 'tensor-index-rank-mismatch)
+		     (letv* ((min (lvec-min bias)))
+		       (iter (for di in-vector (dimensions a) with-index i)
+			     (decf (aref bias i) min)
+			     (minimizing (- di (aref bias i)) into dim)
+			     (summing (* (strides a i) (aref bias i)) into off)
+			     (finally
+			      (assert (< 0 dim) nil 'tensor-dimension-mismatch)
+			      (return (values (+ (head a) off) dim))))))
+		   (values (head a) (lvec-min (dimensions a))))))
+    (with-no-init-checks
+	(make-instance (class-of a)
+		       :dimensions (coerce (list dim) 'index-store-vector)
+		       :strides (coerce (list (lvec-foldr #'+ (strides a))) 'index-store-vector)
+		       :head off :store (store a) :parent a))))
 
 (defun (setf diag~) (value tensor) (copy! value (diag~ tensor)))
