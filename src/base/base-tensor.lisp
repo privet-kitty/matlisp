@@ -6,8 +6,9 @@
 (deftype index-store-vector (&optional (size '*)) `(simple-array index-type (,size)))
 (deftype index-store-matrix (&optional (m '*) (n '*)) `(simple-array index-type (,m ,n)))
 ;;
-(closer-mop:defclass base-accessor ()
-  ((dimensions :initarg :dimensions :type index-store-vector :documentation "Dimensions of the vector spaces in which the tensor's arguments reside.")))
+(eval-every
+  (closer-mop:defclass base-accessor ()
+    ((dimensions :initarg :dimensions :type index-store-vector :documentation "Dimensions of the vector spaces in which the tensor's arguments reside."))))
 
 (declaim (ftype (function (base-accessor &optional (or boolean index-type)) (or index-store-vector index-type list)) dimensions))
 (definline dimensions (x &optional idx)
@@ -49,10 +50,11 @@
 ;;
 (closer-mop:defclass base-tensor () ())
 
-(closer-mop:defclass tensor-class (standard-class)
-  ((field-type :reader field-type)))
-(closer-mop:defmethod closer-mop:validate-superclass ((class tensor-class) (superclass standard-class))  t)
-(closer-mop:defmethod field-type ((class symbol)) (field-type (find-class class)))
+(eval-every
+  (closer-mop:defclass tensor-class (standard-class)
+    ((field-type :reader field-type)))
+  (closer-mop:defmethod closer-mop:validate-superclass ((class tensor-class) (superclass standard-class))  t)
+  (closer-mop:defmethod field-type ((class symbol)) (field-type (find-class class))))
 
 (closer-mop:defclass tensor (base-tensor base-accessor)
   ((store :initarg :store :reader store :documentation "Storage for the tensor.")
@@ -153,7 +155,7 @@
 (deftype tensor-matrix () `(and tensor (satisfies tensor-matrixp)))
 (deftype tensor-square-matrix () `(and tensor (satisfies tensor-matrixp) (satisfies tensor-squarep)))
 ;;
-(defgeneric tensor-generator (field tensor))
+(closer-mop:defgeneric tensor-generator (field tensor))
 
 (with-memoization ()
   (memoizing
@@ -182,7 +184,7 @@
 	(setf (slot-value (find-class ',cl-name) 'field-type) ',field)))
     cl-name))
 ;;This is useful for Eigenvalue decompositions
-(defgeneric complexified-tensor (class)
+(closer-mop:defgeneric complexified-tensor (class)
   (:method ((class-name symbol))
     (complexified-tensor (find-class class-name))))
 
@@ -206,7 +208,7 @@
 (closer-mop:defmethod complexified-tensor :around ((class tensor-class))
   (class-name (call-next-method)))
 ;;Now we're just making up names
-(defgeneric realified-tensor (class)
+(closer-mop:defgeneric realified-tensor (class)
   (:method ((class-name symbol))
     (realified-tensor (find-class class-name)))
   (:method :around ((class tensor-class))
@@ -217,7 +219,7 @@
      (cond
        ((subtypep (field-type class) 'cl:real) class)
        ((match (field-type class)
-	  ((λlist 'cl:complex field)
+	  ((lambda-list 'cl:complex field)
 	   (letv* ((super-classes (closer-mop:class-direct-superclasses class))
 		   (siblings (reduce #'intersection (mapcar #'closer-mop:class-direct-subclasses super-classes))))
 	     (or (find field siblings :test #'equal :key #'field-type)

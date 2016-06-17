@@ -9,7 +9,7 @@
 	(when (slot-exists-p x 'memos) (iter (for (k v) in-hashtable (memos x)) (setf (gethash k (memos ret)) v)))
 	ret)))
 
-(defun real-subtypep (type) (match type ((λlist 'cl:complex &optional (type t)) type)))
+(defun real-subtypep (type) (match type ((lambda-list 'cl:complex &optional (type t)) type)))
 (defun cclass-max (&rest lst)
   (iter (for ele in lst) (with max)
 	(when (or (null max)
@@ -204,7 +204,7 @@
 						(remove-if-not #'(lambda (x) (and (eql g (third x)) (fourth x))) generate-args))))
 		     ,@(let ((dargs (mapcar #'(lambda (x)
 						(match x
-						  ((λlist name _ group &optional destructive)
+						  ((lambda-list name _ group &optional destructive)
 						   (if (or destructive (not (member group coerce-groups))) name `(lazy-coerce ,name ,(first (rassoc (list group) sym :test #'equal)))))
 						  ((list name _) name)
 						  (_ x)))
@@ -216,7 +216,7 @@
 	 ;;method generator.
 	 ,@(let ((sym (zipsym generate-groups)))
 	     `((closer-mop:defmethod ,name (,@(mapcar (lambda (x) (match x
-							 ((λlist name dispatch group &optional _)
+							 ((lambda-list name dispatch group &optional _)
 							  `(,name ,(group-specializer dispatch group)))
 							 (_ x)))
 					   (subseq args 0 keypos))
@@ -229,7 +229,7 @@
 		    (macrolet ((cl (,xx) (ecase ,xx ,@(mapcar #'(lambda (x) `(,(second x) (quote ,(first x))))  sym))))
 		      (compile-and-eval
 		       `(closer-mop:defmethod ,',name (,@(list ,@(mapcar (lambda (x) (match x
-									    ((λlist name _ group &optional _)
+									    ((lambda-list name _ group &optional _)
 									     `(list ',name (classp-specializer (cl ,group))))
 									    (_ `(quote ,x))))
 							      (subseq args 0 keypos)))

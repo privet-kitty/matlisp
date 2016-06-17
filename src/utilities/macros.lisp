@@ -63,7 +63,7 @@
     (labels ((make-cd (i rets vrets)
 	       `((let ((,(first (car rets)) ,(maptree '(values-n :previous) #'(lambda (x) (match x
 											    ((list* 'values-n _) x)
-											    ((λlist :previous &optional (idx (- i 2)))
+											    ((lambda-list :previous &optional (idx (- i 2)))
 											     (assert (< -1 idx (length vrets)) nil 'invalid-arguments)
 											     (elt (reverse vrets) idx))))
 						      (second (car rets)))))
@@ -215,7 +215,7 @@
 				     (_ (list nil body)))
     `(locally
        (declare (optimize ,@(trivia:ematch args
-			     ((λlist &key speed safety space debug)
+			     ((lambda-list &key speed safety space debug)
 			      (remove nil (mapcar #'(lambda (name val) (if val `(,name ,val)))
 						  `(speed safety space debug) (list speed safety space debug))))))
 		,@decl+)
@@ -247,7 +247,7 @@
 		 ((or (list* 'with-memoization _) (list* 'quote _)) x)
 		 ((list* 'memoizing body)
 		  (match body
-		    ((list (λlist 'cl:let bindings &body (or (list* (and (list* 'cl:declare _) decl-p) body) body)
+		    ((list (lambda-list 'cl:let bindings &body (or (list* (and (list* 'cl:declare _) decl-p) body) body)
 				  &aux (declares (if decl-p (list decl-p))) (id (gensym "memo-"))))
 		     (setf need-hashtablep t)
 		     `(let (,@bindings)
@@ -257,7 +257,7 @@
 			  (values-list
 			   (if ,exists-p ,value
 			       (setf (gethash ,args ,table) (multiple-value-list (progn ,@body))))))))
-		    ((list (λlist (and def (or 'cl:defun 'cl:defmethod)) name func-args &body (or (list* (and (list* 'cl:declare _) decl-p) body) body)
+		    ((list (lambda-list (and def (or 'cl:defun 'cl:defmethod)) name func-args &body (or (list* (and (list* 'cl:declare _) decl-p) body) body)
 				  &aux (declares (if decl-p (list decl-p))) (id (gensym "memo-"))))
 		     (setf need-hashtablep t)
 		     (assert (not (intersection '(&rest &allow-other-keys) func-args)) nil "can't memoize functions with &rest, &allow-other-keys in their defining lambda-lists")
@@ -268,11 +268,11 @@
 			  (values-list
 			   (if ,exists-p ,value
 			       (setf (gethash ,args ,table) (multiple-value-list (progn ,@body))))))))
-		    ((list (λlist (and def (or 'cl:labels 'cl:flet)) definitions &body body))
+		    ((list (lambda-list (and def (or 'cl:labels 'cl:flet)) definitions &body body))
 		     (setf need-hashtablep t)
 		     `(,def (,@(mapcar #'(lambda (x) (cdr (transformer `(memoizing (cl:defun ,@x))))) definitions))
 			  ,@body))
-		    ((λlist code &key (type nil type?) (bind (gensym)))
+		    ((lambda-list code &key (type nil type?) (bind (gensym)))
 		     (if-let ((cv (rassoc code cache :key #'first :test #'equal)))
 		       (first cv)
 		       (values (list* bind code (if type? `(:type ,type)))

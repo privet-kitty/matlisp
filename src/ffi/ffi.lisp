@@ -50,11 +50,11 @@
     ;;Incompatibilities
     (:* (values 'cffi:foreign-pointer `(:pointer :void)))
     (:callback (values 'symbol `(:pointer :void)))
-    ((λlist :& ref-type &rest _)
+    ((lambda-list :& ref-type &rest _)
      (ematch ref-type
        ((list :complex element-type) (values `(complex ,(mffi->lisp element-type)) `(:pointer (,element-type 2))))
        ((or :char :unsigned-char :short :unsigned-short :int :unsigned-int :long :unsigned-long :float :double) (values (mffi->lisp ref-type) `(:pointer ,ref-type)))))
-    ((λlist :* ptr-type &rest _)
+    ((lambda-list :* ptr-type &rest _)
      (ematch ptr-type
        ((list :complex element-type) (values `(simple-array ,(mffi->lisp element-type) (*)) `(:pointer (,element-type 2))))
        ((or (and pointer-type (or :char :unsigned-char :short :unsigned-short :int :unsigned-int :long :unsigned-long :float :double))
@@ -71,7 +71,7 @@
 				     :aux `(:unsigned-int (the (unsigned-byte 32) (length ,s)))))
 			    (list :argument `(the ,(mffi->lisp type) ,expr))))
 	       ((type symbol) (list :argument `(the ,(mffi->lisp type) ,expr)))
-	       ((λlist :& sub-type &optional ((and output (or nil :output))) &aux (utype (second (nth-value 1 (mffi->lisp type)))) (var (gensym "var")) (c (gensym "expr")))
+	       ((lambda-list :& sub-type &optional ((and output (or nil :output))) &aux (utype (second (nth-value 1 (mffi->lisp type)))) (var (gensym "var")) (c (gensym "expr")))
 		(list* :argument `(the cffi:foreign-pointer ,var)
 		       (ematch sub-type
 			 ((list :complex (type symbol))
@@ -87,7 +87,7 @@
 									(when (eq sub-type :char) `(char-code))
 									`(the ,(mffi->lisp type) ,expr)))
 				:output (when output `(cffi:mem-ref ,var ,utype)))))))
-	       ((λlist :* _ &key + &aux (vec (gensym "vec")))
+	       ((lambda-list :* _ &key + &aux (vec (gensym "vec")))
 		(letv* ((lisp-type ffi-type (mffi->lisp type)))
 		  (list :argument (let ((ptr `(etypecase ,vec
 						(,lisp-type (vector-sap-interpreter-specific ,vec))
