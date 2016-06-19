@@ -73,11 +73,11 @@
 	 ((tensor null) (copy ,a))))))
 
 (definline .* (&rest objects &aux (ret (if objects (b.* (car objects)) 1)))
-  (iter (for fst in objects) (setf ret (b.* ret fst)))
+  (iter (for fst in (cdr objects)) (setf ret (b.* ret fst)))
   ret)
 
 (define-compiler-macro .* (&rest objects)
-  (rec reducer ((ret (if objects `(b.* ,(car objects)) 1)) (objs objects))
+  (rec reducer ((ret (if objects `(b.* ,(car objects)) 1)) (objs (cdr objects)))
        (if (not objs) ret
 	   (reducer `(b.* ,ret ,(car objs)) (cdr objs)))))
 ;;

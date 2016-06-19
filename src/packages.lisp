@@ -198,7 +198,7 @@
    #:norm #:psd-proj #:tensor-max #:tensor-min #:tr
    #:ones #:eye! #:eye #:diag #:diag~
    #:rand #:randn #:randi #:rande
-   #:range #:linspace #:polyfit #:roots)
+   #:range #:linspace #:polyfit #:polyval #:roots)
   (:documentation "MATLISP routines"))
 
 ;;Shadowed symbols.
@@ -267,7 +267,7 @@
    #:norm #:psd-proj #:max #:min #:tr
    #:ones #:eye! #:eye #:diag #:diag~
    #:rand #:randn #:randi #:rande
-   #:range #:linspace #:polyfit #:roots)
+   #:range #:linspace #:polyfit #:polyval #:roots)
   (:documentation "MATLISP USER"))
 
 (defpackage "MATLISP-TESTS"
