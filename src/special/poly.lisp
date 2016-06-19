@@ -1,0 +1,25 @@
+(in-package #:matlisp)
+
+(defun polyfit (observations &aux (observations (coerce observations 'vector)))
+  (let* ((A (zeros (list (length observations) (length observations))))
+	 (b (zeros (dimensions A 0))))
+    (labels ((coeff (n k)
+	       (if (< n k) 0 (iter (for jj from n downto (- n k -1)) (multiplying jj))))
+	     (row-ti (ti x &optional (derivative 0) &aux (pti 1d0))
+	       (iter (for i from 0 below (dimensions x 0))
+		     (setf (ref x i) (* (coeff i derivative) pti))
+		     (if (<= derivative i) (setf pti (* pti ti))))))
+     (iter (for li in-vector observations)
+	   (for (Ai bi) slicing (list A b) along 0)
+	   (ematch li
+	     ((λlist ti value &optional (derivative 0))
+	      (setf (ref bi 0) value)
+	      (row-ti ti Ai derivative))))
+     (getrs! (getrf! A) b))))
+
+(defun roots (poly &aux (n (1- (dimensions poly 0))))
+  ;;TODO: Add a better method.
+  (let ((A (zeros (list n n) (type-of poly))))
+    (copy! 1 (diag~ A 1))
+    (scal! (/ -1 (ref poly -1)) (copy! (subtensor~ poly '((0 -1))) (subtensor~ A '(-1 (nil nil)))))
+    (eig A :n)))

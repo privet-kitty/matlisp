@@ -57,4 +57,4 @@
 		       :strides (coerce (list (lvec-foldr #'+ (strides a))) 'index-store-vector)
 		       :head off :store (store a) :parent a))))
 
-(defun (setf diag~) (value tensor) (copy! value (diag~ tensor)))
+(defun (setf diag~) (value tensor &optional bias) (copy! value (diag~ tensor bias)))

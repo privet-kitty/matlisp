@@ -72,10 +72,10 @@
   (:use #:common-lisp #:iterate #:trivia #:trivia.ppcre #:matlisp-conditions #:alexandria)
   (:nicknames #:mu)
   (:export ;;Alexandria
-           #:ensure-list #:curry #:compose #:flatten #:when-let #:if-let #:with-gensyms #:define-constant
+	   #:ensure-list #:curry #:compose #:flatten #:when-let #:if-let #:with-gensyms #:define-constant
 	   ;;
 	   #:zip #:zipsym #:unzip #:ziptree
-	   #:remmeth #:recursive-append 
+	   #:remmeth #:recursive-append
 	   #:maptree-if #:maptree #:maptree-eki #:pair
 	   #:compile-and-eval #:modproj
 	   ;;
@@ -91,8 +91,8 @@
 	   ;;Macros
 	   #:using-gensyms #:binding-gensyms
 	   #:values-n #:rec #:ziprm
-	   #:letv* #:let-typed #:let*-typed 
-	   #:eval-every #:recurse-maadi #:gethash!	   
+	   #:letv* #:let-typed #:let*-typed
+	   #:eval-every #:recurse-maadi #:gethash!
 	   #:definline #:with-optimization #:very-quickly
 	   #:memoizing #:with-memoization))
 
@@ -198,7 +198,7 @@
    #:norm #:psd-proj #:tensor-max #:tensor-min #:tr
    #:ones #:eye! #:eye #:diag #:diag~
    #:rand #:randn #:randi #:rande
-   #:range #:linspace)
+   #:range #:linspace #:polyfit #:roots)
   (:documentation "MATLISP routines"))
 
 ;;Shadowed symbols.
@@ -267,7 +267,7 @@
    #:norm #:psd-proj #:max #:min #:tr
    #:ones #:eye! #:eye #:diag #:diag~
    #:rand #:randn #:randi #:rande
-   #:range #:linspace)
+   #:range #:linspace #:polyfit #:roots)
   (:documentation "MATLISP USER"))
 
 (defpackage "MATLISP-TESTS"

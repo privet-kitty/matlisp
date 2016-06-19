@@ -120,7 +120,8 @@
 	    :components ((:file "random")
 			 (:file "map")
 			 (:file "norm")
-			 (:file "misc")))
+			 (:file "misc")
+			 (:file "poly")))
    ;;Matlisp-user
    (:module "matlisp-user" :pathname "user"
 	    :depends-on ("matlisp-core")
