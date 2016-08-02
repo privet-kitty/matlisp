@@ -1,5 +1,13 @@
 (in-package #:matlisp-user)
 
+;;conjugate
+(definline conjugate! (a)
+  (tensor-conjugate! a))
+
+(definline conjugate (a)
+  (tensor-conjugate a))
+;;
+
 (defmacro lift-function (fn &aux (pkg (find-package "MATLISP-USER")))
   (letv* ((fname (symbol-name fn)) (fpkg (symbol-package fn)))
     (letv* ((fn (find-symbol fname fpkg))

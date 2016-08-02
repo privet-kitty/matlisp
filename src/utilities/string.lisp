@@ -34,9 +34,10 @@ returning two values: the string and the number of bytes read."
     (values data fsize)))
 
 (declaim (inline split-seq))
-(defun split-seq (test seq &key max-cuts)
+(defun split-seq (test seqo &key max-cuts)
   "Split a sequence, wherever the given character occurs."
-  (let ((split-list nil) (split-count 0) (deletes nil))
+  (let ((seq (etypecase seqo (vector seqo) (list (coerce seqo 'vector))))
+	(split-list nil) (split-count 0) (deletes nil))
     (labels ((left-split (prev i)
 	       (if (not deletes)
 		   (when (< prev i)
@@ -78,7 +79,9 @@ returning two values: the string and the number of bytes read."
 		    (t
 		     (left-split prev i)
 		     (setf prev (1+ i)))))))))
-    (values (nreverse split-list) (1- split-count))))
+    (values (let ((ret (nreverse split-list)))
+	      (etypecase seqo (vector ret) (list (mapcar #'(lambda (x) (coerce x 'list)) ret))))
+	    (1- split-count))))
 
 ;;
 (defun splitlines (string)

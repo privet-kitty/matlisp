@@ -79,7 +79,7 @@
 	   #:maptree-if #:maptree #:maptree-eki #:pair
 	   #:compile-and-eval #:modproj
 	   ;;
-	   #:cart #:mapcart
+	   #:cart #:mapcart  #:infer-type
 	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase
 	   ;;
 	   ;;string
@@ -158,7 +158,7 @@
 
    #:tensor-class #:sparse-tensor #:stride-tensor #:dense-tensor #:simple-dense-tensor #:foreign-dense-tensor
    #:hash-tensor
-   #:orphanize #:graph-tensor #:simple-graph-tensor #:coordinate-tensor #:tensor-typep
+   #:orphanize #:graph-tensor #:simple-graph-tensor #:coordinate-tensor #:tensor-typep #:tensor-type
    #:tensor-method-generator #:define-tensor-method #:cl
    ;;#:tensor-matrixp #:tensor-vectorp #:tensor-squarep
    #:tensor-vector #:tensor-matrix #:tensor-square-matrix
@@ -221,7 +221,7 @@
    #:base-tensor #:tensor #:memos #:store-size #:total-size
    #:dorefs #:for-mod #:with-iterator #:loop-order #:uplo
    #:sparse-tensor #:stride-tensor #:dense-tensor #:hash-tensor #:foreign-tensor
-   #:orphanize #:graph-tensor #:coordinate-tensor #:tensor-typep
+   #:orphanize #:graph-tensor #:coordinate-tensor #:tensor-typep #:tensor-type
    #:tensor-method-generator #:define-tensor-method #:cl
    ;;#:tensor-matrixp #:tensor-vectorp #:tensor-squarep
    #:tensor-vector #:tensor-matrix #:tensor-square-matrix

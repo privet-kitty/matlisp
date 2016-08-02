@@ -155,6 +155,18 @@
 (deftype tensor-matrix () `(and tensor (satisfies tensor-matrixp)))
 (deftype tensor-square-matrix () `(and tensor (satisfies tensor-matrixp) (satisfies tensor-squarep)))
 ;;
+(deftype tensor-type (field &key tensor order square)
+  (let ((types (remove nil
+		       (list (tensor field (match tensor (* nil)))
+			     (ematch order
+			       (1 `(satisfies tensor-vectorp))
+			       (2 `(satisfies tensor-matrixp))
+			       (* nil))
+			     (ematch square
+			       ((or '* nil) nil)
+			       (t `(satisfies tensor-squarep)))))))
+    (if (cdr types) (list* 'and types) (car types))))
+
 (closer-mop:defgeneric tensor-generator (field tensor))
 
 (with-memoization ()

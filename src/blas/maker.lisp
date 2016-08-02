@@ -3,15 +3,20 @@
 (deft/generic (t/zeros #'subtypep) sym (dims &optional initarg))
 
 (deft/method t/zeros (class stride-accessor) (dims &optional initial-element)
-  (with-gensyms (dimsv strdv tsize init)
+  (with-gensyms (dimsv strdv tsize init ret)
     `(letv* ((,dimsv (coerce ,dims 'index-store-vector) :type index-store-vector)
 	     (,strdv ,tsize (make-stride ,dimsv) :type index-store-vector index-type)
-	     ,@(when initial-element `((,init ,initial-element))))
-       (with-no-init-checks
-	   (make-instance ',class :dimensions ,dimsv :head 0 :strides ,strdv
-			  :store ,(recursive-append
-				   (when initial-element `(if ,init (t/store-allocator ,class ,tsize :initial-element (t/coerce ,(field-type class) ,init))))
-				   `(t/store-allocator ,class ,tsize)))))))
+	     ,@(when initial-element `((,init ,initial-element)))
+	     ;;(,ret (sb-pcl::allocate-standard-instance ,(sb-pcl::class-wrapper (sb-pcl::ensure-class-finalized (find-class class)))))
+	     (,ret (allocate-instance ,(find-class class))))
+       (setf (slot-value ,ret 'dimensions) ,dimsv
+	     (slot-value ,ret 'strides) ,strdv
+	     (slot-value ,ret 'head) 0
+	     (slot-value ,ret 'store) ,(recursive-append
+				       (when initial-element `(if ,init (t/store-allocator ,class ,tsize :initial-element (t/coerce ,(field-type class) ,init))))
+				       `(t/store-allocator ,class ,tsize))
+	     (slot-value ,ret 'parent) nil)
+       ,ret)))
 
 (deft/method (t/zeros #'hash-table-storep) (class stride-accessor) (dims &optional size)
   (with-gensyms (dimsv strdv tsize)

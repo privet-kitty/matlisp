@@ -193,6 +193,22 @@
     (t (assert (if open? (<= (- (1+ d)) i d) (< (- (1+ d)) i d)) nil 'tensor-index-out-of-bounds)
        (if (< i 0) (if (and open? (= i (- (1+ d)))) -1 (mod i d)) i))))
 
+(defun infer-type (expr env)
+  (or
+   (match expr
+     ((list 'the type _) type)
+     ((type number) (type-of expr))
+     ((list 'quote thing) (type-of thing))
+     ((type null) 'null)
+     #+(or sbcl)
+     ((type symbol)
+      (multiple-value-bind (binding-type localp declarations) (#+sbcl sb-cltl2:variable-information
+								      expr env)
+	(declare (ignore binding-type localp))
+	(let ((type-decl (find 'type declarations :key #'car)))
+	  (and type-decl (cdr type-decl))))))
+   t))
+
 ;; (defstruct (sap-wrap (:constructor make-sap-wrap (ptr)))
 ;;   (ptr (cffi:null-pointer) :type cffi:foreign-pointer :read-only t))
 

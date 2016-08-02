@@ -19,7 +19,7 @@
 	    (iter (for u in (setf (aref ag i) (sort (aref ag i) #'< :key #'(lambda (x) (etypecase x (cons (the index-type (first x))) (index-type x))))))
 		  (letv* ((u/ value (etypecase u (cons (the index-type (values (first u) (cdr u)))) (index-type u)))
 			  (m (aref (memoizing (fence ret)) (1+ i))))
-		    (setf (aref (memoizing (δ-i ret) :type index-store-vector) m) u/)
+		    (setf (aref (memoizing (δ-i ret) :type index-store-vector) m) (modproj u/ (length ag) nil))
 		    (if value (setf (store-ref (the graph-tensor ret) m) value)))
 		  (incf (aref (memoizing (fence ret)) (1+ i))))))
     ret))
@@ -42,7 +42,7 @@
   (adlist->graph
    (symmetrize!
     (iter (for i from 0 below (length order))
-	  (collect (if (/= (aref order i) i) (list (aref order i))) result-type 'vector)))
+	  (collect (remove-duplicates (list i (aref order i))) result-type 'vector)))
    type))
 
 (defun cliquep (g lst)
