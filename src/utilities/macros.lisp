@@ -184,11 +184,6 @@
 (defmacro definline (name &body rest)
   "
   Creates a function and declaims them inline: short form for defining an inlined function.
-
-  Example:
-  @lisp
-  > (macroexpand-1 `(definline f (a b) (+ a b)))
-  => (INLINING (DEFUN F (A B) (+ A B)))
   "
   `(progn
      (declaim (inline ,name))
