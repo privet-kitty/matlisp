@@ -15,7 +15,8 @@
 	     (slot-value ,ret 'store) ,(recursive-append
 				       (when initial-element `(if ,init (t/store-allocator ,class ,tsize :initial-element (t/coerce ,(field-type class) ,init))))
 				       `(t/store-allocator ,class ,tsize))
-	     (slot-value ,ret 'parent) nil)
+	     (slot-value ,ret 'parent) nil
+	     (slot-value ,ret 'memos) nil)
        ,ret)))
 
 (deft/method (t/zeros #'hash-table-storep) (class stride-accessor) (dims &optional size)
