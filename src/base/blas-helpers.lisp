@@ -16,14 +16,14 @@
 	      :finally (return (values (aref sort-std 0) perm-dims sort-std std-perm)))))))))
 
 (definline blas-func (name type)
-  (string+
-   (cond
-     ((eq type 'single-float) "s")
-     ((eq type 'double-float) "d")
-     ((equal type '(complex single-float)) "c")
-     ((equal type '(complex double-float)) "z")
-     (t "error: unknown BLAS type."))
-   name))
+  "Return the name of a given BLAS/LAPACK function whose base name is NAME operating on the type TYPE."
+  (let ((prefix (cond
+                  ((eq type 'single-float) "s")
+                  ((eq type 'double-float) "d")
+                  ((equal type '(complex single-float)) "c")
+                  ((equal type '(complex double-float)) "z")
+                  (t (error "Unknown BLAS type: ~S" type)))))
+    (string+ prefix name)))
 
 (definline blas-copyablep (ten-a ten-b)
   (declare (type stride-accessor ten-a ten-b))
