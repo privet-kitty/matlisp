@@ -9,6 +9,7 @@
   (defun linear-storep (cl)
     (match (store-type cl)
       ((or (list 'simple-array _ (list '*))
+	   (list 'simple-bit-vector '*)
 	   (guard store-type (subtypep store-type 'matlisp-ffi:foreign-vector)))
        t)))
   (defun hash-table-storep (x) (eql (store-type x) 'hash-table))
@@ -81,7 +82,9 @@
 (deft/method (t/store-allocator #'linear-storep) (sym tensor) (size &rest initargs)
   (letv* (((&key initial-element) initargs))
     (with-gensyms (sitm size-sym arr idx init)
-      (let ((type (second (store-type sym))))
+      (let ((type (ematch (store-type sym)
+		    ((list 'simple-array type _) type)
+		    ((list 'simple-bit-vector _) 'bit))))
 	`(let*-typed ((,size-sym (t/compute-store-size ,sym (let ((,sitm ,size))
 							      (etypecase ,sitm
 								(index-type ,sitm)

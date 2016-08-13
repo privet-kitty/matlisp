@@ -5,7 +5,7 @@
   (tensor 'boolean)
   (deft/method (t/store-allocator #'(lambda (x) (eql (field-type x) 'boolean))) (type simple-vector-store-mixin) (size &rest initargs)
     `(t/store-allocator ,(tensor 'bit) ,size ,@initargs))
-  (deft/method (t/store-type #'(lambda (x) (eql (field-type x) 'boolean))) (type simple-vector-store-mixin) (&optional (size '*))
+  (deft/method (t/store-type #'(lambda (x) (member (field-type x) '(bit boolean)))) (type simple-vector-store-mixin) (&optional (size '*))
     `(simple-bit-vector ,size))
 
   (deft/method (t/store-ref #'(lambda (x) (eql (field-type x) 'boolean))) (type simple-vector-store-mixin) (store &rest idx)

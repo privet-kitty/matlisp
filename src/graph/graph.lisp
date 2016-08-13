@@ -45,6 +45,12 @@
 	  (collect (remove-duplicates (list i (aref order i))) result-type 'vector)))
    type))
 
+(defun order->dag (order &optional type)
+  (adlist->graph
+   (iter (for i from 0 below (length order))
+	 (collect (remove-duplicates (list i (aref order i))) result-type 'vector))
+   type))
+
 (defun cliquep (g lst)
   (iter main (for u* on lst)
     (iter (for v in (cdr u*)) (or (δ-i g (car u*) v) (return-from main nil)))
@@ -271,7 +277,7 @@
   (declare (type graph-accessor g))
   (let* ((tree (t/store-allocator index-store-vector (dimensions g 0)))
 	 (start (or start (random (length tree)))))
-    (setf (aref tree start) start)
+    (iter (for i from 0 below (length tree)) (setf (aref tree i) i))
     (graphfib (g g :order (lambda (x y) (if (and x y) (< x y) (and x t))))
       (:init (i) (if (= i start) 0 nil))
       (:update (i w-i fib)

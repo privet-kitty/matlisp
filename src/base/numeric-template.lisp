@@ -167,6 +167,9 @@
 (deft/method t/strict-coerce ((from rational) (to rational)) (val)
   `(the rational ,val))
 
+(deft/method t/strict-coerce ((from boolean) (to boolean)) (val)
+  `(the boolean ,val))
+
 (deft/method t/strict-coerce ((from index-type) (to index-type)) (val)
   `(the index-type ,val))
 ;;
