@@ -61,8 +61,9 @@
   (mapcar (lambda (args) (apply function args)) (apply #'cart list more-lists)))
 
 (declaim (inline pair))
-(defun pair (list)
-  (loop :for (a . b) :on list :by #'cddr :collect (if b (list a (first b)) (list a))))
+(defun pair (list &optional (n 2))
+  (loop :for x :on list :by #'(lambda (x) (nthcdr n x))
+     :collect (let ((xth x)) (loop :repeat n :collect (pop xth)))))
 
 (declaim (inline zip))
 (defun zip (&rest args)
