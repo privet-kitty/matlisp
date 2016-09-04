@@ -90,7 +90,7 @@
 	   #:lvec->list #:lvec->list! #:binary-search #:sort-index
 	   ;;Macros
 	   #:using-gensyms #:binding-gensyms
-	   #:values-n #:rec #:ziprm
+	   #:values-n #:rec #:ziprm #:set-slots
 	   #:letv* #:let-typed #:let*-typed
 	   #:eval-every #:recurse-maadi #:gethash!
 	   #:definline #:with-optimization #:very-quickly

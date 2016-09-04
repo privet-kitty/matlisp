@@ -121,7 +121,9 @@
 	   (if (cliquep g δ-clique)
 	       (iter (for j in-vector (δ-i g) from li below ri) (incf (fib:node-key j fib))
 		     (finally (setf (aref order (decf k)) i)
-			      (setf cliques (let ((c (list (cons i δ-clique)))) (union cliques (union c cliques :test #'subsetp) :test #'subsetp)))
+			      (setf cliques
+				    (let ((c (list (remove-duplicates (cons i δ-clique)))))
+				      (union cliques (union c cliques :test #'subsetp) :test #'subsetp)))
 			      (iter (for u in stack) (fib:insert-key (fib:node-key u fib) fib u) (finally (setf stack nil)))))
 	       (push i stack))))
       (unless stack (values (reverse order) cliques)))))

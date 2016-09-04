@@ -18,6 +18,16 @@
 	(macrolet ((,mname (x) `(,', fname ',x)))
 	  ,@body)))))
 
+(defmacro set-slots ((obj) &rest सज्ञाः)
+  (with-gensyms (g)
+    `(let ((,g ,obj))
+       (setf ,@(iter (for x in सज्ञाः)
+		     (appending
+		      (ematch x
+			((type symbol) `((slot-value ,g ',x) ,x))
+			((list slot value) `((slot-value ,g ',slot) ,value))))))
+       ,g)))
+
 (defmacro ziprm ((r m) &body args)
   "
   Does reduce-map on @arg{args}.
@@ -279,6 +289,8 @@
 	`(let*-typed (,@(if need-hashtablep `((,table ,hash-table)))
 			,@(reverse cache))
 	   ,@transformed-body)))))
+
+(defmacro memoizing (&rest body) (warn "Found un-expanded memoization block.") `(progn ,@body))
 
 (defmacro recurse-maadi (x match &body dispatchers)
   ;;recurse-ಮಾಡಿ ಸಕ್ಕತ್ತಾಗಿ!
