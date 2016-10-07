@@ -87,7 +87,9 @@
 (closer-mop:defclass simple-dense-tensor (dense-tensor simple-vector-store-mixin) ()
   (:metaclass tensor-class)
   (:documentation "Dense tensor with simple-vector store."))
-(closer-mop:defclass blas-mixin () ()
+
+(closer-mop:defclass external-mixin () ())
+(closer-mop:defclass blas-mixin (external-mixin) ()
   (:documentation "Mixin which indicates that there exist foreign-routines for an object of this type."))
 ;;
 (closer-mop:defclass graph-tensor (tensor graph-accessor) ()

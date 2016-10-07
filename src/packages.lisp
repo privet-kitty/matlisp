@@ -151,7 +151,7 @@
    #:*real-l1-fcall-lb* #:*real-l2-fcall-lb* #:*real-l3-fcall-lb*
    #:*complex-l1-fcall-lb* #:*complex-l2-fcall-lb* #:*complex-l3-fcall-lb*
    ;;base
-   #:dimensions #:order #:field-type #:ref #:einstein-sum
+   #:dimensions #:order #:field-type #:store-type #:ref #:einstein-sum
    #:base-tensor #:tensor #:memos #:store-size #:total-size #:parent
    #:dorefs #:for-mod #:with-iterator #:loop-order #:uplo
    #:index-type #:index-store-vector
