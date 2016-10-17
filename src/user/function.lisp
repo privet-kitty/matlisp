@@ -32,7 +32,7 @@
 
 (macrolet ((lift-fns (&rest lst)
 	     `(progn ,@ (mapcar #'(lambda (x) `(lift-function ,x)) lst))))
-  (lift-fns cl:sin cl:cos cl:tan cl:asin cl:acos cl:exp cl:sinh cl:cosh cl:tanh cl:asinh cl:acosh cl:atanh))
+  (lift-fns cl:sqrt cl:sin cl:cos cl:tan cl:asin cl:acos cl:exp cl:sinh cl:cosh cl:tanh cl:asinh cl:acosh cl:atanh))
 
 ;;log
 (closer-mop:defgeneric log-generic! (x y)
@@ -73,12 +73,13 @@
   `(dorefs (idx (dimensions x))
 	   ((ref-x x :type ,(matlisp::cl :x))
 	    (ref-y y :type ,(matlisp::cl :y)))
-     (setf ref-x (cl:atan ref-x ref-y)))
+	   (setf ref-x (cl:atan ref-x ref-y)))
   'x)
 (define-tensor-method atan-generic! ((x dense-tensor :x) (y number))
-  `(dorefs (idx (dimensions x))
-	   ((ref-x x :type ,(matlisp::cl :x)))
-     (setf ref-x (cl:atan ref-x y)))
+  `(let-typed ((y (coerce y ',(field-type (cl :x)) :type ,(field-type (cl :x)))))
+     (dorefs (idx (dimensions x))
+       ((ref-x x :type ,(matlisp::cl :x)))
+       (setf ref-x (cl:atan ref-x y))))
   'x)
 (define-tensor-method atan-generic! ((x dense-tensor :x) (y null))
   `(dorefs (idx (dimensions x))
@@ -95,10 +96,8 @@
   (cart-etypecase (y x)
     ((number number) (cl:atan y x))
     ((number null) (cl:atan y))
-    ((tensor (or tensor number null)) (atan-generic! (copy y (complexified-tensor (class-of y))) x))
-    ((number tensor) (atan-generic! (copy! y (zeros (dimensions x) (tensor (let ((type (type-of y)))
-									     (if (subtypep type 'complex) type `(complex ,type))))))
-				    x))))
+    ((tensor (or tensor number null)) (atan-generic! (copy y (class-of y)) x))
+    ((number tensor) (atan-generic! (copy! y (zeros (dimensions x) (class-of x))) x))))
 ;;expt
 (closer-mop:defgeneric expt-generic! (x y)
   (:generic-function-class tensor-method-generator))
@@ -123,4 +122,3 @@
     ((number number) (cl:expt base power))
     ((tensor (or tensor number)) (expt-generic! (copy base) power))
     ((number tensor) (expt-generic! (copy! base (zeros (dimensions power) (tensor (type-of base)))) power))))
-;;

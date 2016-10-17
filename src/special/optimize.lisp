@@ -1,6 +1,6 @@
 (in-package #:matlisp)
 
-(defmacro optimize-expression (decl &rest body)
+(defmacro optimize-expression (decl &rest body &environment env)
   (with-memoization ()
     (memoizing
      (labels ((cl (vec)
@@ -41,7 +41,7 @@
 				  form))))
 		       body)))
 	 `(let*-typed (,@(mapcan #'(lambda (x)
-				     (letv* (((ref place &key type &allow-other-keys) x))
+				     (letv* (((ref place &key (type (infer-type place env)) &allow-other-keys) x))
 				       `((,ref ,place ,@(if type `(:type ,type)))
 					 ,@(nth-value 1 (head-decl ref))
 					 ,@(nth-value 1 (strides-decl ref))

@@ -79,7 +79,7 @@
 	   #:maptree-if #:maptree #:maptree-eki #:pair
 	   #:compile-and-eval #:modproj
 	   ;;
-	   #:cart #:mapcart  #:infer-type
+	   #:cart #:mapcart  #:infer-type #:make-extensible-array
 	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase
 	   ;;
 	   ;;string
@@ -207,7 +207,7 @@
   (:use #:common-lisp #:iterate #:matlisp-utilities #:matlisp)
   ;;Shadow iterate:sum
   (:shadow #:+ #:- #:* #:/ #:= #:conjugate #:realpart #:imagpart #:sum #:min #:max
-	   #:sin #:cos #:tan #:asin #:acos #:exp #:sinh #:cosh #:tanh #:asinh #:acosh #:atanh #:log #:expt #:atan)
+	   #:sqrt #:sin #:cos #:tan #:asin #:acos #:exp #:sinh #:cosh #:tanh #:asinh #:acosh #:atanh #:log #:expt #:atan)
   (:import-from :λ-reader #:λ)
   (:export
    ;;Tweakable
@@ -257,7 +257,7 @@
    ;;arithmetic
    #:+ #:- #:* #:.* #:/ #:./ #:@ #:· #:^ #:⊗ #:= #:.=
    ;;function
-   #:sin! #:cos! #:tan! #:asin! #:acos! #:exp! #:sinh! #:cosh! #:tanh! #:asinh! #:acosh! #:atanh!
+   #:sqrt #:sin! #:cos! #:tan! #:asin! #:acos! #:exp! #:sinh! #:cosh! #:tanh! #:asinh! #:acosh! #:atanh!
    #:sin #:cos #:tan #:asin #:acos #:exp #:sinh #:cosh #:tanh #:asinh #:acosh #:atanh
    #:log #:log! #:atan #:atan! #:expt #:expt!
    ;;map

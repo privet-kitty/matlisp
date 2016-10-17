@@ -121,7 +121,8 @@
 			 (:file "map")
 			 (:file "norm")
 			 (:file "misc")
-			 (:file "poly")))
+			 (:file "poly")
+			 (:file "optimize")))
    ;;Matlisp-user
    (:module "matlisp-user" :pathname "user"
 	    :depends-on ("matlisp-core")

@@ -15,7 +15,7 @@
     ("(" \() (")" \))
     ("[" \[) ("]" \])
     (":" |:|) (":=" :=)
-    ("←" ←) ("=" =) (".=" .=)
+    ("←" ←) ("<-" ←) ("=" =) (".=" .=)
     ("," \,) ("." \.)
     ("'" ctranspose) (".'" transpose)))
 
@@ -149,6 +149,7 @@
    expr
    (|:| #'(lambda (a) (declare (ignore a)) (list :slice nil nil nil)))
    (|:| expr  #'(lambda (a b) (declare (ignore a)) (list :slice nil b nil)))
+   (|:| expr |:| expr #'(lambda (a b c d) (declare (ignore a c)) (list :slice nil d b)))
    (expr |:| #'(lambda (a b) (declare (ignore b)) (list :slice a nil nil)))
    (|:| expr |:|  #'(lambda (a b c) (declare (ignore a c)) (list :slice nil nil b)))
    (expr |:| expr #'(lambda (a b c) (declare (ignore b)) (list :slice a c nil)))
@@ -229,7 +230,7 @@
 				       ;;No yet implemented
 				       (^ t:expt)
 				       (.^ t:expt)
-				       (sin t:sin) (cos t:cos) (tan t:tan) (asin t:asin) (acos t:acos) (atan t:atan) (exp t:exp) (log t:log) (expt t:expt)
+				       (sqrt t:sqrt) (sin t:sin) (cos t:cos) (tan t:tan) (asin t:asin) (acos t:acos) (atan t:atan) (exp t:exp) (log t:log) (expt t:expt)
 				       (sinh t:sinh) (cosh t:cosh) (tanh t:tanh) (asinh t:asinh) (acosh t:acosh) (atanh t:atanh)
 				       (transpose matlisp:transpose)
 				       (ctranspose matlisp-user:ctranspose)))
@@ -273,6 +274,7 @@
 (eval-every
   (defparameter *tensor-symbol*
     `((#\D ,(matlisp:tensor 'cl:double-float))
+      (#\E ,(matlisp:tensor 'cl:single-float))
       (#\Z ,(matlisp:tensor '(cl:complex cl:double-float)))
       (#\Q ,(matlisp:tensor 'cl:rational))
       (#\B ,(matlisp:tensor 'cl:bit)))))
