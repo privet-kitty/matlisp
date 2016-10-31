@@ -3,7 +3,7 @@
 (defun graph->dot (stream g &optional self-loops node-name)
   (if (null stream)
       (with-output-to-string (out) (graph->dot out g))
-      (progn; ((nei (neighbours graph)))
+      (progn; ((nei (neighbors graph)))
 	(format stream "digraph G{~%graph [];~%node[shape=point];~%~%")
 	(iter (for u from 0 below (dimensions g -1)) (format stream "~a [xlabel=\"~a\"];~%" u (typecase node-name
 												(function (funcall node-name u))

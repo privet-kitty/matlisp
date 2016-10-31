@@ -170,6 +170,9 @@
 (deft/method t/strict-coerce ((from boolean) (to boolean)) (val)
   `(the boolean ,val))
 
+(deft/method t/strict-coerce ((from (unsigned-byte 8)) (to (unsigned-byte 8))) (val)
+  `(the (unsigned-byte 8) ,val))
+
 (deft/method t/strict-coerce ((from index-type) (to index-type)) (val)
   `(the index-type ,val))
 ;;

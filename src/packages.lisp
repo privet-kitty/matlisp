@@ -133,7 +133,7 @@
    ;;Foreign-pointer enclosing structure.
    #:foreign-vector #:element-type #:fvref
    #:ffuncall #:lisp->mffi #:mffi->lisp
-   #:with-vector-data-addresses
+   #:with-vector-data-addresses #:vector-sap
    ;;Interface functions
    ;;#:def-fortran-routine #:parse-fortran-file
    )
@@ -164,7 +164,7 @@
    #:tensor-vector #:tensor-matrix #:tensor-square-matrix
    #:complexified-tensor #:realified-tensor
    ;;coo, graph
-   #:indices #:fence #:δ-I #:strides #:head #:store
+   #:indices #:fence #:neighbors #:δ-I #:strides #:head #:store
    ;;permutation
    #:idxv #:pick-random #:shuffle! #:permutation #:permutation-action #:permutation-cycle
    #:permutation-pivot-flip #:permute! #:permute #:permutation/ #:permutation*

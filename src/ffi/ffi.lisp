@@ -165,4 +165,12 @@ Example:
 			  (with-gensyms (ret)
 			    `(let ((,ret ,callc))
 			       (values ,ret ,@(mapf :output)))))))))))))))
+
+(defun vector-sap (v &optional (inc 0))
+  (let* ((ptr (matlisp-ffi::vector-sap-interpreter-specific v)))
+    (if (zerop inc)
+	ptr
+	(cffi:inc-pointer ptr (* inc (cffi:foreign-type-size
+				      (matlisp-ffi:lisp->mffi (array-element-type v))))))))
+
 )

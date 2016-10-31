@@ -41,7 +41,7 @@
   (:documentation "Bi-partite graph/Hypergraph/Factor/Co-ordinate store"))
 (closer-mop:defclass graph-accessor (base-accessor)
   ((fence :initarg :fence :type index-store-vector :documentation "Start index for neighbourhood.")
-   (neighbours :initarg :neighbours :type index-store-vector :documentation "Neighbour ids.")
+   (neighbors :initarg :neighbors :type index-store-vector :documentation "Neighbour ids.")
    (transposep :initarg :transposep :initform nil :type boolean :documentation "Choose between row-column compressed forms."))
   (:documentation "Graph store via Adjacency lists; only works for matrices."))
 ;;Store types
@@ -159,11 +159,13 @@
 ;;
 (deftype tensor-type (field &key tensor order square)
   (let ((types (remove nil
-		       (list (tensor field (match tensor (* nil)))
+		       (list (tensor field (print (match tensor
+						    ('* nil)
+						    (_ tensor))))
 			     (ematch order
 			       (1 `(satisfies tensor-vectorp))
 			       (2 `(satisfies tensor-matrixp))
-			       (* nil))
+			       ('* nil))
 			     (ematch square
 			       ((or '* nil) nil)
 			       (t `(satisfies tensor-squarep)))))))

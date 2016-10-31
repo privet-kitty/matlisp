@@ -12,17 +12,17 @@
 (definline δ-I (g &optional i j)
   (declare (type graph-accessor g))
   (cart-etypecase (i j)
-    ((null null) (the index-store-vector (slot-value g 'neighbours)))
+    ((null null) (the index-store-vector (slot-value g 'neighbors)))
     ((index-type boolean)
      (if j
 	 (letv* ((l r (fence g i))
-		 (nn (slot-value g 'neighbours) :type index-store-vector))
+		 (nn (slot-value g 'neighbors) :type index-store-vector))
 	   (loop :for ii :from l :below r :collect (aref nn ii)))
-	 (aref (the index-store-vector (slot-value g 'neighbours)) i)))
+	 (aref (the index-store-vector (slot-value g 'neighbors)) i)))
     ((index-type (eql :size)) (letv* ((l r (fence g i))) (- r l)))
     ((index-type index-type)
      (letv* ((l r (fence g i))
-	     (nn (slot-value g 'neighbours) :type index-store-vector))
+	     (nn (slot-value g 'neighbors) :type index-store-vector))
        (very-quickly (binary-search j l r nn))))))
 ;;
 (definline graph-indexing! (idx tensor)
@@ -68,7 +68,7 @@
 		       (lvec-copy r-len (memoizing (t/store ,(cl :x) x)) lb sto-new (+ lb 1)
 				  :key #'(lambda (a_ i_) (declare (index-type i_)) (t/store-ref ,(cl :x) a_ i_))
 				  :lock #'(lambda (v_ a_ i_) (declare (type index-type i_) (type ,(field-type (cl :x)) v_)) (t/store-set ,(cl :x) v_ a_ i_))))
-		     (setf (slot-value x 'neighbours) δ-new (slot-value x 'store) sto-new)))
+		     (setf (slot-value x 'neighbors) δ-new (slot-value x 'store) sto-new)))
 	       (loop :for i :from (1+ (aref sub/v 1)) :below (length (memoizing (fence x))) :do (incf (aref (memoizing (fence x)) i)))
 	       (values
 		(setf (aref (δ-i x) (the index-type lb)) (aref sub/v 0)
@@ -100,7 +100,7 @@
 				    (δ-new (t/store-allocator index-store-vector ss) :type index-store-vector)
 				    (sto-new (t/store-allocator ,(cl :x) ss) :type ,(store-type (cl :x))))
 			 ,(code 'sto 'sto-new 'δg 'δ-new)
-			 (setf (slot-value x 'neighbours) δ-new
+			 (setf (slot-value x 'neighbors) δ-new
 			       (slot-value x 'store) sto-new)))))
 	 (let-typed ((f (fence x) :type index-store-vector))
 	   (loop :for i :from (1+ c) :below (length (fence x)) :do (incf (aref f i))))
@@ -109,5 +109,5 @@
       (aref (δ-i x) (the index-type idx)) r
       (t/store-ref ,(cl :x) (t/store ,(cl :x) x) (the index-type idx)) (t/coerce ,(field-type (cl :x)) value))))
 
-(closer-mop:defmethod store-size ((obj graph-accessor)) (length (slot-value obj 'neighbours)))
+(closer-mop:defmethod store-size ((obj graph-accessor)) (length (slot-value obj 'neighbors)))
 ;;
