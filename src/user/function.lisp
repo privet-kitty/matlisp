@@ -8,10 +8,9 @@
   (tensor-conjugate a))
 ;;
 
-(defmacro lift-function (fn &aux (pkg (find-package "MATLISP-USER")))
-  (letv* ((fname (symbol-name fn)) (fpkg (symbol-package fn)))
-    (letv* ((fn (find-symbol fname fpkg))
-	    (fn-package (intern fname pkg))
+(defmacro lift-function (kernel &optional (fn kernel) &aux (pkg (find-package "MATLISP-USER")))
+  (letv* ((fname (symbol-name fn)))
+    (letv* ((fn-package (intern fname pkg))
 	    (ge-fn (intern (string+ fname "-GENERIC!") pkg)))
       `(progn
 	 (closer-mop:defgeneric ,ge-fn (x)
@@ -19,21 +18,20 @@
 	 (define-tensor-method ,ge-fn ((x dense-tensor :x))
 	   `(dorefs (idx (dimensions x))
 		    ((ref-x x :type ,(matlisp::cl :x)))
-		    (setf ref-x (,',fn ref-x)))
+		    (setf ref-x (,',kernel ref-x)))
 	   'x)
 	 (definline ,(intern (string+ fname "!") (find-package "MATLISP-USER")) (x)
 	   (etypecase x
-	     (number (,fn x))
+	     (number (,kernel x))
 	     (tensor (,ge-fn x))))
 	 (definline ,fn-package (x)
 	   (etypecase x
-	     (number (,fn x))
+	     (number (,kernel x))
 	     (tensor (,ge-fn (copy x)))))))))
 
 (macrolet ((lift-fns (&rest lst)
 	     `(progn ,@ (mapcar #'(lambda (x) `(lift-function ,x)) lst))))
   (lift-fns cl:sqrt cl:sin cl:cos cl:tan cl:asin cl:acos cl:exp cl:sinh cl:cosh cl:tanh cl:asinh cl:acosh cl:atanh))
-
 ;;log
 (closer-mop:defgeneric log-generic! (x y)
   (:generic-function-class tensor-method-generator))
@@ -66,6 +64,9 @@
     ((number tensor) (log-generic! (copy! base (zeros (dimensions power) (tensor (let ((type (type-of base)))
 										   (if (subtypep type 'complex) type `(complex ,type))))))
 				   power))))
+;;
+(definline xlogx-kernel (x) (if (< 0 x) (* x (cl:log x)) (* x 0)))
+(lift-function xlogx-kernel xlogx)
 ;;atan
 (closer-mop:defgeneric atan-generic! (x y)
   (:generic-function-class tensor-method-generator))

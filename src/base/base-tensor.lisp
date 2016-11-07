@@ -159,9 +159,9 @@
 ;;
 (deftype tensor-type (field &key tensor order square)
   (let ((types (remove nil
-		       (list (tensor field (print (match tensor
-						    ('* nil)
-						    (_ tensor))))
+		       (list (tensor field (match tensor
+					     ('* nil)
+					     (_ tensor)))
 			     (ematch order
 			       (1 `(satisfies tensor-vectorp))
 			       (2 `(satisfies tensor-matrixp))

@@ -175,7 +175,7 @@
 
 (defmacro-clause (FOR xa SLICING x ALONG axis &optional FROM start BELOW oend TO cend DOWNTO dend WITH-INDEX index BY step)
   (when (or (and oend cend) (and dend (or cend oend))) (error "Use only one of BELOW TO DOWNTO."))
-  (when (setq xa (ensure-list xa))
+  (when-let (xa (ensure-list xa))
     (binding-gensyms (hy hyf)
       (let ((n (length xa)))
 	`(progn

@@ -107,4 +107,4 @@
   (ger! alpha x y (copy A) conjugate-p))
 
 (closer-mop:defmethod ger (alpha (x dense-tensor) (y dense-tensor) (A (eql nil)) &optional conjugate-p)
-  (ger! alpha x y (zeros (append (dimensions x t) (dimensions y t))) conjugate-p))
+  (ger! alpha x y (zeros (append (dimensions x t) (dimensions y t)) (type-of x)) conjugate-p))

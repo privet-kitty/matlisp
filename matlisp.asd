@@ -31,7 +31,7 @@
 (in-package #:matlisp-system)
 
 (asdf:defsystem :matlisp-basic
-  :depends-on (#:cffi #:iterate #:trivia #:trivia.ppcre #:named-readtables #:lambda-reader #:yacc #:trivial-garbage #:closer-mop #:external-program #:bordeaux-threads #:fiveam)
+  :depends-on (#:cffi #:iterate #:trivia #:trivia.ppcre #:named-readtables #:lambda-reader #:yacc #:trivial-garbage #:trivial-types #:closer-mop #:external-program #:bordeaux-threads #:fiveam)
   :pathname "src"
   :components
   ((:file "packages")

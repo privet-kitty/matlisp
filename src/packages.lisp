@@ -259,7 +259,7 @@
    ;;function
    #:sqrt #:sin! #:cos! #:tan! #:asin! #:acos! #:exp! #:sinh! #:cosh! #:tanh! #:asinh! #:acosh! #:atanh!
    #:sin #:cos #:tan #:asin #:acos #:exp #:sinh #:cosh #:tanh #:asinh #:acosh #:atanh
-   #:log #:log! #:atan #:atan! #:expt #:expt!
+   #:log #:log! #:atan #:atan! #:expt #:expt! #:xlogx
    ;;map
    #:mapsor! #:mapsor #:map-tensor! #:mapslice #:mapslice~ #:mapslicec~ #:tensor-foldl
    #:for #:slicing #:along #:from #:below #:to #:downto #:with-index #:by

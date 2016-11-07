@@ -230,6 +230,7 @@
 				       ;;No yet implemented
 				       (^ t:expt)
 				       (.^ t:expt)
+				       (sum t:sum) (xlogx t:xlogx) (realpart t:realpart) (imagpart t:imagpart)
 				       (sqrt t:sqrt) (sin t:sin) (cos t:cos) (tan t:tan) (asin t:asin) (acos t:acos) (atan t:atan) (exp t:exp) (log t:log) (expt t:expt)
 				       (sinh t:sinh) (cosh t:cosh) (tanh t:tanh) (asinh t:asinh) (acosh t:acosh) (atanh t:atanh)
 				       (transpose matlisp:transpose)

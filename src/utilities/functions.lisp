@@ -196,18 +196,19 @@
 
 (defun infer-type (expr env)
   (or
-   (match expr
-     ((list 'the type _) type)
-     ((type number) (type-of expr))
-     ((list 'quote thing) (type-of thing))
-     ((type null) 'null)
-     #+(or sbcl)
-     ((type symbol)
-      (multiple-value-bind (binding-type localp declarations) (#+sbcl sb-cltl2:variable-information
-								      expr env)
-	(declare (ignore binding-type localp))
-	(let ((type-decl (find 'type declarations :key #'car)))
-	  (and type-decl (cdr type-decl))))))
+   (trivial-types:type-expand
+    (match expr
+      ((list 'the type _) type)
+      ((type number) (type-of expr))
+      ((list 'quote thing) (type-of thing))
+      ((type null) 'null)
+      #+(or sbcl)
+      ((type symbol)
+       (multiple-value-bind (binding-type localp declarations) (#+sbcl sb-cltl2:variable-information
+								       expr env)
+	 (declare (ignore binding-type localp))
+	 (let ((type-decl (find 'type declarations :key #'car)))
+	   (and type-decl (cdr type-decl)))))))
    t))
 
 (defun make-extensible-array ()
