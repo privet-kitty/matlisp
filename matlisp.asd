@@ -26,8 +26,6 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package #:common-lisp-user)
-
 (asdf:defsystem :matlisp
   :licence "LLGPL"
   :author "See AUTHORS"
@@ -112,4 +110,3 @@
   ((:module #:t :components
 	    ((:file "utilities")
 	     (:file "lapack")))))
-
