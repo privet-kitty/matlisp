@@ -291,6 +291,8 @@
 		#+linux #P"/usr/lib/"
 		#+darwin #P"/System/Library/Frameworks/Accelerate.framework/Frameworks/vecLib.framework/Versions/A/"
 		cffi:*foreign-library-directories*)))
-    (map nil #'(lambda (x) (cffi:load-foreign-library `(:or (:framework :veclib) (:default ,x)))) '("libblas" "liblapack")))
+    (cffi:load-foreign-library `(:or (:framework :veclib) (:default "libblas")))
+    (unless (find-if #'cffi:foreign-symbol-pointer '("dgetrf_" "dgetrf__" "DGETRF_" "DGETRF__"))
+      (cffi:load-foreign-library `(:default "liblapack"))))
   #+sbcl
   (setf sb-ext:*inline-expansion-limit* (max 1000 sb-ext:*inline-expansion-limit*)))
