@@ -27,6 +27,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Define the packages and symbols for Matlisp.
 
+(in-package #:common-lisp-user)
+
 (defpackage "MATLISP-CONDITIONS"
   (:use #:common-lisp)
   (:export
@@ -281,3 +283,13 @@
     :description "Regression tests for matlisp-optimization")
 (defun matlisp-tests:run-tests () (5am:run! 'matlisp-tests:matlisp-tests))
 (fiveam:in-suite matlisp-tests:matlisp-tests)
+;;load foreign libs
+
+(eval-when (:load-toplevel)
+  (let ((cffi:*foreign-library-directories*
+	 (list* (asdf:component-pathname (asdf:find-system :matlisp t))
+		#+linux #P"/usr/lib/"
+		#+darwin #P"/System/Library/Frameworks/Accelerate.framework/Frameworks/vecLib.framework/Versions/A/")))
+    (map nil #'(lambda (x) (cffi:load-foreign-library `(:or (:framework :veclib) (:default ,x)))) '("libblas" "liblapack")))
+  #+sbcl
+  (setf sb-ext:*inline-expansion-limit* (max 1000 sb-ext:*inline-expansion-limit*)))

@@ -27,122 +27,89 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (in-package #:common-lisp-user)
-(defpackage #:matlisp-system (:use #:cl :asdf))
-(in-package #:matlisp-system)
-
-(asdf:defsystem :matlisp-basic
-  :depends-on (#:cffi #:iterate #:trivia #:trivia.ppcre #:named-readtables #:lambda-reader #:yacc #:trivial-garbage #:trivial-types #:closer-mop #:external-program #:bordeaux-threads #:fiveam)
-  :pathname "src"
-  :components
-  ((:file "packages")
-   (:file "conditions" :depends-on ("packages"))
-   (:module "utilities"
-	    :pathname "utilities" :depends-on ("conditions")
-	    :components ((:file "functions")
-			 (:file "string")
-			 (:file "macros" :depends-on ("functions"))
-			 (:file "search" :depends-on ("macros" "functions"))
-			 (:file "dlist" :depends-on ("macros" "functions"))
-			 (:file "union-find" :depends-on ("macros" "functions"))
-			 (:file "lvec" :depends-on ("macros" "functions"))
-			 (:file "template" :depends-on ("macros" "functions"))))
-   (:file "lazy-loader" :depends-on ("utilities"))))
 
 (asdf:defsystem :matlisp
   :licence "LLGPL"
   :author "See AUTHORS"
   :homepage "https://github.com/matlisp/"
-  :depends-on ("matlisp-basic") :pathname "src"
+  :depends-on (#:cffi #:iterate #:trivia #:trivia.ppcre #:named-readtables #:lambda-reader #:yacc #:trivial-garbage #:trivial-types #:closer-mop #:external-program #:bordeaux-threads #:fiveam)
   :components
-  ((:module "matlisp-core" :pathname ""
-	    :components
-	    ((:module "foreign-interface"
-		       :pathname "ffi"
-		       :components ((:file "foreign-vector")
-				    (:file "cffi")
-				    (:file "ffi")
-				    #+nil(:file "f77-parser")))
-	     (:module "matlisp-base" :pathname "base"
-		      :components ((:file "tweakable")
-				   (:file "base-tensor" :depends-on ("tweakable"))
-				   (:file "loopy" :depends-on ("base-tensor"))
-				   (:file "generator" :depends-on ("base-tensor"))
-				   ;;
-				   (:file "numeric-template")
-				   (:file "tensor-template" :depends-on ("base-tensor" "generator" "numeric-template"))
-				   ;;
-				   (:file "generic/copy" :depends-on ("base-tensor" "loopy" "tensor-template"))
-				   (:file "generic/ref" :depends-on ("base-tensor"  "loopy" "tensor-template"))
-				   (:file "print" :depends-on ("base-tensor" "generic/ref"))
-				   ;;
-				   (:file "stride-accessor" :depends-on ("tensor-template"))
-				   (:file "graph-accessor" :depends-on ("tensor-template"))
-				   (:file "coordinate-accessor" :depends-on ("tensor-template"))
-				   ;;
-				   (:file "permutation" :depends-on ("base-tensor" "generic/copy"))
-				   ;;
-				   (:file "blas-helpers" :depends-on ("base-tensor" "stride-accessor" "permutation"))
-				   (:file "einstein" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))
-				   (:file "slice" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))
-				   (:file "foreign" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))
-				   (:file "boolean" :depends-on ("base-tensor" "tensor-template" "stride-accessor"))))
-	     (:module "matlisp-blas" :pathname "blas"
-		      :depends-on ("matlisp-base")
-		      :components ((:file "maker")
-				   (:file "copy" :depends-on ("maker"))
-				   (:file "dot" :depends-on ("maker"))
-				   (:file "axpy" :depends-on ("maker" "copy"))
-				   (:file "scal" :depends-on ("maker" "copy"))
-				   (:file "realimag" :depends-on ("copy"))
-				   (:file "transpose" :depends-on ("scal" "copy"))
-				   (:file "sum" :depends-on ("dot" "copy"))
-				   (:file "gem" :depends-on ("copy"))
-				   (:file "ger" :depends-on ("copy"))
-				   (:file "trs")))
-	     (:module "matlisp-lapack" :pathname "lapack"
-		      :depends-on ("matlisp-base" "matlisp-blas")
-		      :components ((:file "lu")
-				   (:file "chol")
-				   (:file "eig")
-				   (:file "least-squares")
-				   (:file "qr")
-				   (:file "schur")
-				   (:file "svd")
-				   (:file "syl" :depends-on ("schur"))))))
-   (:module "matlisp-graph" :pathname "graph"
-	    :depends-on ("matlisp-core")
-	    :components ((:file "fibonacci")
-			 (:file "dfs")
-			 (:file "graph" :depends-on ("dfs" "fibonacci"))
-			 (:file "graphviz" :depends-on ("dfs" "fibonacci"))))
-   (:module "matlisp-special" :pathname "special"
-	    :depends-on ("matlisp-core")
-	    :components ((:file "random")
-			 (:file "map")
-			 (:file "norm")
-			 (:file "misc")
-			 (:file "poly")
-			 (:file "optimize")))
-   ;;Matlisp-user
-   (:module "matlisp-user" :pathname "user"
-	    :depends-on ("matlisp-core")
-	    :components ((:file "arithmetic")
-			 (:file "function")))
-   (:module "matlisp-reader" :pathname "reader"
-	    :depends-on ("matlisp-core" "matlisp-user")
-	    :components ((:file "infix")
-			 #+nil
-			 (:file "loadsave")))
-   #+weyl
-   (:module "matlisp-symbolic" :pathname "symbolic"
-	    :depends-on ("matlisp-user")
-	    :components ((:file "symbolic")))))
+  ((:module #:src :components
+	    ((:file "package")
+	     (:file "conditions" :depends-on ("package"))
+	     (:module #:utilities :depends-on ("conditions") :components
+		      ((:file "functions")
+		       (:file "string")
+		       (:file "macros" :depends-on ("functions"))
+		       (:file "search" :depends-on ("macros" "functions"))
+		       (:file "dlist" :depends-on ("macros" "functions"))
+		       (:file "union-find" :depends-on ("macros" "functions"))
+		       (:file "lvec" :depends-on ("macros" "functions"))
+		       (:file "template" :depends-on ("macros" "functions"))))
+	     (:module #:core :pathname "" :depends-on (#:utilities) :components
+		      ((:module #:ffi :components
+				((:file "foreign-vector")
+				 (:file "cffi")
+				 (:file "ffi")))
+		       (:module #:base :components
+				((:file "variables")
+				 (:file "base-tensor" :depends-on ("variables"))
+				 (:module #:template :pathname "" :depends-on ("base-tensor") :components
+					  ((:file "loopy") (:file "generator") (:file "numeric-template")
+					   (:file "tensor-template" :depends-on ("generator" "numeric-template"))))
+				 (:file "generic" :depends-on (#:template))
+				 (:file "print" :depends-on (#:generic))
+				 (:module #:accessor :pathname "" :depends-on (#:template) :components
+					  ((:file "stride-accessor")
+					   (:file "graph-accessor")
+					   (:file "coordinate-accessor")))
+				 (:file "permutation" :depends-on (#:generic))
+				 (:file "blas-helpers" :depends-on (#:accessor))
+				 (:file "einstein" :depends-on (#:template #:accessor))
+				 (:file "slice" :depends-on (#:template #:accessor))
+				 (:file "foreign" :depends-on (#:template #:accessor))
+				 (:file "boolean" :depends-on (#:template #:accessor))))
+		       (:module #:blas :depends-on (#:base) :components
+				((:file "maker")
+				 (:module #:level-1 :pathname "" :depends-on ("maker") :components
+					  ((:file "copy")	(:file "dot")
+					   (:file "axpy" :depends-on ("copy"))
+					   (:file "scal" :depends-on ("copy"))
+					   (:file "realimag" :depends-on ("copy"))
+					   (:file "transpose" :depends-on ("scal" "copy"))
+					   (:file "sum" :depends-on ("dot" "copy"))))
+				 (:file "gem" :depends-on (#:level-1))
+				 (:file "ger" :depends-on (#:level-1))
+				 (:file "trs")))
+		       (:module #:lapack :depends-on (#:blas) :components
+				((:file "lu") (:file "chol")
+				 (:file "qr") (:file "least-squares")
+				 (:file "eig") (:file "schur")
+				 (:file "svd") (:file "syl" :depends-on ("schur"))))))
+	     (:module #:graph :depends-on (#:core)
+		      :components ((:file "fibonacci") (:file "dfs")
+				   (:file "graph" :depends-on ("dfs" "fibonacci"))
+				   (:file "graphviz" :depends-on ("dfs" "fibonacci"))))
+	     (:module #:special :depends-on (#:core) :components
+		      ((:file "random") (:file "map")
+		       (:file "norm") (:file "misc")
+		       (:file "poly") (:file "optimize")))
+	     (:module #:user :depends-on (#:core) :components
+		      ((:file "arithmetic") (:file "function")))
+	     (:module #:reader :depends-on (#:user) :components
+		      ((:file "infix")
+		       #+nil (:file "loadsave")))
+	     #+weyl
+	     (:module #:symbolic :depends-on (#:user) :components
+		      ((:file "symbolic")))))))
 
 (asdf:defsystem :matlisp-tests
   :licence "LLGPL"
   :author "See AUTHORS"
   :homepage "https://github.com/matlisp/"
-  :depends-on ("matlisp") :pathname "tests"
+  :depends-on (:matlisp)
   :components
-  ((:file "utilities")
-   (:file "lapack")))
+  ((:module #:t :components
+	    ((:file "utilities")
+	     (:file "lapack")))))
+
