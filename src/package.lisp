@@ -286,13 +286,16 @@
 ;;load foreign libs
 
 (eval-when (:load-toplevel)
-  (let ((cffi:*foreign-library-directories*
-	 (list* (asdf:component-pathname (asdf:find-system :matlisp t))
-		#+linux #P"/usr/lib/"
-		#+darwin #P"/System/Library/Frameworks/Accelerate.framework/Frameworks/vecLib.framework/Versions/A/"
-		cffi:*foreign-library-directories*)))
-    (cffi:load-foreign-library `(:or (:framework :veclib) (:default "libblas")))
+  (let* ((matlisp-root (asdf:component-pathname (asdf:find-system :matlisp t)))
+	 (cffi:*foreign-library-directories*
+	  (list* #+linux #P"/usr/lib/"
+		 #+darwin #P"/System/Library/Frameworks/Accelerate.framework/Frameworks/vecLib.framework/Versions/A/"
+		 cffi:*foreign-library-directories*)))
+    (cffi:load-foreign-library `(:or (:default ,(concatenate 'string (namestring matlisp-root) "libblas"))
+				     (:default "libblas")
+				     (:framework :veclib)))
     (unless (find-if #'cffi:foreign-symbol-pointer '("dgetrf_" "dgetrf__" "DGETRF_" "DGETRF__"))
-      (cffi:load-foreign-library `(:default "liblapack"))))
+      (cffi:load-foreign-library `(:or (:default ,(concatenate 'string (namestring matlisp-root) "liblapack"))
+				       (:default "liblapack")))))
   #+sbcl
   (setf sb-ext:*inline-expansion-limit* (max 1000 sb-ext:*inline-expansion-limit*)))
