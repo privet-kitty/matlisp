@@ -211,8 +211,8 @@
 	   (and type-decl (cdr type-decl)))))))
    t))
 
-(defun make-extensible-array ()
-  (make-array 0 :fill-pointer t :adjustable t))
+(defun make-extensible-array (&optional (element-type t))
+  (make-array 0 :fill-pointer t :adjustable t :element-type element-type))
 
 ;; (defstruct (sap-wrap (:constructor make-sap-wrap (ptr)))
 ;;   (ptr (cffi:null-pointer) :type cffi:foreign-pointer :read-only t))
