@@ -324,8 +324,8 @@
 		(make-instance 'matlisp::permutation-cycle :store ,sto )))))))
 
 (defun memoization-reader (stream subchar char)
-  (declare (ignore subchar char))
-  `(memoizing ,@(read stream t nil t)))
+  (declare (ignore subchar))
+  `(memoizing ,@(read stream t nil t) :global ,(if char t)))
 
 ;;Define a readtable with dispatch characters
 (macrolet ((tensor-symbol-enumerate ()

@@ -144,21 +144,21 @@
 		      bindings)
 	      `((locally ,@body)))))))
 
-(flet ((let-typed-expansion (letsym bindings body)
-	 (destructuring-bind (decl body) (trivia:match body
-					   ((list* (list* 'declare decl) body) (list decl body))
-					    (_ (list nil body)))
-
-	    `(,letsym (,@(mapcar #'(lambda (x) (subseq x 0 2)) bindings))
-	       ,@(let ((types (remove nil (mapcar #'(lambda (x) (destructuring-bind (s e &key (type t)) x
-								  (declare (ignore e))
-								  (unless (eql type t)
-								    (if (null type)
-									`(ignore ,s)
-									`(type ,type ,s)))))
-						  bindings))))
-		      (when (or decl types) `((declare ,@types ,@decl))))
-	       ,@body))))
+(flet ((let-typed-expansion (expr)
+	 (ematch expr
+	   ((lambda-list letsym bindings &body (or (list* (list* 'cl:declare declares) body) body))
+	    `(,letsym (,@(mapcar #'(lambda (x)
+				     (ematch x
+				       ((λlist symbol expression &key (type t typep))
+					(when typep
+					  (if type
+					      (push `(type ,type ,symbol) declares)
+					      (push `(ignore ,type ,symbol) declares)))
+					(list symbol expression))
+				       ((type atom) x)))
+				 bindings))
+		      ,@(when declares `((declare ,@declares)))
+		      ,@body)))))
   (defmacro let-typed (bindings &body body)
     "
   This macro works basically like let, but also allows type-declarations
@@ -174,8 +174,8 @@
 	(+ 1 X))
   @end lisp
   "
-    (let-typed-expansion 'let bindings body))
-  
+    (let-typed-expansion (list* 'let bindings body)))
+
   (defmacro let*-typed (bindings &body body)
     "
   This macro works basically like let*, but also allows type-declarations
@@ -191,7 +191,7 @@
 	(+ 1 X))
   @end lisp
   "
-    (let-typed-expansion 'let* bindings body)))
+    (let-typed-expansion (list* 'let* bindings body))))
 
 (defmacro definline (name &body rest)
   "
@@ -251,48 +251,48 @@
   (with-gensyms (table value exists-p args)
     (labels ((transformer (x)
 	       (ematch x
-		 ((or (list* 'with-memoization _) (list* 'quote _)) x)
+		 ((list* (or 'with-memoization 'quote) _) x)
 		 ((list* 'memoizing body)
-		  (match body
+		  (ematch body
 		    ((list (lambda-list 'cl:let bindings &body (or (list* (and (list* 'cl:declare _) decl-p) body) body)
 				  &aux (declares (if decl-p (list decl-p))) (id (gensym "memo-"))))
 		     (setf need-hashtablep t)
 		     `(let (,@bindings)
 			,@declares
-			(letv* ((,args (list ',id ,@(mapcar #'car bindings)))
-				(,value ,exists-p (gethash ,args ,table)))
-			  (values-list
-			   (if ,exists-p ,value
-			       (setf (gethash ,args ,table) (multiple-value-list (progn ,@body))))))))
+			(values-list (gethash! (list ',id ,@(mapcar #'car bindings)) ,table (multiple-value-list (progn ,@body))))))
 		    ((list (lambda-list (and def (or 'cl:defun 'cl:defmethod)) name func-args &body (or (list* (and (list* 'cl:declare _) decl-p) body) body)
 				  &aux (declares (if decl-p (list decl-p))) (id (gensym "memo-"))))
 		     (setf need-hashtablep t)
 		     (assert (not (intersection '(&rest &allow-other-keys) func-args)) nil "can't memoize functions with &rest, &allow-other-keys in their defining lambda-lists")
 		     `(,def ,name (,@func-args)
 			,@declares
-			(letv* ((,args (list ',id ,@(mapcar #'(lambda (x) (first (ensure-list x))) (set-difference func-args cl:lambda-list-keywords))))
-				(,value ,exists-p (gethash ,args ,table)))
-			  (values-list
-			   (if ,exists-p ,value
-			       (setf (gethash ,args ,table) (multiple-value-list (progn ,@body))))))))
+			(values-list (gethash! (list ',id ,@(mapcar #'(lambda (x) (first (ensure-list x))) (set-difference func-args cl:lambda-list-keywords)))
+					       ,table (multiple-value-list (progn ,@body))))))
 		    ((list (lambda-list (and def (or 'cl:labels 'cl:flet)) definitions &body body))
 		     (setf need-hashtablep t)
 		     `(,def (,@(mapcar #'(lambda (x) (cdr (transformer `(memoizing (cl:defun ,@x))))) definitions))
 			  ,@body))
-		    ((lambda-list code &key (type nil type?) (bind (gensym)))
-		     (if-let ((cv (rassoc code cache :key #'first :test #'equal)))
-		       (first cv)
-		       (values (list* bind code (if type? `(:type ,type)))
+		    ((lambda-list code &key (type t typep) (global nil) (bind (gensym)) &aux (boundp (gensym)))
+		     (if global
+			 (if-let ((cv (rassoc code cache :key #'first :test #'equal)))
+			   (first cv)
+			   (values (list* bind code (if typep `(:type ,type)))
 			       #'(lambda (f decl)
 				   (push (list* (first decl) (funcall f (second decl)) (cddr decl)) cache)
 				   (first decl))))
+			 (progn
+			   (push bind cache) (push boundp cache)
+			   `(the ,type (if ,boundp ,bind
+					   (setf ,boundp t
+						 ,bind ,code)))))
 		     #+nil(error "don't know how to memoize ~a" code)))))))
       (let ((transformed-body (maptree '(memoizing with-memoization quote) #'transformer body)))
 	`(let*-typed (,@(if need-hashtablep `((,table ,hash-table)))
 			,@(reverse cache))
 	   ,@transformed-body)))))
 
-(defmacro memoizing (&rest body) (warn "Found un-expanded memoization block.") `(progn ,@body))
+(defmacro memoizing (&rest body) (error "Found un-expanded memoization block."))
+;;(defmacro const (&rest body) (error "Found un-expanded memoization block."))
 
 (defmacro recurse-maadi (x match &body dispatchers)
   ;;recurse-ಮಾಡಿ ಸಕ್ಕತ್ತಾಗಿ!
