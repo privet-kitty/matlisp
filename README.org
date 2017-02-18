@@ -113,6 +113,11 @@ Fire up your lisp implementation and load as usual with quicklisp:
   M> (named-readtables:in-readtable :infix-dispatch-table)
 #+END_SRC
 
+Matlisp searches for "libblas" (and possibly "liblapack") first in the directory where the ASDF definition
+file resides, and then in ~/usr/lib/~ (on linux) and then in paths defined by ~ld.conf~. Linking to something
+like MKL is as simple as placing a symbolic link by name "libblas.so" in the top-level directory. See
+ ~src/package.lisp~ for details. Matlisp relies only on the Fortran API (not CBLAS).
+
 * Examples
   #+BEGIN_SRC lisp
   ;;Creation
