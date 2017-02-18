@@ -30,7 +30,7 @@
   :licence "LLGPL"
   :author "See AUTHORS"
   :homepage "https://github.com/matlisp/"
-  :depends-on (#:cffi #:iterate #:trivia #:trivia.ppcre #:named-readtables #:lambda-reader #:yacc #:trivial-garbage #:trivial-types #:closer-mop #:external-program #:bordeaux-threads #:fiveam)
+  :depends-on (#:cffi #+sbcl #:sb-cltl2 #:iterate #:trivia #:trivia.ppcre #:named-readtables #:lambda-reader #:yacc #:trivial-garbage #:trivial-types #:closer-mop #:external-program #:bordeaux-threads #:fiveam)
   :components
   ((:module #:src :components
 	    ((:file "package")
