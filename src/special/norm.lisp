@@ -24,7 +24,7 @@
 											  (of-sl (subseq (strides vec) 1) (head sl))))))
 		      (setf
 		       (slot-value sl 'head) of-sl
-		       (t/store-ref ,(realified-tensor (cl :x)) (memoizing (store nrm) :type ,(store-type (realified-tensor (cl :x)))) of-nrm) (norm sl p))))
+		       (t/store-ref ,(realified-tensor (cl :x)) (memoizing (store nrm) :type ,(store-type (realified-tensor (cl :x))) :global t) of-nrm) (norm sl p))))
 	      
 	      (norm nrm (list* :L args)))
 	    (norm vec p)))

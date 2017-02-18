@@ -19,7 +19,7 @@
 	    (iter (for u in (setf (aref ag i) (sort (aref ag i) #'< :key #'(lambda (x) (etypecase x (cons (the index-type (first x))) (index-type x))))))
 		  (letv* ((u/ value (etypecase u (cons (the index-type (values (first u) (cdr u)))) (index-type u)))
 			  (m (aref (memoizing (fence ret) :global t) (1+ i))))
-		    (setf (aref (memoizing (δ-i ret) :type index-store-vector) m :global t) (modproj u/ (length ag) nil))
+		    (setf (aref (memoizing (δ-i ret) :type index-store-vector :global t) m) (modproj u/ (length ag) nil))
 		    (if value (setf (store-ref (the graph-tensor ret) m) value)))
 		  (incf (aref (memoizing (fence ret) :global t) (1+ i))))))
     ret))

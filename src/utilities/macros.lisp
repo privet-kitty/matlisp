@@ -281,7 +281,7 @@
 				   (push (list* (first decl) (funcall f (second decl)) (cddr decl)) cache)
 				   (first decl))))
 			 (progn
-			   (push bind cache) (push boundp cache)
+			   (push (list bind nil) cache) (push (list boundp nil) cache)
 			   `(the ,type (if ,boundp ,bind
 					   (setf ,boundp t
 						 ,bind ,code)))))
