@@ -7,9 +7,9 @@
     (if (= quo 0) nil
 	(if (not list-outputp)
 	    (let* ((type (realtype-max (list h start end (+ h start) (- end h)))))
-	      (mapsor! (let ((ori (coerce start type)) (h (coerce h type)))
-			 (lambda (idx y) (declare (ignore idx y)) (prog1 ori (incf ori h))))
-		       nil (zeros quo (tensor type))))
+	      (map-tensor! (let ((ori (coerce start type)) (h (coerce h type)))
+			     (lambda (idx y) (declare (ignore idx y)) (prog1 ori (incf ori h))))
+		  nil (zeros quo (tensor type))))
 	    (loop :for i :from 0 :below quo
 	       :for ori := start :then (+ ori h)
 	       :collect ori)))))
@@ -28,12 +28,8 @@
 
 (defun eye (dims &optional (type *default-tensor-type*))
   (tricopy! 1 (zeros dims type) :d))
-
-(defun diag (tensor &optional (order 2))
-  (declare (type (and tensor-vector dense-tensor) tensor))
-  (tricopy! tensor (zeros (make-list order :initial-element (dimensions tensor 0)) (type-of tensor)) :d))
-
-(defun diag~ (a &optional bias)
+;;
+(defun diagonal~ (a &optional bias)
   (declare (type dense-tensor a))
   (letv* ((off dim
 	       (if bias
@@ -56,5 +52,31 @@
 		       :dimensions (coerce (list dim) 'index-store-vector)
 		       :strides (coerce (list (lvec-foldr #'+ (strides a))) 'index-store-vector)
 		       :head off :store (store a) :parent a))))
+(defun (setf diagonal~) (value tensor &optional bias) (copy! value (diagonal~ tensor bias)))
 
-(defun (setf diag~) (value tensor &optional bias) (copy! value (diag~ tensor bias)))
+(defun tr (mat) (t:sum (diagonal~ mat)))
+;;
+(defun diag (tensor &optional (order 2))
+  (declare (type (and tensor-vector dense-tensor) tensor))
+  (tricopy! tensor (zeros (make-list order :initial-element (dimensions tensor 0)) (type-of tensor)) :d))
+
+;;
+(defun meshgrid (a b)
+  (declare (type tensor-vector a b))
+  (values (ger 1 a (ones (dimensions b 0) (class-of b)) nil)
+	  (ger 1 (ones (dimensions a 0) (class-of a)) b nil)))
+
+(defun proj-psd (m)
+  (letv* ((λλ u (eig (scal! 1/2 (axpy! 1 (transpose~ m) (copy m))) :v))
+	  (ret (zeros (dimensions m) (type-of m))))
+    (iter (for (λi ui) slicing (list λλ u) along (list 0 -1))
+	  (if (< 0 (ref λi 0)) (ger! (ref λi 0) ui ui ret t)))
+    ret))
+
+(defmacro with-coordinates ((&rest syms) vector &body code)
+  (with-gensyms (vec)
+    `(let ((,vec ,vector))
+       (declare (type tensor-vector ,vec))
+       (assert (= (dimensions ,vec 0) ,(length syms)) nil 'tensor-dimension-mismatch)
+       (symbol-macrolet (,@(mapcar (let ((i -1)) #'(lambda (x) `(,x (ref ,vec ,(incf i))))) syms))
+	 ,@code))))

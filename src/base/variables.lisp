@@ -6,6 +6,12 @@
 ;;that you use lexical scoping to affect local changes to
 ;;code (global variables are only bad if you overwrite them :)
 
+(define-constant +infinity+
+  (matlisp-ffi::with-fortran-float-modes
+    (ieee-floats:decode-float64 #x7ff0000000000000))
+  :test '=)
+
+;;
 (defparameter *sparse-tensor-realloc-on-setf* nil)
 
 (defparameter *default-sparse-store-increment* 100

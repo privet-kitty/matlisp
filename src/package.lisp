@@ -123,14 +123,7 @@
   (:export #:test-infix #:string->prefix))
 
 (defpackage "MATLISP-FFI"
-  #+nil(:nicknames :ffi)
   (:use #:common-lisp #:cffi #:iterate #:trivia #:matlisp-utilities #:matlisp-conditions)
-  ;; TODO: Check if this is implementation-agnostic.
-  ;; #+:cmu (:use :common-lisp :c-call :cffi :utilities)
-  ;; #+:sbcl (:use :common-lisp :cffi :utilities)
-  ;; Works with ccl.
-  ;; #+:allegro (:use :common-lisp :cffi :utilities)
-  ;; #+(not (or sbcl cmu allegro)) (:use :common-lisp :cffi :utilities)
   (:export
    ;;Foreign-pointer enclosing structure.
    #:foreign-vector #:element-type #:fvref
@@ -152,6 +145,7 @@
    #:*check-after-initializing?* #:*rcond-scale* #:*default-uplo*
    #:*real-l1-fcall-lb* #:*real-l2-fcall-lb* #:*real-l3-fcall-lb*
    #:*complex-l1-fcall-lb* #:*complex-l2-fcall-lb* #:*complex-l3-fcall-lb*
+   #:+infinity+
    ;;base
    #:dimensions #:order #:field-type #:store-type #:ref #:einstein-sum
    #:base-tensor #:tensor #:memos #:store-size #:total-size #:parent
@@ -173,12 +167,10 @@
    #:sort-permute #:subtensor~ #:slice~ #:suptensor~ #:reshape! #:reshape~
    #:matrixify~ #:join #:minors
    ;;
-   #:zeros
-   #:tensor-realpart~ #:tensor-realpart #:tensor-imagpart~ #:tensor-imagpart
-   #:transpose! #:transpose~ #:transpose #:ctranspose! #:ctranspose #:tensor-conjugate! #:tensor-conjugate
+   #:zeros #:transpose! #:transpose~ #:transpose #:ctranspose! #:ctranspose
    ;;L1
    #:copy! #:copy #:tricopy! #:swap! #:swap #:axpy! #:axpy #:dot #:scal! #:scal #:div! #:div #:scald!
-   #:tensor-sum! #:tensor-sum #:prod! #:prod #:mean #:normalize!
+   #:prod! #:prod #:mean #:normalize!
    ;;Boolean
    #:ge= #:ga= #:go=
    ;;L2, L3
@@ -191,14 +183,14 @@
    #:qr! #:qr #:schur #:svd #:trsyl! #:syl
    ;;graph
    #:in-graph #:in-order #:with-color #:with-parent #:with-visited-array
-   #:graph->adlist #:alist->graph #:hyper->bipartite #:order->tree #:gnp #:moralize! #:symmetrize! #:graphfib #:max-cardinality-search #:triangulate-graph #:elimination-tree #:cholesky-cover #:chordal-cover #:line-graph #:tree-decomposition #:dijkstra #:dijkstra-prims #:directed-subgraph #:max-dag #:topological-order #:graph->dot #:display-graph
+   #:graph->adlist #:adlist->graph #:hyper->bipartite #:order->tree #:gnp #:moralize! #:symmetrize! #:graphfib #:max-cardinality-search #:triangulate-graph #:elimination-tree #:cholesky-cover #:chordal-cover #:line-graph #:tree-decomposition #:dijkstra #:dijkstra-prims #:directed-subgraph #:max-dag #:topological-order #:graph->dot #:display-graph
    ;;special
    ;;map
-   #:mapsor! #:mapsor #:map-tensor! #:mapslice #:mapslice~ #:mapslicec~ #:tensor-foldl
+   #:map-tensor! #:map-tensor #:map-tensor! #:mapslice #:mapslice~ #:mapslicec~ #:fold-tensor
    #:for #:slicing #:along #:from #:below #:to #:downto #:with-index #:by
    #:in-vectors #:in-lists #:meshgrid
-   #:norm #:psd-proj #:tensor-max #:tensor-min #:tr
-   #:ones #:eye! #:eye #:diag #:diag~
+   #:norm #:psd-proj #:tr #:tensor-max #:tensor-min
+   #:ones #:eye! #:eye #:diag #:diaeg~
    #:rand #:randn #:randi #:rande
    #:range #:linspace #:polyfit #:polyval #:roots)
   (:documentation "MATLISP routines"))
@@ -211,65 +203,19 @@
   (:shadow #:+ #:- #:* #:/ #:= #:conjugate #:realpart #:imagpart #:sum #:min #:max
 	   #:sqrt #:sin #:cos #:tan #:asin #:acos #:exp #:sinh #:cosh #:tanh #:asinh #:acosh #:atanh #:log #:expt #:atan)
   (:import-from :λ-reader #:λ)
-  (:export
-   ;;Tweakable
-   #:*sparse-tensor-realloc-on-setf* #:*default-sparse-store-increment* #:*default-sparsity* #:*max-sparse-size*
-   #:*default-stride-ordering* #:*default-tensor-type*
-   #:*check-after-initializing?* #:*default-rcond* #:*default-uplo*
-   #:*real-l1-fcall-lb* #:*real-l2-fcall-lb* #:*real-l3-fcall-lb*
-   #:*complex-l1-fcall-lb* #:*complex-l2-fcall-lb* #:*complex-l3-fcall-lb*
-   ;;base
-   #:dimensions #:order #:field-type #:ref #:einstein-sum
-   #:base-tensor #:tensor #:memos #:store-size #:total-size
-   #:dorefs #:for-mod #:with-iterator #:loop-order #:uplo
-   #:sparse-tensor #:stride-tensor #:dense-tensor #:hash-tensor #:foreign-tensor
-   #:orphanize #:graph-tensor #:coordinate-tensor #:tensor-typep #:tensor-type
-   #:tensor-method-generator #:define-tensor-method #:cl
-   ;;#:tensor-matrixp #:tensor-vectorp #:tensor-squarep
-   #:tensor-vector #:tensor-matrix #:tensor-square-matrix
-   #:complexified-tensor #:realified-tensor
-   ;;coo, graph
-   #:indices #:fence #:δ-I #:strides #:head #:store
-   ;;permutation
-   #:idxv #:pick-random #:shuffle! #:permutation #:permutation-action #:permutation-cycle
-   #:permutation-pivot-flip #:permute! #:permute #:permutation/ #:permutation*
-   #:sort-permute #:subtensor~ #:slice~ #:suptensor~ #:reshape! #:reshape~
-   #:matrixify~ #:join #:minors
-   ;;
-   #:zeros
-   #:realpart~ #:realpart #:imagpart~ #:imagpart
-   #:transpose! #:transpose~ #:transpose #:ctranspose! #:ctranspose #:conjugate! #:conjugate
-   ;;L1
-   #:copy! #:copy #:tricopy! #:swap! #:swap #:axpy! #:axpy #:dot #:scal! #:scal #:div! #:div #:scald!
-   #:sum! #:sum #:prod! #:prod #:mean #:normalize!
+  (:export ;;
+   #:realpart~ #:realpart #:imagpart~ #:imagpart #:conjugate! #:conjugate
+   #:sum! #:sum
    ;;Boolean
    #:ge= #:ga= #:go=
-   ;;L2, L3
-   #:ger! #:ger #:trs! #:gem! #:gem #:gett! #:gekr!
-   ;;LAPACK
-   #:potrf! #:chol! #:chol #:potrs! #:potri! #:ldl! #:ldl-permute! #:ldl
-   #:geev! #:geev-complexify-eigvec  #:heev! #:eig
-   #:gelsy #:lstsq
-   #:getrf! #:getrs! #:getri! #:lu
-   #:qr! #:qr #:schur #:svd #:trsyl! #:syl
-   ;;graph
-   #:in-graph #:in-order #:with-color #:with-parent #:with-visited-array
-   #:graph->adlist #:alist->graph #:hyper->bipartite #:order->tree #:gnp #:moralize! #:symmetrize! #:graphfib #:max-cardinality-search #:triangulate-graph #:elimination-tree #:cholesky-cover #:chordal-cover #:line-graph #:tree-decomposition #:dijkstra #:dijkstra-prims #:directed-subgraph #:max-dag #:topological-order #:graph->dot #:display-graph
-   ;;special
    ;;arithmetic
    #:+ #:- #:* #:.* #:/ #:./ #:@ #:· #:^ #:⊗ #:= #:.=
    ;;function
    #:sqrt #:sin! #:cos! #:tan! #:asin! #:acos! #:exp! #:sinh! #:cosh! #:tanh! #:asinh! #:acosh! #:atanh!
    #:sin #:cos #:tan #:asin #:acos #:exp #:sinh #:cosh #:tanh #:asinh #:acosh #:atanh
-   #:log #:log! #:atan #:atan! #:expt #:expt! #:xlogx
+   #:log #:log! #:atan #:atan! #:expt #:expt! #:xlogx #:xlogx!
    ;;map
-   #:mapsor! #:mapsor #:map-tensor! #:mapslice #:mapslice~ #:mapslicec~ #:tensor-foldl
-   #:for #:slicing #:along #:from #:below #:to #:downto #:with-index #:by
-   #:in-vectors #:in-lists #:meshgrid
-   #:norm #:psd-proj #:max #:min #:tr
-   #:ones #:eye! #:eye #:diag #:diag~
-   #:rand #:randn #:randi #:rande
-   #:range #:linspace #:polyfit #:polyval #:roots)
+   #:max #:min)
   (:documentation "MATLISP USER"))
 
 (defpackage "MATLISP-TESTS"
@@ -283,8 +229,11 @@
     :description "Regression tests for matlisp-optimization")
 (defun matlisp-tests:run-tests () (5am:run! 'matlisp-tests:matlisp-tests))
 (fiveam:in-suite matlisp-tests:matlisp-tests)
+;;expose matlisp from user
+(eval-when (:load-toplevel)
+  (do-external-symbols (ss "MATLISP")
+    (export ss "MATLISP-USER")))
 ;;load foreign libs
-
 (eval-when (:load-toplevel)
   (let* ((matlisp-root (asdf:component-pathname (asdf:find-system :matlisp t)))
 	 (cffi:*foreign-library-directories*

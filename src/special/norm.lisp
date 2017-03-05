@@ -7,13 +7,15 @@
     `(ematch n
        ;;Element-wise
        ((and (type cl:real) (guard n_ (<= 1 n_)))
-	(let-typed ((sum (t/fid+ ,rtype) :type ,rtype))
-	  (dorefs (idx (dimensions vec))
-		  ((ref vec :type ,(cl :x)))
-	    (setf sum (t/f+ ,rtype sum (expt (abs ref) n))))
-	  (expt sum (/ n))))
+	(expt 
+	 (fold-tensor nil ((ref vec :type ,(cl :x))
+			   (acc (t/fid+ ,rtype) :type ,rtype))
+	   (t/f+ ,rtype acc (cl:expt (cl:abs ref) n)))
+	 (/ n)))
        (:sup
-	(tensor-foldl ,(cl :x) max vec (t/fid+ ,rtype) :init-type ,rtype :key cl:abs))
+	(fold-tensor nil ((ref vec :type ,(cl :x))
+			  (sup (t/fid+ ,rtype) :type ,rtype))
+	  (max sup (cl:abs ref))))
        ;;L-ijk...       
        ((and (list* :L (and p (or :sup (and (type cl:real) (guard p_ (<= 1 p_))))) args))
 	(if args
@@ -24,8 +26,7 @@
 											  (of-sl (subseq (strides vec) 1) (head sl))))))
 		      (setf
 		       (slot-value sl 'head) of-sl
-		       (t/store-ref ,(realified-tensor (cl :x)) (memoizing (store nrm) :type ,(store-type (realified-tensor (cl :x))) :global t) of-nrm) (norm sl p))))
-	      
+		       (t/store-ref ,(realified-tensor (cl :x)) (memoizing (store nrm) :type ,(store-type (realified-tensor (cl :x))) :global t) of-nrm) (norm sl p))))	      
 	      (norm nrm (list* :L args)))
 	    (norm vec p)))
        ;;Schatten
@@ -38,59 +39,34 @@
 	  (1 (norm vec '(:L 1 :sup)))
 	  (2 (norm vec '(:schatten :sup)))
 	  (:sup (norm (transpose~ vec) '(:operator 1))))))))
-
-(defun psd-proj (m)
-  (letv* ((λλ u (eig (scal! 1/2 (axpy! 1 (transpose~ m) (copy m))) :v))
-	  (ret (zeros (dimensions m) (type-of m))))
-    (iter (for (λi ui) slicing (list λλ u) along (list 0 -1))
-	  (if (< 0 (ref λi 0)) (ger! (ref λi 0) ui ui ret t)))
-    ret))
-
-(closer-mop:defgeneric tensor-max (object &optional key)
+;;
+(closer-mop:defgeneric t:max (object &optional key)
   (:generic-function-class tensor-method-generator))
-(define-tensor-method tensor-max ((vec dense-tensor :x) &optional key)
-  `(if key
-       (let* ((ridx (make-list (order vec) :initial-element 0))
-	      (rval (funcall key (ref vec (coerce ridx 'index-store-vector)))))
-	 (dorefs (idx (dimensions vec))
-	   ((ref vec :type ,(cl :x)))
-	   (let ((kval (funcall key ref)))
-	     (when (> kval rval)
-	       (setf rval kval)
-	       (lvec->list! idx ridx))))
-	 (values rval ridx))
-       (let*-typed ((ridx (make-list (order vec) :initial-element 0))
-		    (rval (apply #'ref (list* vec ridx)) :type ,(field-type (cl :x))))
-	 (dorefs (idx (dimensions vec))
-		 ((ref vec :type ,(cl :x)))
-	   (let-typed ((r ref :type ,(field-type (cl :x))))
-	     (when (> r rval)
-	       (setf rval r)
-	       (lvec->list! idx ridx))))
-	 (values rval ridx))))
+(define-tensor-method t:max ((vec dense-tensor :x) &optional key)
+  `(let* ((argmax (t/store-allocator index-store-vector (order vec))))
+     (values
+      (if key
+	  (fold-tensor idx ((refx vec :type ,(cl :x))
+			    (max (funcall key (ref vec argmax)) :type cl:real))
+	    (let ((keyx (funcall key refx)))
+	      (when (< max keyx) (copy! idx argmax) keyx)))
+	  (fold-tensor idx ((refx vec :type ,(cl :x))
+			    (max (ref vec argmax) :type ,(field-type (cl :x))))
+	      (when (< max refx) (copy! idx argmax) refx)))
+      argmax)))
 
-(closer-mop:defgeneric tensor-min (vec &optional key)
+(closer-mop:defgeneric t:min (vec &optional key)
   (:generic-function-class tensor-method-generator))
-(define-tensor-method tensor-min ((vec dense-tensor :x) &optional key)
-    `(if key
-       (let* ((ridx (make-list (order vec) :initial-element 0))
-	      (rval (funcall key (ref vec (coerce ridx 'index-store-vector)))))
-	 (dorefs (idx (dimensions vec))
-		 ((ref vec :type ,(cl :x)))
-	   (let ((kval (funcall key ref)))
-	     (when (< kval rval)
-	       (setf rval kval)
-	       (lvec->list! idx ridx))))
-	 (values rval ridx))
-       (let*-typed ((ridx (make-list (order vec) :initial-element 0))
-		    (rval (apply #'ref (list* vec ridx)) :type ,(field-type (cl :x))))
-	 (dorefs (idx (dimensions vec))
-		 ((ref vec :type ,(cl :x)))
-	   (let-typed ((r ref :type ,(field-type (cl :x))))
-	     (when (< r rval)
-	       (setf rval r)
-	       (lvec->list! idx ridx))))
-	 (values rval ridx))))
-
-(defun tr (mat)
-  (tensor-sum (tricopy! mat (zeros (lvec-min (dimensions mat)) (class-of mat)) :d)))
+(define-tensor-method t:min ((vec dense-tensor :x) &optional key)
+  `(let* ((argmin (t/store-allocator index-store-vector (order vec))))
+     (values
+      (if key
+	  (fold-tensor idx ((refx vec :type ,(cl :x))
+			    (min (funcall key (ref vec argmin)) :type cl:real))
+	    (let ((keyx (funcall key refx)))
+	      (when (> min keyx) (copy! idx argmin) keyx)))
+	  (fold-tensor idx ((refx vec :type ,(cl :x))
+			    (min (ref vec argmin) :type ,(field-type (cl :x))))
+	    (when (> min refx) (copy! idx argmin) refx)))
+      argmin)))
+;;

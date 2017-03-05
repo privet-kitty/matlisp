@@ -18,7 +18,7 @@
 	(macrolet ((,mname (x) `(,', fname ',x)))
 	  ,@body)))))
 
-(defmacro set-slots ((obj) &rest सज्ञाः)
+(defmacro set-slots (obj &rest सज्ञाः)
   (with-gensyms (g)
     `(let ((,g ,obj))
        (setf ,@(iter (for x in सज्ञाः)

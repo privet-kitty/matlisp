@@ -38,9 +38,9 @@
        (loop :for i :from 0 :below (order x)
 	  :always (if (= i axis) (= (dimensions y i) 1) (= (dimensions x i) (dimensions y i))))))))
 
-(closer-mop:defgeneric tensor-sum! (x y &optional axis)
+(closer-mop:defgeneric t:sum! (x y &optional axis)
   (:documentation "
-  (TENSOR-SUM! x y [axis 0] [beta 0])
+  (T:SUM! x y [axis 0] [beta 0])
 
        --
   y <- \  x(:, : ..., i, :, :..)
@@ -52,10 +52,11 @@
      (assert (reduce-check x y axis) nil 'tensor-dimension-mismatch))
   (:generic-function-class tensor-method-generator))
 
-(define-tensor-method tensor-sum! ((x dense-tensor :x) (y dense-tensor :y) &optional (axis 0))
+(define-tensor-method t:sum! ((x dense-tensor :x) (y dense-tensor :y) &optional (axis 0))
   `(t/sum ,(cl :y) x (copy! (t/fid+ ,(field-type (cl :y))) y) axis))
 
-(define-tensor-method tensor-sum! ((x dense-tensor :x) (y (eql nil)) &optional (axis 0))
+;;(t:sum! )
+(define-tensor-method t:sum! ((x dense-tensor :x) (y (eql nil)) &optional (axis 0))
   `(declare (ignore axis))
   `(t/sum ,(cl :x) x nil))
 ;;
@@ -86,16 +87,16 @@
     `(declare (ignore axis))
     (*-ify `(t/sum ,(cl :x) x nil))))
 ;;
-(defgeneric tensor-sum (x &optional axis preserve-rank?)
+(defgeneric t:sum (x &optional axis preserve-rank?)
   (:method ((x dense-tensor) &optional (axis 0) (preserve-rank? nil))
     (if axis
 	(let ((axis (modproj axis (order x))))
-	  (tensor-sum! x (let ((dims (loop :for ele :across (dimensions x)
-				 :for i := 0 :then (1+ i)
-				 :when (if preserve-rank? t (/= i axis)) :collect (if (= i axis) 1 ele))))
-			   (and dims (zeros dims (class-of x))))
-		axis))
-	(tensor-sum! x nil)))
+	  (t:sum! x (let ((dims (loop :for ele :across (dimensions x)
+				   :for i := 0 :then (1+ i)
+				   :when (if preserve-rank? t (/= i axis)) :collect (if (= i axis) 1 ele))))
+		      (and dims (zeros dims (class-of x))))
+		  axis))
+	(t:sum! x nil)))
   (:method ((x number) &optional axis preserve-rank?)
     (declare (ignore axis preserve-rank?))
     x)
@@ -105,7 +106,7 @@
 
 (defgeneric mean (x &optional axis preserve-rank?)
   (:method ((x dense-tensor) &optional (axis 0) (preserve-rank? nil))
-    (let ((s (tensor-sum x axis preserve-rank?))
+    (let ((s (t:sum x axis preserve-rank?))
 	  (n.d (if axis (/ (dimensions x axis)) (total-size x))))
       (if (numberp s) (* s n.d)
 	  (scal! n.d s))))
@@ -114,7 +115,7 @@
     x)
   (:method ((x sequence) &optional axis preserve-rank?)
     (declare (ignore axis preserve-rank?))
-    (/ (tensor-sum x) (length x))))
+    (/ (t:sum x) (length x))))
 
 #+nil
 (defun cov (x &optional (axis -1) bias)

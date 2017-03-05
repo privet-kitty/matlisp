@@ -223,5 +223,5 @@ elements ~a:~a of WR and WI contain eigenvalues which have converged." info n)))
    
 ;;     #+nil(norm #i(vr * diag(s, 2) * /vr - a))
 ;;     #+nil(norm (t- a (t* v (diag s 2) (inv v))))
-;;     #+nil(values (norm (t- (diag~ (octave-read-tensor "l")) s))
+;;     #+nil(values (norm (t- (diagonal~ (octave-read-tensor "l")) s))
 ;; 		 (norm (t- (octave-read-tensor "v") v)))))
