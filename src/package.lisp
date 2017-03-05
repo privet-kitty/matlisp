@@ -229,10 +229,12 @@
     :description "Regression tests for matlisp-optimization")
 (defun matlisp-tests:run-tests () (5am:run! 'matlisp-tests:matlisp-tests))
 (fiveam:in-suite matlisp-tests:matlisp-tests)
+
 ;;expose matlisp from user
 (eval-when (:load-toplevel)
   (do-external-symbols (ss "MATLISP")
     (export ss "MATLISP-USER")))
+
 ;;load foreign libs
 (eval-when (:load-toplevel)
   (let* ((matlisp-root (asdf:component-pathname (asdf:find-system :matlisp t)))

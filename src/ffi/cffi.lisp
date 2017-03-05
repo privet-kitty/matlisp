@@ -101,11 +101,11 @@
      ,@body))
 
 (defmacro without-gcing (&body body)
-  (append
-   #+sbcl `(sb-sys::without-gcing)
-   #+cmu `(system::without-gcing)
-   #+ccl `(ccl::without-gcing)
-   body))
+  `(#+sbcl sb-sys::without-gcing
+    #+cmu system::without-gcing
+    #+ccl ccl::without-gcing
+    #-(or ccl sbcl cmu) progn
+    ,@body))
 
 (definline vector-sap-interpreter-specific (vec)
   #+sbcl (sb-sys:vector-sap vec)

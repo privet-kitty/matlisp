@@ -150,11 +150,3 @@
     (etypecase x
       ((or integer float) (type-of x))
       (ratio 'rational))))
-
-(defun real-type-max (x y)
-  (let ((ret (cart-etypecase (x y)
-	       ((integer integer) (type-of (if (> (integer-length x) (integer-length y)) x y)))
-	       ((ratio integer) 'ratio)
-	       ((float float) (type-of (if (> (float-digits x) (float-digits y)) x y)))
-	       ((float t) (type-of x)))))
-    (if (eq ret 'ratio) 'rational ret)))

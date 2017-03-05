@@ -79,6 +79,7 @@
   (generate-rands ((randn (draw-standard-normal))
 		   (rand (random 1d0))
 		   (rande (draw-standard-exponential)))))
+(matlisp::generate-rand srandn single-float (matlisp::draw-standard-normal-single))
 
 (defun randi (&optional dims (arg 2))
   (if dims

@@ -8,7 +8,8 @@
 
 (define-constant +infinity+
   (matlisp-ffi::with-fortran-float-modes
-    (ieee-floats:decode-float64 #x7ff0000000000000))
+    ;;(ieee-floats:decode-float64 #x7ff0000000000000)
+    (/ 1d0 0d0))
   :test '=)
 
 ;;
