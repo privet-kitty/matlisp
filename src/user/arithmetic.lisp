@@ -300,13 +300,12 @@
        (if (not objs) ret
 	   (reducer `(b⊗ ,ret ,(car objs)) (cdr objs)))))
 ;;
-(definline realpart~ (object) (tensor-realpart~ object))
-(definline realpart (object) (tensor-realpart object))
-(definline imagpart~ (object) (tensor-imagpart~ object))
-(definline imagpart (object) (tensor-imagpart object))
-(definline sum! (x y &optional axis) (tensor-sum! x y axis))
-(definline sum (x &optional axis preserve-rankp) (tensor-sum x axis preserve-rankp))
-
-;;(tensor-max )
+;; (definline realpart~ (object) (tensor-realpart~ object))
+;; (definline realpart (object) (tensor-realpart object))
+;; (definline imagpart~ (object) (tensor-imagpart~ object))
+;; (definline imagpart (object) (tensor-imagpart object))
+;; (definline sum! (x y &optional axis) (tensor-sum! x y axis))
+;; (definline sum (x &optional axis preserve-rankp) (tensor-sum x axis preserve-rankp))
 
 
+;;

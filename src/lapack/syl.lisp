@@ -30,8 +30,8 @@
     first two alphabets maps to op A, op B; whilst the third one controls
     the sign in the equation (oh dear! which year have we landed in.).
 ")
-  (:method :before ((A tensor) (B tensor) (C tensor) &optional (job :nnp))	   
-     (destructuring-bind (job.a job.b sgn) (split-job job)       
+  (:method :before ((A tensor) (B tensor) (C tensor) &optional (job :nnp))
+     (destructuring-bind (job.a job.b sgn) (split-job job)
        (assert (and (typep A 'tensor-square-matrix) (typep B 'tensor-square-matrix)
 		    (= (dimensions A (ecase job.a (#\N 0) ((#\C #\T) 1))) (dimensions C 0))
 		    (= (dimensions B (ecase job.b (#\N 1) ((#\C #\T) 0))) (dimensions C 1))
@@ -50,7 +50,8 @@
 	   (if (< info 0)
 	       (error "TRSYL: Illegal value in the ~:r argument." (- info))
 	       (error "TRSYL: A and B have common or very close eigenvalues; perturbed values were used to solve the equation (but the matrices A and B are unchanged).")))
-	 (scal! scale C)))))
+	 (scal! scale C))))
+  'C)
 
 ;;Should we use some fancy pattern matcher to do this ?
 ;;(solve #i(A' * ?x + ?x * B = C))

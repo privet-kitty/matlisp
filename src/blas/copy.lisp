@@ -170,17 +170,17 @@
   (using-gensyms (decl (x y) (idx i j m))
     (binding-gensyms (gm gf)
       (flet ((macro-expander (transpose-p)
-	       `((loop :for ,(gm j) :of-type index-type :from 0 :below (1- (length (memoizing (fence ,x))))
-		    :do (loop :for ,(gm m) :of-type index-type :from (aref (memoizing (fence ,x)) ,j) :below (aref (memoizing (fence ,x)) (1+ ,j))
-			   :do (let-typed ((,i (aref (memoizing (δ-i ,x) :type index-store-vector) ,m) :type index-type))
+	       `((loop :for ,(gm j) :of-type index-type :from 0 :below (1- (length (memoizing (fence ,x) :global t)))
+		    :do (loop :for ,(gm m) :of-type index-type :from (aref (memoizing (fence ,x) :global t) ,j) :below (aref (memoizing (fence ,x) :global t) (1+ ,j))
+			   :do (let-typed ((,i (aref (memoizing (δ-i ,x) :type index-store-vector :global t) ,m) :type index-type))
 				 (setf ;;set hash
 				  (aref ,idx 0) ,i (aref ,idx 1) ,j
-				  (aref (memoizing (slot-value ,y 'stride-hash) :type index-store-vector) ,m) (stride-hash ,idx (memoizing (strides ,y) :type index-store-vector))
+				  (aref (memoizing (slot-value ,y 'stride-hash) :type index-store-vector :global t) ,m) (stride-hash ,idx (memoizing (strides ,y) :type index-store-vector :global t))
 				  ;;set index
-				  (aref (memoizing (indices ,y) :type index-store-matrix) ,m 0) (aref ,idx ,(if transpose-p 1 0))
-				  (aref (memoizing (indices ,y) :type index-store-matrix) ,m 1) (aref ,idx ,(if transpose-p 0 1))
+				  (aref (memoizing (indices ,y) :type index-store-matrix :global t) ,m 0) (aref ,idx ,(if transpose-p 1 0))
+				  (aref (memoizing (indices ,y) :type index-store-matrix :global t) ,m 1) (aref ,idx ,(if transpose-p 0 1))
 				  ;;Set value
-				  (t/store-ref ,cly (memoizing (slot-value ,y 'store) :type ,(store-type cly)) ,m) (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx (memoizing (slot-value ,x 'store) :type ,(store-type clx)) ,i)))))))))
+				  (t/store-ref ,cly (memoizing (slot-value ,y 'store) :type ,(store-type cly) :global t) ,m) (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx (memoizing (slot-value ,x 'store) :type ,(store-type clx) :global t) ,i)))))))))
 	`(let (,@decl)
 	   (declare (type ,clx ,x) (type ,cly ,y))
 	   (with-memoization ()
@@ -193,17 +193,17 @@
 (deft/method t/copy! ((clx graph-tensor) (cly coordinate-tensor)) (x y)
   (using-gensyms (decl (x y) (idx i j m))
     (flet ((macro-expander (transpose-p)
-	     `((loop :for ,j :of-type index-type :from 0 :below (1- (length (memoizing (fence ,x))))
-		  :do (loop :for ,m :of-type index-type :from (aref (memoizing (fence ,x)) ,j) :below (aref (memoizing (fence ,x)) (1+ ,j))
-			 :do (let-typed ((,i (aref (memoizing (δ-i ,x) :type index-store-vector) ,m) :type index-type))
+	     `((loop :for ,j :of-type index-type :from 0 :below (1- (length (memoizing (fence ,x) :global t)))
+		  :do (loop :for ,m :of-type index-type :from (aref (memoizing (fence ,x) :global t) ,j) :below (aref (memoizing (fence ,x) :global t) (1+ ,j))
+			 :do (let-typed ((,i (aref (memoizing (δ-i ,x) :type index-store-vector :global t) ,m) :type index-type))
 			       (setf ;;set hash
 				(aref ,idx 0) ,i (aref ,idx 1) ,j
-				(aref (memoizing (slot-value ,y 'stride-hash) :type index-store-vector) ,m) (stride-hash ,idx (memoizing (strides ,y) :type index-store-vector))
+				(aref (memoizing (slot-value ,y 'stride-hash) :type index-store-vector :global t) ,m) (stride-hash ,idx (memoizing (strides ,y) :type index-store-vector :global t))
 				;;set index
-				(aref (memoizing (indices ,y) :type index-store-matrix) ,m 0) (aref ,idx ,(if transpose-p 1 0))
-				(aref (memoizing (indices ,y) :type index-store-matrix) ,m 1) (aref ,idx ,(if transpose-p 0 1))
+				(aref (memoizing (indices ,y) :type index-store-matrix :global t) ,m 0) (aref ,idx ,(if transpose-p 1 0))
+				(aref (memoizing (indices ,y) :type index-store-matrix :global t) ,m 1) (aref ,idx ,(if transpose-p 0 1))
 				;;Set value
-				(t/store-ref ,cly (memoizing (slot-value ,y 'store) :type ,(store-type cly)) ,m) (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx (memoizing (slot-value ,x 'store) :type ,(store-type clx)) ,i)))))))))
+				(t/store-ref ,cly (memoizing (slot-value ,y 'store) :type ,(store-type cly) :global t) ,m) (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx (memoizing (slot-value ,x 'store) :type ,(store-type clx) :global t) ,i)))))))))
       `(let (,@decl)
 	 (declare (type ,clx ,x) (type ,cly ,y))
 	 (with-memoization ()
@@ -217,19 +217,19 @@
     `(let (,@decl)
        (declare (type ,clx ,x) (type ,cly ,y))
        (with-memoization ()
-	 (let ((,idx (t/store-allocator index-store-vector (memoizing (total-size ,x)))))
+	 (let ((,idx (t/store-allocator index-store-vector (memoizing (total-size ,x) :global t))))
 	   (iter (for (,k ,v) in-hashtable (store ,x))
 		 (setf (aref ,idx ,ii) ,k)
 		 (counting t into ,ii))
-	   (lvec-copy (memoizing (total-size ,x)) (sort ,idx #'<) 0 (memoizing (slot-value ,y 'stride-hash) :type index-store-vector) 0))
-	 (setf (slot-value ,y 'tail) (memoizing (total-size ,x)))
+	   (lvec-copy (memoizing (total-size ,x) :global t) (sort ,idx #'<) 0 (memoizing (slot-value ,y 'stride-hash) :type index-store-vector :global t) 0))
+	 (setf (slot-value ,y 'tail) (memoizing (total-size ,x) :global t))
 	 ;;
-	 (iter (for ,k in-vector (memoizing (slot-value ,y 'stride-hash)) with-index ,ii below (memoizing (total-size ,x)))
-	       (lvec-copy (memoizing (order ,x))
-			  (the index-store-vector (invert-hash (- ,k (memoizing (head ,x))) (memoizing (slot-value ,x 'stride-pivot)) (memoizing (strides ,x)) (memoizing (dimensions ,x)))) 0
-			  (memoizing (indices ,y) :type index-store-matrix) (* (memoizing (order ,x)) ,ii))
-	       (setf (t/store-ref ,cly (memoizing (t/store ,cly ,y) :type ,(store-type cly)) ,ii)
-		     (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx (memoizing (slot-value ,x 'store) :type ,(store-type clx)) ,k)))))
+	 (iter (for ,k in-vector (memoizing (slot-value ,y 'stride-hash) :global t) with-index ,ii below (memoizing (total-size ,x) :global t))
+	       (lvec-copy (memoizing (order ,x) :global t)
+			  (the index-store-vector (invert-hash (- ,k (memoizing (head ,x) :global t)) (memoizing (slot-value ,x 'stride-pivot) :global t) (memoizing (strides ,x) :global t) (memoizing (dimensions ,x) :global t))) 0
+			  (memoizing (indices ,y) :type index-store-matrix :global t) (* (memoizing (order ,x) :global t) ,ii))
+	       (setf (t/store-ref ,cly (memoizing (t/store ,cly ,y) :type ,(store-type cly) :global t) ,ii)
+		     (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx (memoizing (slot-value ,x 'store) :type ,(store-type clx) :global t) ,k)))))
        ,y)))
 
 (deft/method t/copy! ((clx coordinate-tensor) (cly dense-tensor)) (x y)
@@ -239,9 +239,9 @@
        (with-memoization ()
 	 (let ((,idx (t/store-allocator index-store-vector (order ,x))))
 	   (iter (for ,ii from 0 below (slot-value ,x 'tail))
-		 (lvec-copy (memoizing (order ,x)) (memoizing (indices ,x)) (* ,ii (memoizing (order ,x))) ,idx 0 :key #'row-major-aref :lock #'(setf aref))
-		 (setf (t/store-ref ,cly (memoizing (store ,y) :type ,(store-type cly)) (+ (memoizing (head ,y)) (stride-hash ,idx (memoizing (strides ,y)))))
-		       (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx (memoizing (store ,x) :type ,(store-type clx)) ,ii))))))
+		 (lvec-copy (memoizing (order ,x) :global t) (memoizing (indices ,x) :global t) (* ,ii (memoizing (order ,x) :global t)) ,idx 0 :key #'row-major-aref :lock #'(setf aref))
+		 (setf (t/store-ref ,cly (memoizing (store ,y) :type ,(store-type cly) :global t) (+ (memoizing (head ,y) :global t) (stride-hash ,idx (memoizing (strides ,y) :global t))))
+		       (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx (memoizing (store ,x) :type ,(store-type clx) :global t) ,ii))))))
        ,y)))
 
 #+nil
@@ -249,17 +249,17 @@
   (using-gensyms (decl (x y) (idx i j m))
     (binding-gensyms (gm gf)
       (flet ((macro-expander (transpose-p)
-	       `((loop :for ,(gm m) :of-type index-type :from 0 :below (1- (memoizing (slot-value ,x 'tail) :type index-type))
-		    :do (loop :for ,m :of-type index-type :from (aref (memoizing (fence ,x)) ,j) :below (aref (memoizing (fence ,x)) (1+ ,j))
-			   :do (let-typed ((,i (aref (memoizing (δ-i ,x) :type index-store-vector) ,m) :type index-type))
+	       `((loop :for ,(gm m) :of-type index-type :from 0 :below (1- (memoizing (slot-value ,x 'tail) :type index-type :global t))
+		    :do (loop :for ,m :of-type index-type :from (aref (memoizing (fence ,x) :global t) ,j) :below (aref (memoizing (fence ,x) :global t) (1+ ,j))
+			   :do (let-typed ((,i (aref (memoizing (δ-i ,x) :type index-store-vector :global t) ,m) :type index-type))
 				 (setf ;;set hash
 				  (aref ,idx 0) ,i (aref ,idx 1) ,j
-				  (aref (memoizing (slot-value ,y 'stride-hash) :type index-store-vector) ,m) (stride-hash ,idx (memoizing (strides ,y) :type index-store-vector))
+				  (aref (memoizing (slot-value ,y 'stride-hash) :type index-store-vector :global t) ,m) (stride-hash ,idx (memoizing (strides ,y) :type index-store-vector :global t))
 				  ;;set index
-				  (aref (memoizing (indices ,y) :type index-store-matrix) ,m 0) (aref ,idx ,(if transpose-p 1 0))
-				  (aref (memoizing (indices ,y) :type index-store-matrix) ,m 1) (aref ,idx ,(if transpose-p 0 1))
+				  (aref (memoizing (indices ,y) :type index-store-matrix :global t) ,m 0) (aref ,idx ,(if transpose-p 1 0))
+				  (aref (memoizing (indices ,y) :type index-store-matrix :global t) ,m 1) (aref ,idx ,(if transpose-p 0 1))
 				  ;;Set value
-				  (t/store-ref ,cly (memoizing (slot-value ,y 'store) :type ,(store-type cly)) ,m) (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx (memoizing (slot-value ,x 'store) :type ,(store-type clx)) ,i)))))))))
+				  (t/store-ref ,cly (memoizing (slot-value ,y 'store) :type ,(store-type cly) :global t) ,m) (t/strict-coerce (,(field-type clx) ,(field-type cly)) (t/store-ref ,clx (memoizing (slot-value ,x 'store) :type ,(store-type clx) :global t) ,i)))))))))
 	`(let (,@decl)
 	   (declare (type ,clx ,x) (type ,cly ,y))
 	   (with-memoization ()
@@ -343,8 +343,8 @@
 (define-tensor-method copy! ((x t) (y coordinate-tensor :y t))
   `(with-memoization ()
      (loop :for i :from 0 :below (slot-value y 'tail)
-	:do (setf (t/store-ref ,(cl :y) (memoizing (store y) :type ,(store-type (cl :y))) i)
-		  (memoizing (t/coerce ,(field-type (cl :y)) x) :type ,(field-type (cl :y)))))
+	:do (setf (t/store-ref ,(cl :y) (memoizing (store y) :type ,(store-type (cl :y)) :global t) i)
+		  (memoizing (t/coerce ,(field-type (cl :y)) x) :type ,(field-type (cl :y)) :global t)))
      y))
 
 ;;Generic function defined in src;base;generic-copy.lisp

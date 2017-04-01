@@ -1,11 +1,11 @@
 (in-package #:matlisp-user)
 
 ;;conjugate
-(definline conjugate! (a)
-  (tensor-conjugate! a))
+;; (definline conjugate! (a)
+;;   (tensor-conjugate! a))
 
-(definline conjugate (a)
-  (tensor-conjugate a))
+;; (definline conjugate (a)
+;;   (tensor-conjugate a))
 ;;
 
 (defmacro lift-function (kernel &optional (fn kernel) &aux (pkg (find-package "MATLISP-USER")))

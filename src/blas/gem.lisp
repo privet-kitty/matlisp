@@ -261,6 +261,6 @@
        (iter (for-mod idx from 0 below (dimensions b) with-iterator ((:stride ((of-b (strides b) (head b))
 									       (of-r (subseq (strides ret) (order a)) (head ret))))))
 	     (setf (slot-value ret-a 'head) of-r)
-	     (axpy! (t/store-ref ,(cl :x) (memoizing (store b) :type ,(store-type (cl :x))) of-b) a ret-a)))
+	     (axpy! (t/store-ref ,(cl :x) (memoizing (store b) :type ,(store-type (cl :x)) :global t) of-b) a ret-a)))
      ret))
 ;;

@@ -35,46 +35,46 @@
 	 (values (setf (t/store-ref ,(cl :x) (t/store ,(cl :x) x) (the index-type m)) (t/coerce ,(field-type (cl :x)) value)) t)
 	 (if *sparse-tensor-realloc-on-setf*
 	     (with-memoization ()
-	       (memoizing lb :type index-type :bind lb)
-	       (memoizing (- (memoizing (total-size x) :type index-type) lb) :type index-type :bind r-len)
-	       (memoizing (order x) :type index-type)
-	       (if (< (length (memoizing (slot-value x 'stride-hash) :type index-store-vector :bind stride-hash)) (memoizing (store-size x)))
+	       (memoizing lb :type index-type :bind lb :global t)
+	       (memoizing (- (memoizing (total-size x) :type index-type) lb) :type index-type :bind r-len :global t)
+	       (memoizing (order x) :type index-type :global t)
+	       (if (< (length (memoizing (slot-value x 'stride-hash) :type index-store-vector :bind stride-hash :global t)) (memoizing (store-size x) :global t))
 		   (progn ; very-quickly
-		     (lvec-copy (* r-len (memoizing (order x)))
-				(memoizing (indices x) :type index-store-matrix) (* lb (memoizing (order x)))
-				(memoizing (indices x)) (* (1+ lb) (memoizing (order x)))
+		     (lvec-copy (* r-len (memoizing (order x) :global t))
+				(memoizing (indices x) :type index-store-matrix :global t) (* lb (memoizing (order x)))
+				(memoizing (indices x) :global t) (* (1+ lb) (memoizing (order x) :global t))
 				:key #'row-major-aref :lock #'(setf row-major-aref))
 		     (lvec-copy r-len stride-hash lb stride-hash (1+ lb) :key #'aref :lock #'(setf aref))
 		     (lvec-copy r-len
-				(memoizing (t/store ,(cl :x) x) :type ,(store-type (cl :x))) lb
-				(memoizing (t/store ,(cl :x) x)) (1+ lb)
+				(memoizing (t/store ,(cl :x) x) :type ,(store-type (cl :x)) :global t) lb
+				(memoizing (t/store ,(cl :x) x) :global t) (1+ lb)
 				:key #'(lambda (a_ i_) (declare (index-type i_)) (t/store-ref ,(cl :x) a_ i_))
 				:lock #'(lambda (v_ a_ i_) (declare (type index-type i_) (type ,(field-type (cl :x)) v_)) (t/store-set ,(cl :x) v_ a_ i_))))
-		   (let*-typed ((ss (+ (memoizing (store-size x)) *default-sparse-store-increment*))
-				(idx-new (t/store-allocator index-store-matrix (list ss (memoizing (order x)))) :type index-store-matrix)
+		   (let*-typed ((ss (+ (memoizing (store-size x) :global t) *default-sparse-store-increment*))
+				(idx-new (t/store-allocator index-store-matrix (list ss (memoizing (order x) :global t))) :type index-store-matrix)
 				(hsh-new (t/store-allocator index-store-vector ss) :type index-store-vector)
 				(sto-new (t/store-allocator ,(cl :x) ss) :type ,(store-type (cl :x))))
 		     (progn ;very-quickly
 		       ;;Index
-		       (lvec-copy (* lb (memoizing (order x)))
-				  (memoizing (indices x)) 0 idx-new 0
+		       (lvec-copy (* lb (memoizing (order x) :global t))
+				  (memoizing (indices x) :global t) 0 idx-new 0
 				  :key #'row-major-aref :lock #'(setf row-major-aref))
-		       (lvec-copy (* r-len (memoizing (order x)))
-				  (memoizing (indices x)) (* lb (memoizing (order x)))
-				  idx-new (* (1+ lb) (memoizing (order x)))
+		       (lvec-copy (* r-len (memoizing (order x) :global t))
+				  (memoizing (indices x) :global t) (* lb (memoizing (order x) :global t))
+				  idx-new (* (1+ lb) (memoizing (order x) :global t))
 				  :key #'row-major-aref :lock #'(setf row-major-aref))
 		       ;;Hash
 		       (lvec-copy lb stride-hash 0 hsh-new 0 :key #'aref :lock #'(setf aref))
 		       (lvec-copy r-len stride-hash lb hsh-new (1+ lb) :key #'aref :lock #'(setf aref))
 		       ;;Store
-		       (lvec-copy lb (memoizing (t/store ,(cl :x) x)) 0 sto-new 0
+		       (lvec-copy lb (memoizing (t/store ,(cl :x) x) :global t) 0 sto-new 0
 				  :key #'(lambda (a_ i_) (declare (index-type i_)) (t/store-ref ,(cl :x) a_ i_))
 				  :lock #'(lambda (v_ a_ i_) (declare (type index-type i_) (type ,(field-type (cl :x)) v_)) (t/store-set ,(cl :x) v_ a_ i_)))
-		       (lvec-copy r-len (memoizing (t/store ,(cl :x) x)) lb  sto-new (1+ lb)
+		       (lvec-copy r-len (memoizing (t/store ,(cl :x) x) :global t) lb  sto-new (1+ lb)
 				  :key #'(lambda (a_ i_) (declare (index-type i_)) (t/store-ref ,(cl :x) a_ i_))
 				  :lock #'(lambda (v_ a_ i_) (declare (type index-type i_) (type ,(field-type (cl :x)) v_)) (t/store-set ,(cl :x) v_ a_ i_))))
 		     (setf (slot-value x 'indices) idx-new (slot-value x 'stride-hash) hsh-new (slot-value x 'store) sto-new)))
-	       (lvec-copy (memoizing (order x)) subs/v 0 (indices x) (* lb (memoizing (order x))))
+	       (lvec-copy (memoizing (order x) :global t) subs/v 0 (indices x) (* lb (memoizing (order x) :global t)))
 	       (values (setf
 			(aref (slot-value x 'stride-hash) lb) (stride-hash subs/v (strides x))
 			(t/store-ref ,(cl :x) (t/store ,(cl :x) x) lb) (t/coerce ,(field-type (cl :x)) value))

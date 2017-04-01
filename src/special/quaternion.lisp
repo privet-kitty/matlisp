@@ -196,6 +196,7 @@
        #i(quat[0] ← \ (cl:realpart sincos))
        quat)))
 ;;
+#+nil
 (defun spherical-quat (delta phi theta)
   (declare (type double-float delta phi theta))
   (optimize-expression ((q (zeros (list 4) (tensor 'double-float)) :type #.(tensor 'double-float)))

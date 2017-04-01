@@ -32,7 +32,7 @@
   "
   Syntax
   ======
-  (TRANSPOSE! a [permutation])
+  (t:TRANSPOSE! a [permutation])
 
   Purpose
   =======
@@ -141,34 +141,34 @@
      ,@body
      ,@(mapcar #'(lambda (mat) `(transpose! ,mat)) matlst)))
 ;;
-(definline tensor-conjugate! (A)
+(definline t:conjugate! (A)
   "
   Syntax
   ======
-  (tensor-conjugate! A)
+  (t:conjugate! A)
 
   Purpose
   =======
   Destructively modifies A into its complex conjugate (not hermitian conjugate).
 
-  (tensor-imagpart~ A) <- (- (tensor-imagpart~ A)) "
+  (t:imagpart~ A) <- (- (t:imagpart~ A)) "
   (etypecase A
     (cl:number (cl:conjugate A))
     (dense-tensor (if (eql (realified-tensor (class-of A)) (type-of A)) A
-		      (progn (scal! -1 (tensor-imagpart~ A)) A)))))
+		      (progn (scal! -1 (t:imagpart~ A)) A)))))
 
-(definline tensor-conjugate (A)
+(definline t:conjugate (A)
   "
   Syntax
   ======
-  (tensor-conjugate A)
+  (t:conjugate A)
 
   Purpose
   =======
   Like conjugate!, but non-destructive."
   (typecase A
     (cl:number (cl:conjugate A))
-    (t (tensor-conjugate! (copy A)))))
+    (t (t:conjugate! (copy A)))))
 
 ;;
 (definline ctranspose! (A &optional permutation)
@@ -183,7 +183,7 @@
 "
   (typecase A
     (cl:number (cl:conjugate A))
-    (t (tensor-conjugate! (transpose! A permutation)))))
+    (t (t:conjugate! (transpose! A permutation)))))
 
 (definline ctranspose (A &optional permutation)
   "

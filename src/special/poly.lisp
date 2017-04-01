@@ -18,14 +18,14 @@
 	       (row-ti ti Ai derivative))))
       (lstsq A b))))
 
-(defun polyval (tt poly &aux (tn 1))
-  (iter (for i from 0 below (dimensions poly 0))
-	(summing (* (ref poly i) tn))
-	(setf tn (* tn tt))))
+(defun polyval (tt poly &aux (ret 0))
+  (iter (for ii from (1- (dimensions poly 0)) downto 0) ;;horner
+	(setf ret (+ (* tt ret) (ref poly ii))))
+  ret)
 
 (defun roots (poly &aux (n (1- (dimensions poly 0))))
   ;;TODO: Add a better method.
   (let ((A (zeros (list n n) (type-of poly))))
-    (if (< 1 n) (copy! 1 (diag~ A 1)))
+    (if (< 1 n) (copy! 1 (diagonal~ A 1)))
     (scal! (/ -1 (ref poly -1)) (copy! (subtensor~ poly '((0 -1))) (subtensor~ A '(-1 (nil nil)))))
     (eig A :nn)))

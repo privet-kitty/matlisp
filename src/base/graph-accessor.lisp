@@ -48,28 +48,28 @@
 	 (values (setf (t/store-ref ,(cl :x) (t/store ,(cl :x) x) (the index-type m)) (t/coerce ,(field-type (cl :x)) value)) t)
 	 (if *sparse-tensor-realloc-on-setf*
 	     (with-memoization ()
-	       (memoizing lb :type index-type :bind lb)
-	       (memoizing (- (aref (memoizing (fence x) :type index-store-vector) (1- (length (memoizing (fence x))))) lb) :type index-type :bind r-len)
-	       (if (< (aref (memoizing (fence x)) (1- (length (memoizing (fence x))))) (length (memoizing (δ-i x) :type index-store-vector)))
+	       (memoizing lb :type index-type :bind lb :global t)
+	       (memoizing (- (aref (memoizing (fence x) :type index-store-vector) (1- (length (memoizing (fence x))))) lb) :type index-type :bind r-len :global t)
+	       (if (< (aref (memoizing (fence x) :global t) (1- (length (memoizing (fence x) :global t)))) (length (memoizing (δ-i x) :type index-store-vector :global t)))
 		   (very-quickly
-		     (lvec-copy r-len (memoizing (δ-i x)) lb (memoizing (δ-i x)) (+ lb 1) :key #'aref :lock #'(setf aref))
-		     (lvec-copy r-len (memoizing (t/store ,(cl :x) x) :type ,(store-type (cl :x))) lb (memoizing (t/store ,(cl :x) x)) (+ lb 1)
+		     (lvec-copy r-len (memoizing (δ-i x) :global t) lb (memoizing (δ-i x) :global t) (+ lb 1) :key #'aref :lock #'(setf aref))
+		     (lvec-copy r-len (memoizing (t/store ,(cl :x) x) :type ,(store-type (cl :x)) :global t) lb (memoizing (t/store ,(cl :x) x) :global t) (+ lb 1)
 				:key #'(lambda (a_ i_) (declare (index-type i_)) (t/store-ref ,(cl :x) a_ i_))
 				:lock #'(lambda (v_ a_ i_) (declare (type index-type i_) (type ,(field-type (cl :x)) v_)) (t/store-set ,(cl :x) v_ a_ i_))))
 		   (let*-typed ((ss (+ (store-size x) *default-sparse-store-increment*))
 				(δ-new (t/store-allocator index-store-vector ss) :type index-store-vector)
 				(sto-new (t/store-allocator ,(cl :x) ss) :type ,(store-type (cl :x))))
 		     (very-quickly
-		       (lvec-copy lb (memoizing (δ-i x)) 0 δ-new 0 :key #'aref :lock #'(setf aref))
-		       (lvec-copy r-len (memoizing (δ-i x)) lb δ-new (+ lb 1) :key #'aref :lock #'(setf aref))
-		       (lvec-copy lb (memoizing (t/store ,(cl :x) x)) 0 sto-new 0
+		       (lvec-copy lb (memoizing (δ-i x) :global t) 0 δ-new 0 :key #'aref :lock #'(setf aref))
+		       (lvec-copy r-len (memoizing (δ-i x) :global t) lb δ-new (+ lb 1) :key #'aref :lock #'(setf aref))
+		       (lvec-copy lb (memoizing (t/store ,(cl :x) x) :global t) 0 sto-new 0
 				  :key #'(lambda (a_ i_) (declare (index-type i_)) (t/store-ref ,(cl :x) a_ i_))
 				  :lock #'(lambda (v_ a_ i_) (declare (type index-type i_) (type ,(field-type (cl :x)) v_)) (t/store-set ,(cl :x) v_ a_ i_)))
-		       (lvec-copy r-len (memoizing (t/store ,(cl :x) x)) lb sto-new (+ lb 1)
+		       (lvec-copy r-len (memoizing (t/store ,(cl :x) x) :global t) lb sto-new (+ lb 1)
 				  :key #'(lambda (a_ i_) (declare (index-type i_)) (t/store-ref ,(cl :x) a_ i_))
 				  :lock #'(lambda (v_ a_ i_) (declare (type index-type i_) (type ,(field-type (cl :x)) v_)) (t/store-set ,(cl :x) v_ a_ i_))))
 		     (setf (slot-value x 'neighbors) δ-new (slot-value x 'store) sto-new)))
-	       (loop :for i :from (1+ (aref sub/v 1)) :below (length (memoizing (fence x))) :do (incf (aref (memoizing (fence x)) i)))
+	       (loop :for i :from (1+ (aref sub/v 1)) :below (length (memoizing (fence x) :global t)) :do (incf (aref (memoizing (fence x) :global t) i)))
 	       (values
 		(setf (aref (δ-i x) (the index-type lb)) (aref sub/v 0)
 		      (t/store-ref ,(cl :x) (t/store ,(cl :x) x) (the index-type lb)) (t/coerce ,(field-type (cl :x)) value))

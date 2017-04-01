@@ -6,16 +6,17 @@
 (defparameter *exponent-tokens* '(#\E #\S #\D #\F #\L))
 (defparameter *operator-tokens*
   `(("⊗" ⊗) ;;<- CIRCLE TIMES
-    (".^" .^) ("^" ^) ("⟼" ⟼)
+    ("**" **) ("->" ->)
     ("./" ./) ("/" /)
-    ("*" *) (".*" .*) ("@" @)
-    ("·" @) ;; <- MIDDLE DOT
+    ("*" *) (".*" .*) 
+    ("@" @) ("·" @) ;; <- MIDDLE DOT
     (".+" +) ("+" +)
     (".-" -) ("-" -)
     ("(" \() (")" \))
     ("[" \[) ("]" \])
     (":" |:|) (":=" :=)
-    ("←" ←) ("<-" ←) ("=" =) (".=" .=)
+    ("←" <-) ("<-" <-)
+    ("=" =) (".=" .=)
     ("," \,) ("." \.)
     ("'" ctranspose) (".'" transpose)))
 
@@ -89,13 +90,13 @@
 ;;
 (yacc:define-parser *linfix-parser*
   (:start-symbol expr)
-  (:terminals (⟼ ^ .^ ./ / * .* @ ⊗ + - := ← = .= |(| |)| [ ] |:| |.| |,| ctranspose transpose id number))
+  (:terminals (-> ** ./ / * .* @ ⊗ + - := <- = .= |(| |)| [ ] |:| |.| |,| ctranspose transpose id number))
   (:precedence ((:left |.| ctranspose transpose)
-		(:right .^ ^)
+		(:right **)
 		(:left ./ / * .* @ ⊗)
 		(:left + -)
-		(:left ⟼)
-		(:right := ← = .=)))
+		(:left ->)
+		(:right := <- = .=)))
   (expr
    (expr ctranspose #'(lambda (a b) (list b a)))
    (expr transpose #'(lambda (a b) (list b a)))
@@ -108,10 +109,9 @@
    (expr .* expr #'(lambda (a b c) (list b a c)))
    (expr @ expr #'(lambda (a b c) (list b a c)))
    (expr ⊗ expr #'(lambda (a b c) (list b a c)))
-   (expr .^ expr #'(lambda (a b c) (list b a c)))
-   (expr ^ expr #'(lambda (a b c) (list b a c)))
-   (list ⟼ expr #'(lambda (a b c) (declare (ignore b)) `(lambda (,@(cdr a)) ,c)))
-   (expr ← expr #'(lambda (a b c) (declare (ignore b)) (list 'setf a c)))
+   (expr ** expr #'(lambda (a b c) (list b a c)))
+   (list -> expr #'(lambda (a b c) (declare (ignore b)) `(lambda (,@(cdr a)) ,c)))
+   (expr <- expr #'(lambda (a b c) (declare (ignore b)) (list 'setf a c)))
    (expr := expr #'(lambda (a b c) (declare (ignore b)) (list :deflet a c)))
    (expr = expr #'(lambda (a b c) (list b a c)))
    (expr .= expr #'(lambda (a b c) (list b a c)))
@@ -215,26 +215,19 @@
 	     (t (setq ,new (+ ,new ,val))))
 	   ,setter)))))
 ;;
-(defparameter *operator-assoc-table* '((* matlisp-user:*)
-				       (.* matlisp-user:.*)
-				       (@ matlisp-user:@)
-				       (⊗ matlisp-user:⊗)
-				       (+ matlisp-user:+)
-				       (- matlisp-user:-)
-				       (\\ matlisp-user::b\\)
-				       (/ matlisp-user:/)
-				       (./ matlisp-user:./)
-				       (= matlisp-user:=)
-				       ;;Not yet implemented.
-				       (.= matlisp-user:=)
-				       ;;No yet implemented
-				       (^ t:expt)
-				       (.^ t:expt)
-				       (sum t:sum) (xlogx t:xlogx) (realpart t:realpart) (imagpart t:imagpart)
-				       (sqrt t:sqrt) (sin t:sin) (cos t:cos) (tan t:tan) (asin t:asin) (acos t:acos) (atan t:atan) (exp t:exp) (log t:log) (expt t:expt)
-				       (sinh t:sinh) (cosh t:cosh) (tanh t:tanh) (asinh t:asinh) (acosh t:acosh) (atanh t:atanh)
-				       (transpose matlisp:transpose)
-				       (ctranspose matlisp-user:ctranspose)))
+(defparameter *operator-assoc-table*
+  '((* t:*) (.* t:.*)
+    (@ t:@) (⊗ t:⊗) (** t:expt)
+    (+ t:+) (- t:-)
+    (\\ t::b\\) (/ t:/) (./ t:./)
+    (= t:=) (.= t:=)     ;;Not yet implemented.
+    (transpose t:transpose) (ctranspose t:ctranspose)))
+
+;; ("sum" t:sum) ("xlogx" t:xlogx) ("realpart" t:realpart) ("imagpart" t:imagpart)
+;; ("sqrt" t:sqrt) ("sin" t:sin) ("cos" t:cos) ("tan" t:tan) ("asin" t:asin) ("acos" t:acos) ("atan" t:atan)
+;; ("exp" t:exp) ("log" t:log) ("expt" t:expt)
+;; ("sinh" t:sinh) ("cosh" t:cosh) ("tanh" t:tanh) ("asinh" t:asinh) ("acosh" t:acosh) ("atanh" t:atanh)
+
 
 (defun op-overload (expr &aux (table *operator-assoc-table*))
   (maptree-eki #'(lambda (tree)
@@ -324,8 +317,8 @@
 		(make-instance 'matlisp::permutation-cycle :store ,sto )))))))
 
 (defun memoization-reader (stream subchar char)
-  (declare (ignore subchar char))
-  `(memoizing ,@(read stream t nil t)))
+  (declare (ignore subchar))
+  `(memoizing ,@(read stream t nil t) :global ,(if char t)))
 
 ;;Define a readtable with dispatch characters
 (macrolet ((tensor-symbol-enumerate ()
