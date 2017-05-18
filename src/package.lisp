@@ -111,7 +111,7 @@
 (defpackage "MATLISP-UNION-FIND"
   (:nicknames :matlisp-ufd)
   (:use #:common-lisp #:matlisp-utilities #:matlisp-dlist #:iterate)
-  (:export #:union-find #:index #:setid #:subtree #:values #:root #:unify #:union))
+  (:export #:union-find #:index #:setid #:subset #:values #:root #:unify #:union))
 
 (defpackage "MATLISP-HASH-SET"
   (:nicknames :matlisp-hset)
