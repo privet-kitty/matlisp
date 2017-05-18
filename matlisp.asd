@@ -42,6 +42,7 @@
 		       (:file "search" :depends-on ("macros" "functions"))
 		       (:file "dlist" :depends-on ("macros" "functions"))
 		       (:file "union-find" :depends-on ("macros" "functions"))
+		       (:file "hset" :depends-on ("macros" "functions"))
 		       (:file "lvec" :depends-on ("macros" "functions"))
 		       (:file "template" :depends-on ("macros" "functions"))))
 	     (:module #:core :pathname "" :depends-on (#:utilities) :components

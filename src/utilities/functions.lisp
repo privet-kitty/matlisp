@@ -214,6 +214,17 @@
 (defun make-extensible-array (&optional (element-type t))
   (make-array 0 :fill-pointer t :adjustable t :element-type element-type))
 
+
+(defun slot-values-list (obj slots)
+  (mapcar #'(lambda (s) (slot-value obj s)) slots))
+
+(defun slot-values (obj slots)
+  (values-list (mapcar #'(lambda (s) (slot-value obj s)) slots)))
+
+(defmacro values-append (&rest values)
+  `(values-list (append ,@(mapcar #'(lambda (x) `(multiple-value-list ,x)) values))))
+
+
 ;; (defstruct (sap-wrap (:constructor make-sap-wrap (ptr)))
 ;;   (ptr (cffi:null-pointer) :type cffi:foreign-pointer :read-only t))
 

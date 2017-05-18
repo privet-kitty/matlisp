@@ -148,6 +148,9 @@
 						 (make-list (- ord (order ten) start) :initial-element (total-size ten)))
 					  'index-store-vector)
 			 :head (head ten) :store (slot-value ten 'store) :parent ten))))
+
+(definline matrixify~ (vec &optional (col-vector? t))
+  (if (tensor-matrixp vec) vec (suptensor~ vec 2 (if col-vector? 0 1))))
 ;;
 (defgeneric reshape! (tensor dims)
   (:documentation "
@@ -163,9 +166,6 @@
 		   nil 'tensor-error :message "strides are not of the same sign." :tensor tensor)
 	   (assert (<= (iter (for i in dims) (multiplying i)) (total-size tensor)) nil 'tensor-insufficient-store)))
 
-(definline matrixify~ (vec &optional (col-vector? t))
-  (if (tensor-matrixp vec) vec (suptensor~ vec 2 (if col-vector? 0 1))))
-
 (closer-mop:defmethod reshape! ((ten dense-tensor) (dims cons))
   (let ((idim (coerce dims 'index-store-vector)))
     (setf (slot-value ten 'dimensions) idim
@@ -177,7 +177,6 @@
     ten))
 
 (defun reshape~ (x dims) (reshape! (subtensor~ x nil) dims))
-
 ;;
 (defun join (axis tensor &rest more-tensors)
   (if (null tensor)

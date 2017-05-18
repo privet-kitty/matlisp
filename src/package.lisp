@@ -79,7 +79,7 @@
 	   #:zip #:zipsym #:unzip #:ziptree
 	   #:remmeth #:recursive-append
 	   #:maptree-if #:maptree #:maptree-eki #:pair
-	   #:compile-and-eval #:modproj
+	   #:compile-and-eval #:modproj #:slot-values-list #:slot-values #:values-append
 	   ;;
 	   #:cart #:mapcart  #:infer-type #:make-extensible-array
 	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase
@@ -109,9 +109,14 @@
   (:export #:make-heap #:insert-key #:min-key #:node-key #:node-existsp #:extract-min #:decrease-key #:delete-node))
 
 (defpackage "MATLISP-UNION-FIND"
-  (:nicknames :ufd)
+  (:nicknames :matlisp-ufd)
   (:use #:common-lisp #:matlisp-utilities #:matlisp-dlist #:iterate)
-  (:export #:union-find #:insert-item #:find-items #:unite-items #:root #:values #:id))
+  (:export #:union-find #:index #:setid #:subtree #:values #:root #:unify #:union))
+
+(defpackage "MATLISP-HASH-SET"
+  (:nicknames :matlisp-hset)
+  (:use #:common-lisp #:matlisp-utilities #:matlisp-dlist #:iterate)
+  (:export #:list->hset #:hset->list #:hset-memberp #:hset-add! #:hset-rem! #:ensure-hset #:hset-union! #:hset-intersection! #:hset-difference!))
 
 (defpackage "MATLISP-TEMPLATE"
   (:use #:common-lisp #:iterate #:matlisp-utilities)
@@ -154,7 +159,7 @@
 
    #:tensor-class #:sparse-tensor #:stride-tensor #:dense-tensor #:simple-dense-tensor #:foreign-dense-tensor
    #:hash-tensor
-   #:orphanize #:graph-tensor #:simple-graph-tensor #:coordinate-tensor #:tensor-typep #:tensor-type
+   #:orphanize #:graph-tensor #:graph-accessor #:simple-graph-tensor #:coordinate-tensor #:tensor-typep #:tensor-type
    #:tensor-method-generator #:define-tensor-method #:cl
    ;;#:tensor-matrixp #:tensor-vectorp #:tensor-squarep
    #:tensor-vector #:tensor-matrix #:tensor-square-matrix
@@ -183,7 +188,7 @@
    #:qr! #:qr #:schur #:svd #:trsyl! #:syl
    ;;graph
    #:in-graph #:in-order #:with-color #:with-parent #:with-visited-array
-   #:graph->adlist #:adlist->graph #:hyper->bipartite #:order->tree #:gnp #:moralize! #:symmetrize! #:graphfib #:max-cardinality-search #:triangulate-graph #:elimination-tree #:cholesky-cover #:chordal-cover #:line-graph #:tree-decomposition #:dijkstra #:dijkstra-prims #:directed-subgraph #:max-dag #:topological-order #:graph->dot #:display-graph
+   #:graph->adlist #:degree #:adlist->graph #:hyper->bipartite #:order->tree #:gnp #:moralize! #:symmetrize! #:graphfib #:max-cardinality-search #:triangulate-graph #:elimination-tree #:cholesky-cover #:chordal-cover #:line-graph #:tree-decomposition #:dijkstra #:dijkstra-prims #:directed-subgraph #:max-dag #:topological-order #:graph->dot #:display-graph
    ;;special
    ;;map
    #:map-tensor! #:map-tensor #:map-tensor! #:mapslice #:mapslice~ #:mapslicec~ #:fold-tensor

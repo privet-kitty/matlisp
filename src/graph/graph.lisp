@@ -1,13 +1,21 @@
 (in-package #:matlisp)
 
-(closer-mop:defgeneric graph->adlist (g)
+(closer-mop:defgeneric graph->adlist (g &optional encode-valuesp)
   (:generic-function-class tensor-method-generator))
-(define-tensor-method graph->adlist ((g graph-accessor :x))
+
+(define-tensor-method graph->adlist ((g graph-accessor :x) &optional encode-valuesp)
   `(with-memoization ()
      (iter (for i from 0 below (1- (length (memoizing (fence g) :type index-store-vector :global t)))) (with ret = (make-array (1- (length (memoizing (fence g) :global t))) :initial-element nil))
 	   (iter (for j in-vector (memoizing (δ-i g) :type index-store-vector :global t) from (aref (memoizing (fence g) :global t) i) below (aref (memoizing (fence g) :global t) (1+ i)) with-index m)
-		 (push ,@(if (subtypep (cl :x) 'tensor) `((cons j (t/store-ref ,(cl :x) (memoizing (t/store ,(cl :x) g) :type ,(store-type (cl :x)) :global t) m))) `(j)) (aref ret i)))
+		 (push ,@(if (subtypep (cl :x) 'tensor) `((if encode-valuesp (cons j (t/store-ref ,(cl :x) (memoizing (t/store ,(cl :x) g) :type ,(store-type (cl :x)) :global t) m)) j)) `(j)) (aref ret i)))
 	   (finally (return ret)))))
+
+(defun degree (g)
+  (with-memoization ()
+    (iter (for i from 0 below (1- (length (memoizing (fence g) :type index-store-vector :global t))))
+	  (with ret = (t/store-allocator index-store-vector (length (memoizing (fence g) :global t))))
+	  (setf (aref ret i) (-  (aref (memoizing (fence g) :global t) (1+ i)) (aref (memoizing (fence g) :global t) i)))
+	  (finally (return ret)))))
 
 (defun adlist->graph (ag &optional type &aux (type (or type 'graph-accessor)))
   (let*-typed ((ag (coerce ag 'vector))
@@ -225,6 +233,7 @@
 	     (counting t into i))
        (order->tree (dijkstra-prims (copy ret (tensor 'index-type 'simple-graph-tensor))) type))
      (coerce cliques 'vector))))
+
 
 #+nil
 (letv* ((ag (symmetrize! #((1) (2) (0 3) (4) (0))))
