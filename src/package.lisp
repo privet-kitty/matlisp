@@ -116,7 +116,7 @@
 (defpackage "MATLISP-HASH-SET"
   (:nicknames :matlisp-hset)
   (:use #:common-lisp #:matlisp-utilities #:matlisp-dlist #:iterate)
-  (:export #:list->hset #:hset->list #:hset-memberp #:hset-add! #:hset-rem! #:ensure-hset #:hset-union! #:hset-intersection! #:hset-difference!))
+  (:export #:list->hset #:hset->list #:hset-memberp #:hset-add! #:hset-rem! #:ensure-hset #:hset-union! #:hset-intersection! #:hset-difference! #:hset=))
 
 (defpackage "MATLISP-TEMPLATE"
   (:use #:common-lisp #:iterate #:matlisp-utilities)

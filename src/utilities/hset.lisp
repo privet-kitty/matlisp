@@ -43,3 +43,8 @@
   (iter-hset-lst (k tbl2)
     (hset-rem! k tbl1))  
   tbl1)
+
+(defun hset= (tbl1 tbl2)
+  (iter (for (k _) in-hashtable tbl1)
+	(unless (hset-memberp k tbl2) (return nil))
+	(finally (return t))))
