@@ -66,7 +66,7 @@
   (values (ger 1 a (ones (dimensions b 0) (class-of b)) nil)
 	  (ger 1 (ones (dimensions a 0) (class-of a)) b nil)))
 
-(defun proj-psd (m)
+(defun psd-proj (m)
   (letv* ((λλ u (eig (scal! 1/2 (axpy! 1 (transpose~ m) (copy m))) :v))
 	  (ret (zeros (dimensions m) (type-of m))))
     (iter (for (λi ui) slicing (list λλ u) along (list 0 -1))

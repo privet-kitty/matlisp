@@ -93,7 +93,7 @@
 	   (setf (slot-value ,y 'neighbors) (t/store-allocator index-store-vector (total-size ,x))
 		 (slot-value ,y 'store) (t/store-allocator ,cly (total-size ,x))))
 	 (let-typed ((,vi (fence ,y) :type index-store-vector)
-		     (,vr (δ-i ,y) :type index-store-vector)
+		     (,vr (neighbors ,y) :type index-store-vector)
 		     (,vd (t/store ,cly ,y) :type ,(store-type cly)))
 	   (setf (aref ,vi 0) 0)
 	   (very-quickly
@@ -133,7 +133,7 @@
       (loop :for ,key :being :the :hash-keys :of (t/store ,cly ,y)
 	 :do (remhash ,key (t/store ,cly ,y)))
       (let-typed ((,vi (fence ,x) :type index-store-vector)
-		  (,vr (δ-i ,x) :type index-store-vector)
+		  (,vr (neighbors ,x) :type index-store-vector)
 		  (,vd (t/store ,clx ,x) :type ,(store-type clx)))
 	(if (slot-value ,x 'transposep)
 	    (very-quickly
@@ -152,7 +152,7 @@
        (declare (type ,clx ,x) (type ,cly ,y))
        (copy! (t/fid+ ,(field-type cly)) ,y)
        (let-typed ((,vi (fence ,x) :type index-store-vector)
-		   (,vr (δ-i ,x) :type index-store-vector)
+		   (,vr (neighbors ,x) :type index-store-vector)
 		   (,vd (t/store ,clx ,x) :type ,(store-type clx)))
 	 (if (slot-value ,x 'transposep)
 	     (very-quickly
@@ -172,7 +172,7 @@
       (flet ((macro-expander (transpose-p)
 	       `((loop :for ,(gm j) :of-type index-type :from 0 :below (1- (length (memoizing (fence ,x) :global t)))
 		    :do (loop :for ,(gm m) :of-type index-type :from (aref (memoizing (fence ,x) :global t) ,j) :below (aref (memoizing (fence ,x) :global t) (1+ ,j))
-			   :do (let-typed ((,i (aref (memoizing (δ-i ,x) :type index-store-vector :global t) ,m) :type index-type))
+			   :do (let-typed ((,i (aref (memoizing (neighbors ,x) :type index-store-vector :global t) ,m) :type index-type))
 				 (setf ;;set hash
 				  (aref ,idx 0) ,i (aref ,idx 1) ,j
 				  (aref (memoizing (slot-value ,y 'stride-hash) :type index-store-vector :global t) ,m) (stride-hash ,idx (memoizing (strides ,y) :type index-store-vector :global t))
@@ -195,7 +195,7 @@
     (flet ((macro-expander (transpose-p)
 	     `((loop :for ,j :of-type index-type :from 0 :below (1- (length (memoizing (fence ,x) :global t)))
 		  :do (loop :for ,m :of-type index-type :from (aref (memoizing (fence ,x) :global t) ,j) :below (aref (memoizing (fence ,x) :global t) (1+ ,j))
-			 :do (let-typed ((,i (aref (memoizing (δ-i ,x) :type index-store-vector :global t) ,m) :type index-type))
+			 :do (let-typed ((,i (aref (memoizing (neighbors ,x) :type index-store-vector :global t) ,m) :type index-type))
 			       (setf ;;set hash
 				(aref ,idx 0) ,i (aref ,idx 1) ,j
 				(aref (memoizing (slot-value ,y 'stride-hash) :type index-store-vector :global t) ,m) (stride-hash ,idx (memoizing (strides ,y) :type index-store-vector :global t))
@@ -251,7 +251,7 @@
       (flet ((macro-expander (transpose-p)
 	       `((loop :for ,(gm m) :of-type index-type :from 0 :below (1- (memoizing (slot-value ,x 'tail) :type index-type :global t))
 		    :do (loop :for ,m :of-type index-type :from (aref (memoizing (fence ,x) :global t) ,j) :below (aref (memoizing (fence ,x) :global t) (1+ ,j))
-			   :do (let-typed ((,i (aref (memoizing (δ-i ,x) :type index-store-vector :global t) ,m) :type index-type))
+			   :do (let-typed ((,i (aref (memoizing (neighbors ,x) :type index-store-vector :global t) ,m) :type index-type))
 				 (setf ;;set hash
 				  (aref ,idx 0) ,i (aref ,idx 1) ,j
 				  (aref (memoizing (slot-value ,y 'stride-hash) :type index-store-vector :global t) ,m) (stride-hash ,idx (memoizing (strides ,y) :type index-store-vector :global t))
@@ -277,11 +277,11 @@
 						(slot-value ret 'transposep) t))
 	 (iter (for u from 0 below (1- (length (fence g))))
 	       (letv* ((ll rr (fence g u)))
-		 (iter (for v in-vector (δ-i g) from ll below rr with-index iuv) (push ,@(if (subtypep (cl :x) 'tensor) `((cons u iuv)) `(u)) (aref adj v)))))
+		 (iter (for v in-vector (neighbors g) from ll below rr with-index iuv) (push ,@(if (subtypep (cl :x) 'tensor) `((cons u iuv)) `(u)) (aref adj v)))))
 	 (iter (for v from 0 below (1- (length (fence ret))))
 	       (iter (for ,@(if (subtypep (cl :x) 'tensor) `((u . iuv)) `(u)) in (setf (aref adj v) (sort (aref adj v) #'< ,@(if (subtypep (cl :x) 'tensor) `(:key #'car)))))
 		     (let ((idx (+ (fence ret v) j)))
-		       (setf (aref (δ-i ret) idx) u
+		       (setf (aref (neighbors ret) idx) u
 			     ,@(if (subtypep (cl :x) 'tensor) `((t/store-ref ,(cl :x) (t/store ,(cl :x) ret) idx) (t/store-ref ,(cl :x) (t/store ,(cl :x) g) iuv))))
 		       (counting t into j) (finally (setf (aref (fence ret) (1+ v)) (+ (fence ret v) j))))))
 	 ret)))

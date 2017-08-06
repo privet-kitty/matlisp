@@ -9,7 +9,7 @@
 		  (values (aref f idx) (aref f (1+ idx)))))
     (t (lvec->list (the index-store-vector (slot-value g 'fence))))))
 
-(definline δ-I (g &optional i j)
+(definline neighbors (g &optional i j)
   (declare (type graph-accessor g))
   (cart-etypecase (i j)
     ((null null) (the index-store-vector (slot-value g 'neighbors)))
@@ -29,7 +29,7 @@
   (declare (type index-store-vector idx) (type graph-accessor tensor))
   (when (slot-value tensor 'transposep) (rotatef (aref idx 0) (aref idx 1)))
   (letv* ((l r (fence tensor (aref idx 1)) :type index-type index-type))
-    (very-quickly (binary-search (aref idx 0) l r (δ-i tensor)))))
+    (very-quickly (binary-search (aref idx 0) l r (neighbors tensor)))))
 
 (define-tensor-method ref ((x graph-accessor :x) &rest subscripts)
   `(if-let ((idx (graph-indexing! (match subscripts
@@ -50,9 +50,9 @@
 	     (with-memoization ()
 	       (memoizing lb :type index-type :bind lb :global t)
 	       (memoizing (- (aref (memoizing (fence x) :type index-store-vector) (1- (length (memoizing (fence x))))) lb) :type index-type :bind r-len :global t)
-	       (if (< (aref (memoizing (fence x) :global t) (1- (length (memoizing (fence x) :global t)))) (length (memoizing (δ-i x) :type index-store-vector :global t)))
+	       (if (< (aref (memoizing (fence x) :global t) (1- (length (memoizing (fence x) :global t)))) (length (memoizing (neighbors x) :type index-store-vector :global t)))
 		   (very-quickly
-		     (lvec-copy r-len (memoizing (δ-i x) :global t) lb (memoizing (δ-i x) :global t) (+ lb 1) :key #'aref :lock #'(setf aref))
+		     (lvec-copy r-len (memoizing (neighbors x) :global t) lb (memoizing (neighbors x) :global t) (+ lb 1) :key #'aref :lock #'(setf aref))
 		     (lvec-copy r-len (memoizing (t/store ,(cl :x) x) :type ,(store-type (cl :x)) :global t) lb (memoizing (t/store ,(cl :x) x) :global t) (+ lb 1)
 				:key #'(lambda (a_ i_) (declare (index-type i_)) (t/store-ref ,(cl :x) a_ i_))
 				:lock #'(lambda (v_ a_ i_) (declare (type index-type i_) (type ,(field-type (cl :x)) v_)) (t/store-set ,(cl :x) v_ a_ i_))))
@@ -60,8 +60,8 @@
 				(δ-new (t/store-allocator index-store-vector ss) :type index-store-vector)
 				(sto-new (t/store-allocator ,(cl :x) ss) :type ,(store-type (cl :x))))
 		     (very-quickly
-		       (lvec-copy lb (memoizing (δ-i x) :global t) 0 δ-new 0 :key #'aref :lock #'(setf aref))
-		       (lvec-copy r-len (memoizing (δ-i x) :global t) lb δ-new (+ lb 1) :key #'aref :lock #'(setf aref))
+		       (lvec-copy lb (memoizing (neighbors x) :global t) 0 δ-new 0 :key #'aref :lock #'(setf aref))
+		       (lvec-copy r-len (memoizing (neighbors x) :global t) lb δ-new (+ lb 1) :key #'aref :lock #'(setf aref))
 		       (lvec-copy lb (memoizing (t/store ,(cl :x) x) :global t) 0 sto-new 0
 				  :key #'(lambda (a_ i_) (declare (index-type i_)) (t/store-ref ,(cl :x) a_ i_))
 				  :lock #'(lambda (v_ a_ i_) (declare (type index-type i_) (type ,(field-type (cl :x)) v_)) (t/store-set ,(cl :x) v_ a_ i_)))
@@ -71,7 +71,7 @@
 		     (setf (slot-value x 'neighbors) δ-new (slot-value x 'store) sto-new)))
 	       (loop :for i :from (1+ (aref sub/v 1)) :below (length (memoizing (fence x) :global t)) :do (incf (aref (memoizing (fence x) :global t) i)))
 	       (values
-		(setf (aref (δ-i x) (the index-type lb)) (aref sub/v 0)
+		(setf (aref (neighbors x) (the index-type lb)) (aref sub/v 0)
 		      (t/store-ref ,(cl :x) (t/store ,(cl :x) x) (the index-type lb)) (t/coerce ,(field-type (cl :x)) value))
 		nil))
 	     (error "missing entry in the sparse matrix ~a" sub/v)))))
@@ -82,7 +82,7 @@
 	   (idx lb (graph-indexing subscripts x)))
      (when (slot-value x 'transposep) (rotatef r c))
      (unless idx
-       (letv* ((δg (δ-i x) :type index-store-vector)
+       (letv* ((δg (neighbors x) :type index-store-vector)
 	       (sto (t/store ,(cl :x) x) :type ,(store-type (cl :x))))
 	 (declare (type index-type lb))
 	 ,@(flet ((code (sfr sto δfr δto)
@@ -106,8 +106,9 @@
 	   (loop :for i :from (1+ c) :below (length (fence x)) :do (incf (aref f i))))
 	 (setf idx lb)))
      (setf
-      (aref (δ-i x) (the index-type idx)) r
+      (aref (neighbors x) (the index-type idx)) r
       (t/store-ref ,(cl :x) (t/store ,(cl :x) x) (the index-type idx)) (t/coerce ,(field-type (cl :x)) value))))
 
 (closer-mop:defmethod store-size ((obj graph-accessor)) (length (slot-value obj 'neighbors)))
 ;;
+

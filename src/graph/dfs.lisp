@@ -6,7 +6,7 @@
       ;;(visited (ecase order (:sfd (gf 'visited)) ((:dfs :bfs) color)))
       (check-type color symbol) (check-type v symbol)
       (let* ((pushor `(letv* ((,(gm l) ,(gm r) (fence ,(gm g) (the index-type ,v)) :type index-type index-type))
-			(iter (for ,(gm u) in-vector (δ-i ,(gm g)) from ,(gm l) below ,(gm r)) (with ,(gm switch) = nil) (finally (return ,(gm switch)))
+			(iter (for ,(gm u) in-vector (neighbors ,(gm g)) from ,(gm l) below ,(gm r)) (with ,(gm switch) = nil) (finally (return ,(gm switch)))
 			      (unless (aref ,(gm visited) ,(gm u)) (setf ,(gm switch) t)
 				      ,@(let ((up (if (and p (not (eql order :sfd))) `(cons ,(gm u) ,v) (gm u))))
 					     (ecase order ((:sfd :dfs) `((push ,up ,(gm stack)))) (:bfs `((setf ,(gm stack) (matlisp-dlist:dcdr (matlisp-dlist:dpush ,up ,(gm stack))))))))))))
@@ -36,7 +36,7 @@
 	    ,@(if (not (eql order :sfd)) `(,pushor (unless ,poppor (finish)) ,@(if colorp `((setf (aref ,color ,v) t))) )
 		  `((unless ,(gm path) (finish))
 		    (if ,poppor
-			(if (δ-i ,(gm g) (or (first ,(gm path)) 0) ,v)
+			(if (neighbors ,(gm g) (or (first ,(gm path)) 0) ,v)
 			    ,path-findor
 			    (progn (push ,v ,(gm stack)) (setf (aref ,(gm visited) ,v) nil ,v (pop ,(gm path)))))
 			(setf ,v (pop ,(gm path))))

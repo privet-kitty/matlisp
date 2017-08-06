@@ -140,5 +140,5 @@ of a matrix (default 0)
 
 (closer-mop:defmethod print-object ((g graph-accessor) stream)
   (print-unreadable-object (g stream :type t)
-    (format stream "~A, size: ~A/~A" (dimensions g) (aref (fence g) (1- (length (fence g)))) (length (δ-i g)))))
+    (format stream "~A, size: ~A/~A" (dimensions g) (aref (fence g) (1- (length (fence g)))) (length (neighbors g)))))
 
