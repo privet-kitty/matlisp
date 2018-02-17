@@ -89,10 +89,11 @@
 		      :components ((:file "fibonacci") (:file "dfs")
 				   (:file "graph" :depends-on ("dfs" "fibonacci"))
 				   (:file "graphviz" :depends-on ("dfs" "fibonacci"))))
-	     (:module #:special :depends-on (#:core) :components
+	     (:module #:special :depends-on (#:core #:reader) :components
 		      ((:file "random") (:file "map")
 		       (:file "norm") (:file "misc")
-		       (:file "poly") (:file "optimize")))
+		       (:file "poly") (:file "optimize")
+		       (:file "orthogonal-polynomial")))
 	     (:module #:user :depends-on (#:core) :components
 		      ((:file "arithmetic") (:file "function")))
 	     (:module #:reader :depends-on (#:user) :components

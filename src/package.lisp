@@ -190,6 +190,8 @@
    #:in-graph #:in-order #:with-color #:with-parent #:with-visited-array
    #:graph->adlist #:degree #:adlist->graph #:hyper->bipartite #:order->tree #:gnp #:moralize! #:symmetrize! #:graphfib #:max-cardinality-search #:triangulate-graph #:elimination-tree #:cholesky-cover #:chordal-cover #:line-graph #:tree-decomposition #:dijkstra #:dijkstra-prims #:directed-subgraph #:max-dag #:topological-order #:graph->dot #:display-graph
    ;;special
+   #:orthogonal-polynomial #:get-orthogonal-polynomial #:gauss-quadrature
+   #+weyl orthogonal-polynomial-evaluate
    ;;map
    #:map-tensor! #:map-tensor #:map-tensor! #:mapslice #:mapslice~ #:mapslicec~ #:fold-tensor
    #:for #:slicing #:along #:from #:below #:to #:downto #:with-index #:by

@@ -4,15 +4,15 @@
 (in-package :matlisp)
 (in-readtable :infix-dispatch-table)
 
-(defclass orthopoly ()
+(defclass orthogonal-polynomial ()
   (an bn cn (p0 :initform 1) v0 (vn :initform nil))
   (:documentation
    "P_{n} = (a_n x + b_n) P_{n - 1} - c_n P_{n - 2}; P_{-1} = 0
     v_0 = (P_0, P_0)_w"))
 
-(defmacro make-orthopoly (&rest body)
+(defmacro make-orthogonal-polynomial (&rest body)
   (with-gensyms (ret)
-    `(let ((,ret (make-instance 'orthopoly)))
+    `(let ((,ret (make-instance 'orthogonal-polynomial)))
        (set-slots ,ret
 	 ,@(mapcar #'(lambda (x)
 		       (match x
@@ -23,7 +23,7 @@
 			 ((list (and name (or :p0 :v0)) value)
 			  `(,(find-symbol (symbol-name name)) ,value))))
 		   body))
-       (iter (for _ss in (mapcar #'closer-mop:slot-definition-name (closer-mop:class-slots (find-class 'orthopoly))))
+       (iter (for _ss in (mapcar #'closer-mop:slot-definition-name (closer-mop:class-slots (find-class 'orthogonal-polynomial))))
 	     (assert (slot-boundp ,ret _ss) nil "missing slot: ~a" _ss))
        ,ret)))
 ;;
@@ -34,7 +34,7 @@
        (:chebyshev-t
 	;;domain: [-1, 1]
 	;;weight: {1 \over \sqrt(1 - x^2) }
-	(make-orthopoly
+	(make-orthogonal-polynomial
 	 (:an (n)
 	      ((= 1 n) 1)
 	      ((<= 2 n) 2))
@@ -44,7 +44,7 @@
        (:chebyshev-u
 	;;domain: [-1, 1]
 	;;weight: \sqrt(1 - x^2)
-	(make-orthopoly
+	(make-orthogonal-polynomial
 	 (:an (n) ((<= 1 n) 2))
 	 (:bn (n) (t 0))
 	 (:cn (n) (t 1))
@@ -52,7 +52,7 @@
        (:legendre
 	;;domain: [-1, 1]
 	;;weight: 1
-	(make-orthopoly
+	(make-orthogonal-polynomial
 	 (:an (n)
 	      ((= n 1) 1)
 	      (t (- 2 (/ 1 n))))
@@ -62,7 +62,7 @@
        (:laguerre
 	;;domain: [0, \infty)
 	;;weight: \exp(-x)
-	(make-orthopoly
+	(make-orthogonal-polynomial
 	 (:an (n) ((<= 1 n) (- (/ n))))
 	 (:bn (n) ((<= 1 n) (- 2 (/ n))))
 	 (:cn (n) ((<= 2 n) (/ (- n 1) n)))
@@ -70,7 +70,7 @@
        (:hermite-e
 	;;domain: (-\infty, \infty)
 	;;weight: \exp(-x^2 / 2)
-	(make-orthopoly
+	(make-orthogonal-polynomial
 	 (:an (n) (t 1))
 	 (:bn (n) (t 0))
 	 (:cn (n) (t (1- n)))
@@ -78,7 +78,7 @@
        (:hermite
 	;;domain: (-\infty, \infty)
 	;;weight: \exp(-x^2)
-	(make-orthopoly
+	(make-orthogonal-polynomial
 	 (:an (n) (t 2))
 	 (:bn (n) (t 0))
 	 (:cn (n) (t (* 2 (1- n))))
@@ -129,9 +129,10 @@ The recurrence relation for the orthonormal family can be obtained using the fol
   "Computes knot points and quadrature weights by diagonalizing the Jacobi operator associated with the orthogonal polynomial [1,2].
 
 [1] Golub, Gene H., and John H. Welsch. \"Calculation of Gauss quadrature rules.\" Mathematics of computation 23.106 (1969): 221-230.
-[2] Srinivasan, Akshay. \"Spectral Methods: Applications to Quantum Mechanics and Flow Stability.\" B.Tech thesis, NITK, Surathkal 
+[2] Srinivasan, Akshay. \"Spectral Methods: Applications to Quantum Mechanics and Flow Stability.\" B.Tech thesis, NITK, Surathkal
 "
-  (let ((jacobi (zeros (list n n))))
+  (let ((p (if (keywordp p) (get-orthogonal-polynomial p) p))
+	(jacobi (zeros (list n n))))
     (iter (for i from 0 below n)
 	  (setf (ref jacobi i i) (beta-n (1+ i) p))
 	  (when (> i 0) (setf (ref jacobi (1- i) i) (alpha-n i p))))
@@ -140,7 +141,7 @@ The recurrence relation for the orthonormal family can be obtained using the fol
       (values s w))))
 
 #+weyl
-(defun orthopoly-n (n variable p) 
+(defun orthogonal-polynomial-evaluate (n variable p)
   (with-memoization ()
     (memoizing
      (labels ((on (n x)
