@@ -59,13 +59,14 @@
 	 (:bn (n) (t 0))
 	 (:cn (n) (t (- 1 (/ 1 n))))
 	 (:p0 1) (:v0 2)))
-       (:laguerre
+       (:laguerre (get-orthogonal-polynomial (list :laguerre 0)))
+       ((list :laguerre alpha)
 	;;domain: [0, \infty)
-	;;weight: \exp(-x)
+	;;weight: x^{alpha} \exp(-x)
 	(make-orthogonal-polynomial
 	 (:an (n) ((<= 1 n) (- (/ n))))
-	 (:bn (n) ((<= 1 n) (- 2 (/ n))))
-	 (:cn (n) ((<= 2 n) (/ (- n 1) n)))
+	 (:bn (n) ((<= 1 n) (+ 2 (/ (1- alpha) n))))
+	 (:cn (n) ((<= 2 n) (+ 1 (/ (1- alpha) n))))
 	 (:p0 1) (:v0 1)))
        (:hermite-e
 	;;domain: (-\infty, \infty)
@@ -131,7 +132,7 @@ The recurrence relation for the orthonormal family can be obtained using the fol
 [1] Golub, Gene H., and John H. Welsch. \"Calculation of Gauss quadrature rules.\" Mathematics of computation 23.106 (1969): 221-230.
 [2] Srinivasan, Akshay. \"Spectral Methods: Applications to Quantum Mechanics and Flow Stability.\" B.Tech thesis, NITK, Surathkal
 "
-  (let ((p (if (keywordp p) (get-orthogonal-polynomial p) p))
+  (let ((p (if (typep p 'orthogonal-polynomial) p (get-orthogonal-polynomial p)))
 	(jacobi (zeros (list n n))))
     (iter (for i from 0 below n)
 	  (setf (ref jacobi i i) (beta-n (1+ i) p))
