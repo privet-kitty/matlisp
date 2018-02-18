@@ -95,7 +95,10 @@
 		       (:file "poly") (:file "optimize")
 		       (:file "orthogonal-polynomial")))
 	     (:module #:distributions :depends-on (#:core #:reader #:special) :components
-		      ((:file "random") (:file "ziggurat")))
+		      ((:file "random")
+		       (:file "endos-renyi")
+		       (:file "ziggurat")
+		       (:file "normal" :depends-on "ziggurat")))
 	     (:module #:user :depends-on (#:core) :components
 		      ((:file "arithmetic") (:file "function")))
 	     (:module #:reader :depends-on (#:user) :components
