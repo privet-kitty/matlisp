@@ -184,9 +184,6 @@ like MKL is as simple as placing a symbolic link by name "libblas.so" in the top
    * Co-ordinate sparse tensor
 
 ** TODO Incomplete/Planned
-- Random distributions
-  Implementing a fast, automated version of [[http://www.jstatsoft.org/article/view/v005i08/ziggurat.pdf][Ziggurat]] algorithm. Given a sampler for the tail of the distribution and the
-  form of the density function, it should be theoretically possible to generate a Ziggurat sampler.
 - Unify slicing syntax
   Unify the slicing syntax used by iterate for-mod/einstein macros. Unify these with a more powerful language.
 - Automatic Differentiation
