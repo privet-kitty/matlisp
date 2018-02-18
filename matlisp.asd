@@ -94,6 +94,8 @@
 		       (:file "norm") (:file "misc")
 		       (:file "poly") (:file "optimize")
 		       (:file "orthogonal-polynomial")))
+	     (:module #:distributions :depends-on (#:core #:reader #:special) :components
+		      ((:file "random") (:file "ziggurat")))
 	     (:module #:user :depends-on (#:core) :components
 		      ((:file "arithmetic") (:file "function")))
 	     (:module #:reader :depends-on (#:user) :components
