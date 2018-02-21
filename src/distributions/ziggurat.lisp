@@ -1,3 +1,20 @@
+;; Copyright (c) 2018 Akshay Srinivasan
+
+;; This library is free software; you can redistribute it and/or modify it under
+;; the terms of the GNU Lesser General Public License as published by the
+;; Free Software Foundation; either version 2.1 of the License, or (at your option)
+;; any later version. Those exceptions, and interpretations specific to Lisp software,
+;; as published by Franz Inc., shall take precedence over LGPL.
+
+;; This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+;; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+;; See the GNU Lesser General Public License for more details.
+
+;; You should have received a copy of the GNU Lesser General Public License along with this
+;; library; if not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330,
+;; Boston, MA 02111-1307 USA. Clarifications on the applicability of LGPL to Lisp software
+;; can be obtained from Franz Incorporated, Berkeley, CA 94704, USA.
+
 (in-package #:matlisp)
 
 (defun cauchy-riemann-derivative (f x &optional (eps 1d-15))
@@ -79,7 +96,7 @@
 	      (list ytab wtab))))))
 
 (defun ziggurat-compile (function points v
-			 uniform-sampler byte-sampler slow-sampler
+			 uniform-sampler byte-sampler tail-sampler
 			 &key (symmetricp t) (random-byte-size 32)
 			 &aux (n-ziggurat (length points)))
   (assert (= 0 (mod (log n-ziggurat 2) 1)) nil "N-ZIGGURAT (~a) is not a power of 2" n-ziggurat)
@@ -102,60 +119,18 @@
 		      (jj (ldb ',(byte log-nu log-nz) rint))
 		      ,@(if symmetricp
 			    `((ss (float (- 1 (* 2 (ldb ',(byte 1 (1- random-byte-size)) rint))) ,(coerce 1 (type-of v))))))
-		      (xx (* jj (aref ,wtab ii)))
-		      (yy ,(coerce 0 (type-of v))))
+		      (xx (* jj (aref ,wtab ii))))
 		 (declare (type (unsigned-byte ,random-byte-size) rint)
 			  (type (integer 0 ,(1- (expt 2 log-nz))) ii)
 			  (type (integer 0 ,(1- (expt 2 log-nu))) jj)
-			  (type ,(type-of v) xx yy ,@(if symmetricp `(ss))))
+			  (type ,(type-of v) xx ,@(if symmetricp `(ss))))
 		 (when (< jj (aref ,ktab ii)) (return (* xx ,@(if symmetricp `(ss)))))
 		 (if (< ii ,(1- n-ziggurat))
-		     (let ((y0 (aref ,ytab ii)) (y1 (aref ,ytab (1+ ii)))
-			   (U1 (funcall ,uniform-sampler ,(coerce 1 (type-of v)))))
-		       (declare (type ,(type-of v) y0 y1 U1))
-		       (setf yy (+ y1 (* (- y0 y1) U1))))
-		     (setf (values xx yy) (funcall ,slow-sampler ,r0 ,f0 ,(coerce 1 (type-of v)))))
-		 (when (< yy (funcall ,function xx)) (return (* xx ,@(if symmetricp `(ss))))))))))))
-
-;; double
-;; gsl_ran_gaussian_ziggurat (const gsl_rng * r, double sigma)
-;; {
-;;   unsigned long int i, j;
-;;   int sign;
-;;   double x, y;
-
-;;   while (1)
-;;     {
-;;       i = gsl_rng_uniform_int (r, 256); /*  choose the step */
-;;       j = gsl_rng_uniform_int (r, 16777216);  /* sample from 2^24 */
-;;       sign = (i & 0x80) ? +1 : -1;
-;;       i &= 0x7f;
-
-;;       x = j * wtab[i];
-
-;;       if (j < ktab[i])
-;;         break;
-
-;;       if (i < 127)
-;;         {
-;;           double y0, y1, U1;
-;;           y0 = ytab[i];
-;;           y1 = ytab[i + 1];
-;;           U1 = gsl_rng_uniform (r);
-;;           y = y1 + (y0 - y1) * U1;
-;;         }
-;;       else
-;;         {
-;;           double U1, U2;
-;;           U1 = 1.0 - gsl_rng_uniform (r);
-;;           U2 = gsl_rng_uniform (r);
-;;           x = PARAM_R - log (U1) / PARAM_R;
-;;           y = exp (-PARAM_R * (x - 0.5 * PARAM_R)) * U2;
-;;         }
-
-;;       if (y < exp (-0.5 * x * x))
-;;         break;
-;;     }
-
-;;   return sign * sigma * x;
-;;}
+		     (let* ((y0 (aref ,ytab ii)) (y1 (aref ,ytab (1+ ii)))
+			    (U1 (funcall ,uniform-sampler ,(coerce 1 (type-of v))))
+			    (yy (+ y1 (* (- y0 y1) U1))))
+		       (declare (type ,(type-of v) y0 y1 U1 yy))
+		       (when (< yy (the ,(type-of v) (funcall ,function xx))) (return (* xx ,@(if symmetricp `(ss))))))
+		     (let ((xx (funcall ,tail-sampler ,r0 ,f0 ,(coerce 1 (type-of v)))))
+		       (declare (type (or null ,(type-of v)) xx))
+		       (when xx (return (* xx ,@(if symmetricp `(ss))))))))))))))
