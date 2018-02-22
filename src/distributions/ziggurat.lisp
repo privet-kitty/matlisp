@@ -49,6 +49,7 @@
     (iter (repeat (1- num-divisions))
 	  (handler-case (letv* ((x_i err_i (ziggurat-solve function (car x_is) v0)))
 			  (when (< atol (abs err_i)) (error "exceeded atol"))
+			  (when (< x_i 0) (error "left of origin"))
 			  (push x_i x_is))
 	    (error () (finish))))
     (values x_is v0)))
