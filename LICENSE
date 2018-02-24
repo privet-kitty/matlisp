@@ -1,5 +1,6 @@
 Matlisp is a numerical library for lisp.
-Copyright (c) 2017 Akshay Srinivasan
+Copyright (c) 2018 Akshay Srinivasan <akshaysrinivasan@gmail.com>
+Copyright (c) 2017 Akshay Srinivasan <akshaysrinivasan@gmail.com>
 Copyright (c) 2016 University of Washington, Seattle, WA 98195
 
 This library is free software; you can redistribute it and/or modify it under
