@@ -9,7 +9,7 @@
   (let ((ret (zeros (list n n) (tensor 'index-type 'hash-tensor)))
 	(v 0) (w -1))
     (iter (while (< v n))
-      (letv* ((r (random 1d0)))
+      (letv* ((r (random-uniform)))
 	(incf w (1+ (floor (/ (log (- 1 r)) (log (- 1 p))))))       
 	(iter (while (and (<= v w) (< v n)))
 	      (decf w v) (incf v))
@@ -27,7 +27,7 @@
   (let ((ret (zeros (list n n) (tensor 'index-type 'hash-tensor))))
     (iter (for ii below m)
 	  (iter 
-	    (letv* ((v w (floor (random (* n n)) n)))
+	    (letv* ((v w (floor (random-byte-kernel (* n n)) n)))
 	      (when (and (/= v w) (not (nth-value 1 (ref ret v w))))
 		(setf (ref ret v w) 1
 		      (ref ret w v) 1)

@@ -198,8 +198,11 @@
    #:in-vectors #:in-lists #:meshgrid
    #:norm #:psd-proj #:tr #:tensor-max #:tensor-min
    #:ones #:eye! #:eye #:diag #:diaeg~
-   #:rand #:randn #:randi #:rande
-   #:range #:linspace #:polyfit #:polyval #:roots)
+   #:range #:linspace #:polyfit #:polyval #:roots
+   ;; distributions
+   #:random-byte-kernel #:random-uniform #:random-pareto
+   #:random-exponential #:random-normal #:random-gamma
+   #:random-beta #:random-chi-square #:random-t)
   (:documentation "MATLISP routines"))
 
 ;;Shadowed symbols.
@@ -210,7 +213,7 @@
   (:shadow #:+ #:- #:* #:/ #:= #:conjugate #:realpart #:imagpart #:sum #:min #:max
 	   #:sqrt #:sin #:cos #:tan #:asin #:acos #:exp #:sinh #:cosh #:tanh #:asinh #:acosh #:atanh #:log #:expt #:atan)
   (:import-from :λ-reader #:λ)
-  (:export ;;
+  (:export ;;these are in addition to what #:matlisp exports.
    #:realpart~ #:realpart #:imagpart~ #:imagpart #:conjugate! #:conjugate
    #:sum! #:sum
    ;;Boolean
@@ -233,7 +236,7 @@
 
 ;;Create a test suite
 (fiveam:def-suite matlisp-tests:matlisp-tests
-    :description "Regression tests for matlisp-optimization")
+    :description "Regression tests for matlisp")
 (defun matlisp-tests:run-tests () (5am:run! 'matlisp-tests:matlisp-tests))
 (fiveam:in-suite matlisp-tests:matlisp-tests)
 
@@ -249,6 +252,8 @@
 	  (list* #+linux #P"/usr/lib/"
 		 #+darwin #P"/System/Library/Frameworks/Accelerate.framework/Frameworks/vecLib.framework/Versions/A/"
 		 cffi:*foreign-library-directories*)))
+    ;;NOTE: Intel MKL generally works, but the call semantics diverge in subtle ways from LAPACK spec.
+    ;;xSYMM calls have known issues
     (cffi:load-foreign-library `(:or (:default ,(concatenate 'string (namestring matlisp-root) "libblas"))
 				     (:default "libblas")
 				     (:framework :veclib)))

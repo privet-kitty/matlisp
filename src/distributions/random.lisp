@@ -17,48 +17,60 @@
 
 (in-package #:matlisp)
 
-(defun random-multinomial (probabilities &optional (n #.(expt 2 32)))
-  (letv* ((cvec (iter (for pr-i in probabilities) (summing (floor (* pr-i n)) into zz)
-		      (collect zz into ret)
-		      (finally (return (coerce (cons 0 ret) 'simple-vector))))
-		:type simple-vector)
-	  (jj lb (binary-search (random (aref cvec (1- (length cvec)))) 0 (length cvec)
-				(the simple-vector cvec))))
-    (or jj (1- lb))))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun parse-documentation-body (body)
+    (match body
+      ((list* (and (type string) documentation) body) (values body (list documentation)))
+      (body body)))
+
+  (defun merge-lambda-lists (args-1 args-2)
+    (let* ((args-1 (trivia.level2.impl::parse-lambda-list args-1))
+	   (args-2 (trivia.level2.impl::parse-lambda-list args-2))
+	   (ret (mapcar #'(lambda (k) (append (or (assoc k args-1) (list k)) (cdr (assoc k args-2))))
+			'(:atom :optional :keyword))))
+      `(,@(cdr (assoc :atom ret))
+	  ,@(if-let (args (cdr (assoc :optional ret)))
+	      `(&optional ,@args))
+	  ,@(if-let (args (cdr (assoc :keyword ret)))
+	      `(&key ,@args))))))
+
+(defmacro defrandom (name args &body body)
+  (letv* ((body documentation (parse-documentation-body body)))
+    (with-gensyms (ret ref-ret)
+      `(definline ,name (,@(merge-lambda-lists '( &optional shape) args))
+	 ,@documentation
+	 (if (not shape) (let () ,@body)
+	     (let ((,ret (zeros shape '#.(tensor 'double-float))))
+	       (dorefs (_ (dimensions ,ret))
+		 ((,ref-ret ,ret :type #.(tensor 'double-float)))
+		 (setf ,ref-ret (let () ,@body)))
+	       ,ret))))))
+
+;; NOTE: all of the samplers are built using random-byte-kernel
+(definline random-byte-kernel (arg)
+  "
+  Random sample from the Uniform distribution on {0, arg-1}
+  "
+  (random (the unsigned-byte arg)))
 
 ;;
-#+nil
-(defmacro generate-rand (func type clause)
-  (let ((clause (etypecase clause (symbol `(,clause)) (cons clause)))
-	(func! (intern (string+ (symbol-name func) "!"))))
-    `(eval-every
-       (defun ,func! (tensor)
-	 (declare (type ,(tensor type) tensor))
-	 (very-quickly
-	   (dorefs (idx (dimensions tensor))
-		   ((ref tensor :type ,(tensor type)))
-		   (setf ref ,clause)))
-	 tensor)
-       (defun ,func (&optional dims)
-	 (if dims
-	     (,func! (zeros dims ',(tensor type)))
-	     ,clause)))))
+(defrandom random-uniform (&optional (zero-openp nil))
+  "
+  Random sample from the Uniform distribution on [0, 1);
+  if ZERO-OPENP then from (0, 1].
+  "
+  (if zero-openp
+      (- 1 (scale-float (float (random-byte-kernel #.(expt 2 52)) 1d0) -52))
+      (scale-float (float (random-byte-kernel #.(expt 2 52)) 1d0) -52)))
 
-#+nil
-(macrolet ((generate-rands ((&rest args))
-	     `(progn
-		,@(mapcar #'(lambda (x) `(generate-rand ,(car x) double-float ,(cadr x))) args))))
-  (generate-rands ((randn (draw-standard-normal))
-		   (rand (random 1d0))
-		   (rande (draw-standard-exponential)))))
-
-(defun randi (&optional dims (arg 2))
-  (if dims
-      (let ((ret (zeros dims '(double-float))))
-	(dorefs (idx (dimensions ret))
-		((ref ret :type #.(tensor 'double-float)))
-	  (setf ref (coerce (random arg) 'double-float)))
-	ret)
-      (random arg)))
-
-
+;; pareto
+(defrandom random-pareto (a b)
+  "
+  Random value for parato distribution:
+  p(x) dx = (a/b) / (x/b)^(a+1) dx     for x >= b
+"
+  (let* ((a (coerce a 'double-float))
+	 (x (random-uniform nil t))
+	 (z (expt x (/ -1d0 a))))
+    (declare (type double-float a x z))
+    (* (coerce b 'double-float) z)))

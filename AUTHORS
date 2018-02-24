@@ -2,5 +2,6 @@ Matlisp was originally written by Tunc Simsek, based on an initial prototype by 
 It is now being developed by Akshay Srinivasan.
 
 Acknowledgements
+- Leonardo Varuzza et.al for cl-randist (https://github.com/lvaruzza/cl-randist)
 - Tamas Papp for cl-random (https://github.com/tpapp/cl-random)
 - Nicholas Neuss for Femlisp (www.femlisp.org)

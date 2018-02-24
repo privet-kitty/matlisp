@@ -90,15 +90,14 @@
 				   (:file "graph" :depends-on ("dfs" "fibonacci"))
 				   (:file "graphviz" :depends-on ("dfs" "fibonacci"))))
 	     (:module #:special :depends-on (#:core #:reader) :components
-		      ((:file "random") (:file "map")
-		       (:file "norm") (:file "misc")
+		      ((:file "map") (:file "norm") (:file "misc")
 		       (:file "poly") (:file "optimize")
 		       (:file "orthogonal-polynomial")))
 	     (:module #:distributions :depends-on (#:core #:reader #:special) :components
 		      ((:file "random")
-		       (:file "endos-renyi")
 		       (:file "ziggurat")
-		       (:file "normal" :depends-on "ziggurat")))
+		       (:file "exponential" :depends-on ("ziggurat" "random"))
+		       (:file "erdos-renyi" :depends-on ("random"))))
 	     (:module #:user :depends-on (#:core) :components
 		      ((:file "arithmetic") (:file "function")))
 	     (:module #:reader :depends-on (#:user) :components
