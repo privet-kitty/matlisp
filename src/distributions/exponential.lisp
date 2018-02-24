@@ -26,11 +26,6 @@
 
 (declaim (ftype (function () double-float) random-exponential-kernel))
 (eval-when (:compile-toplevel)
-  (definline exponential-function (x) (exp (- x)))
-  (definline exponential-tail-sampler (r0 f0 identity)
-    (let* ((u1 (random-uniform nil t)))
-      (+ r0 (* -1 (log u1)))))
-  ;;
   (letv* ((points v (ziggurat-bisect #'exponential-function 15d0 :n-divisions (expt 2 8) :x_0-atol 1d-14))
 	  (points (cons 0d0 (cdr points))))
     (setf (symbol-function 'random-exponential-kernel)
