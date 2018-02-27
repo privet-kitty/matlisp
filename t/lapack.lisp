@@ -1,6 +1,7 @@
 (in-package #:matlisp-tests)
 (named-readtables:in-readtable :infix-dispatch-table)
 
+(fiveam:in-suite matlisp-tests:matlisp-tests)
 ;;TODO:add tests for different strides
 ;;Cholesky
 (5am:test chol-test

@@ -18,14 +18,12 @@
 (in-package #:matlisp)
 
 ;; exponential distribution
+(declaim (ftype (function () double-float) random-exponential-kernel))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (definline exponential-function (x) (exp (- x)))
   (definline exponential-tail-sampler (r0 f0 identity)
     (let* ((u1 (random-uniform nil t)))
-      (+ r0 (* -1 (log u1))))))
-
-(declaim (ftype (function () double-float) random-exponential-kernel))
-(eval-when (:compile-toplevel)
+      (+ r0 (* -1 (log u1)))))
   (letv* ((points v (ziggurat-bisect #'exponential-function 15d0 :n-divisions (expt 2 8) :x_0-atol 1d-14))
 	  (points (cons 0d0 (cdr points))))
     (setf (symbol-function 'random-exponential-kernel)
@@ -46,6 +44,7 @@
   (* (coerce beta 'double-float) (random-exponential-kernel)))
 
 ;; normal distribution
+(declaim (ftype (function () double-float) random-normal-kernel))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (definline gaussian-function (x) (exp (* -1/2 x x)))
   (definline gaussian-tail-sampler (r0 f0 identity)
@@ -53,10 +52,7 @@
 	   (u2 (random-uniform nil t))
 	   (x (* -1 (/ r0) (log u1)))
 	   (y (- 1 (log u2))))
-      (if (> (+ y y) (* x x)) (+ x r0)))))
-
-(declaim (ftype (function () double-float) random-normal-kernel))
-(eval-when (:compile-toplevel)
+      (if (> (+ y y) (* x x)) (+ x r0))))
   (letv* ((points v (ziggurat-bisect #'gaussian-function 1d0 :n-divisions (expt 2 7)))
 	  (points (cons 0d0 (cdr points))))
     (setf (symbol-function 'random-normal-kernel)

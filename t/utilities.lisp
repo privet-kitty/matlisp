@@ -1,5 +1,10 @@
 (in-package #:matlisp-tests)
 
-(matlisp::generate-rand srandn single-float (matlisp::draw-standard-normal-single))
-(matlisp::generate-rand crandn (complex single-float) (complex (matlisp::draw-standard-normal-single) (matlisp::draw-standard-normal-single)))
-(matlisp::generate-rand zrandn (complex double-float) (complex (matlisp::draw-standard-normal) (matlisp::draw-standard-normal)))
+(defun randn (shape) (t:random-normal shape))
+(defun zrandn (shape)
+  (let ((ret (t:zeros shape (t:tensor '(complex double-float)))))
+    (copy! (t:random-normal shape) (t:realpart~ ret))
+    (copy! (t:random-normal shape) (t:imagpart~ ret))
+    ret))
+(defun srandn (shape) (copy (randn shape) (t:tensor 'single-float)))
+(defun crandn (shape) (copy (zrandn shape) (t:tensor '(complex single-float))))
