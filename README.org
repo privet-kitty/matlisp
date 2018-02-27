@@ -121,33 +121,35 @@ like MKL is as simple as placing a symbolic link by name "libblas.so" in the top
 * Examples
   #+BEGIN_SRC lisp
   ;;Creation
-  M> (copy! (randn '(2 2)) (zeros '(2 2) '((complex double-float))))
-  #<|(COMPLEX DOUBLE-FLOAT) STRIDE-ACCESSOR SIMPLE-ARRAY| #(2 2)
+  M> (copy! (random-normal '(2 2)) (zeros '(2 2) '((complex double-float))))
+  #<|<BLAS-MIXIN SIMPLE-DENSE-TENSOR: (COMPLEX DOUBLE-FLOAT)>| #(2 2)
     0.8492   -1.976
     2.207    -1.251
   >
   ;;gemv
-  M> (let ((a (randn '(2 2)))
-	   (b (randn 2)))
+  M> (let ((a (random-normal '(2 2)))
+	   (b (random-normal 2)))
        #i(a * b))
-  #<|DOUBLE-FLOAT STRIDE-ACCESSOR SIMPLE-ARRAY| #(2)
+  #<|<BLAS-MIXIN SIMPLE-DENSE-TENSOR: DOUBLE-FLOAT>| #(2)
   1.1885     0.95746
   >
 
   ;;Tensor contraction
-  M> (let ((H (randn '(2 2 2)))
-	   (b (randn 2))
-	   (c (randn 2))
+  M> (let ((H (random-normal '(2 2 2)))
+	   (b (random-normal 2))
+	   (c (random-normal 2))
 	   (f (zeros 2)))
 	   ;;#i(H @ b @ c)
        (einstein-sum #.(tensor 'double-float) (i j k) (ref f i) (* (ref H i j k) (ref b j) (ref c k))))
-  #<|DOUBLE-FLOAT STRIDE-ACCESSOR SIMPLE-ARRAY| #(2)
+  #<|<BLAS-MIXIN SIMPLE-DENSE-TENSOR: DOUBLE-FLOAT>| #(2)
   0.62586     -1.1128
   >
   ;;Similarly
-  M> (let ((H (randn '(2 2 2))))
-       #i(H @ randn(2) @ randn(2)))
-  #<|DOUBLE-FLOAT STRIDE-ACCESSOR SIMPLE-ARRAY| #(2)
+  M> (let ((H (random-normal '(2 2 2)))
+           (x (random-normal 2))
+           (y (random-normal 2)))
+         #i(H @ x @ y))
+  #<|<BLAS-MIXIN SIMPLE-DENSE-TENSOR: DOUBLE-FLOAT>| #(2)
    0.3234  -0.6201
   >
   #+END_SRC
