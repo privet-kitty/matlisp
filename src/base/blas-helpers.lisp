@@ -94,7 +94,7 @@
 			 input input-syms)
 	       ,@(mapcar #'(lambda (mat sym) `(,sym (if (eql (nth-value 2 (blas-matrix-compatiblep ,mat #\N)) :col-major) (progn (push nil ,stack) ,mat)
 							(with-colm (push t ,stack) (copy ,mat))))) output output-syms))
-	 (symbol-macrolet (,@(mapcar #'(lambda (mat sym) `(,mat ,sym)) (append (mapcar #'car input) output) (append input-syms output-syms)))
+	 (let (,@(mapcar #'(lambda (mat sym) `(,mat ,sym)) (append (mapcar #'car input) output) (append input-syms output-syms)))
 	   ,@body)
 	 ,@(mapcar #'(lambda (mat sym) `(when (pop ,stack) (copy! ,sym ,mat))) (reverse output) (reverse output-syms))
 	 nil)))))
