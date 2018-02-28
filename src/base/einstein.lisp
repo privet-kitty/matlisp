@@ -219,7 +219,7 @@
 	`(let ((,functable (make-hash-table :test 'equal)))
 	   (lambda (,@args)
 	     (declare (type ,type ,@tens))
-	     (let* ((idx-ord (mapcar #'car (very-quickly (sort (list ,@(mapcar #'(lambda (idx) `(list ',(car idx) (+ ,@(mapcar #'(lambda (x) `(aref (the index-store-vector (strides ,(car x))) ,(cadr x))) (cdr idx))))) indices)) #'(lambda (a b) (declare (type index-type a b)) (> a b)) :key #'cadr))))
+	     (let* ((idx-ord (mapcar #'car (very-quickly (sort (list ,@(mapcar #'(lambda (idx) `(list ',(car idx) (+ ,@(mapcar #'(lambda (x) `(aref (the index-store-vector (strides ,(car x))) ,(cadr x))) (cdr idx))))) indices)) #'(lambda (_a _b) (declare (type index-type _a _b)) (> _a _b)) :key #'cadr))))
 		    (func (or (gethash idx-ord ,functable)
 			      (let* ((code (loop-generator ',type idx-ord ',place ',clause :testp ,testp))
 				     (funcnew (compile-and-eval
