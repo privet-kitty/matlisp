@@ -199,6 +199,8 @@
    #:norm #:psd-proj #:tr #:tensor-max #:tensor-min
    #:ones #:eye! #:eye #:diag #:diaeg~
    #:range #:linspace #:polyfit #:polyval #:roots
+   ;; interop
+   #:as-tensor #:as-array 
    ;; distributions
    #:random-byte-kernel #:random-uniform #:random-pareto
    #:random-exponential #:random-normal #:random-gamma
