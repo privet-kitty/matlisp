@@ -32,14 +32,12 @@
   object)
 
 (defmethod as-array ((object tensor))
-  "Make an array of the same dimensions as OBJECT, displaced to the storage vector.
-   Resulting array shares storage with OBJECT. "
+  "Make an array of the same dimensions as OBJECT. 
+   If 1D, returned array shares storage with OBJECT."
   ;; If 1D tensor, return the store directly
   (when (= 1 (length (dimensions object)))
     (slot-value object 'store))
-  ;; If > 1D, create displaced array
-  (with-slots (store dimensions) object
-    (make-array (map 'list #'identity dimensions) ; Convert dimensions to list
-                :element-type (array-element-type store)
-                :displaced-to store)))
+  ;; If > 1D, copy into array. Note: can't create displaced array
+  ;; since element ordering in tensor is column-major but arrays are row-major
+  (copy object 'array))
 
