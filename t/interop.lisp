@@ -43,7 +43,6 @@
                            (4 5 6))))
          (b (as-array a)))
     (is (= (array-rank b) 2))
-    (format t "~a~%" b)
     (is (= (aref b 1 0) 4))
     (is (= (aref b 0 2) 3))))
 
