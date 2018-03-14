@@ -13,11 +13,15 @@
       (copy object (tensor field-type))))
 
 (defmethod as-tensor ((object simple-vector) &optional field-type)
-  "Simple vectors can be used as store for a tensor. 
-   The resulting tensor will share storage with the vector."
-  (make-instance (tensor (or field-type t))
-                 :dimensions  (coerce (array-dimensions object) '(simple-array index-type (*)))
-                 :store object))
+  "Simple vectors can be used as store for a tensor.  The resulting
+   tensor will share storage with the vector, if FIELD-TYPE isn't
+   designated."
+  (if field-type
+      (copy object (tensor field-type))
+      (make-instance (tensor t)
+		     :dimensions  (coerce (array-dimensions object)
+					  '(simple-array index-type (*)))
+		     :store object)))
 
 (defmethod as-tensor ((object array) &optional field-type)
   "Convert array OBJECT to tensor by copying contents."
@@ -38,12 +42,5 @@
   object)
 
 (defmethod as-array ((object tensor))
-  "Make an array of the same dimensions as OBJECT. 
-   If 1D, returned array shares storage with OBJECT."
-  ;; If 1D tensor, return the store directly
-  (when (= 1 (length (dimensions object)))
-    (slot-value object 'store))
-  ;; If > 1D, copy into array. Note: can't create displaced array
-  ;; since element ordering in tensor is column-major but arrays are row-major
+  "Make an array of the same dimensions as OBJECT."
   (copy object 'array))
-
