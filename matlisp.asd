@@ -58,6 +58,7 @@
 					   (:file "tensor-template" :depends-on ("generator" "numeric-template"))))
 				 (:file "generic" :depends-on (#:template))
 				 (:file "print" :depends-on (#:generic))
+                                 (:file "interop" :depends-on (#:generic))
 				 (:module #:accessor :pathname "" :depends-on (#:template) :components
 					  ((:file "stride-accessor")
 					   (:file "graph-accessor")
