@@ -97,6 +97,7 @@
 	      ((tensor number) (scal ,b ,a))
 	      ;;Matrix, vector/matrix product
 	      ((tensor-matrix (or tensor-matrix tensor-vector)) (gem 1 ,a ,b nil nil))
+	      ((tensor-vector tensor-matrix) (gem 1 ,b ,a nil nil :t))
 	      ((tensor null) (copy ,a))
 	      ;;Permutation action. Left action permutes axis-0, right action permutes the last axis (-1).
 	      ((permutation base-tensor) (permute ,b ,a 0))
